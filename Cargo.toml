@@ -13,3 +13,5 @@ repository = "https://github.com/DenysVuika/birdview.git"
 
 [dependencies]
 walkdir = "2"
+regex = "1.8.3"
+lazy_static = "1.4.0"

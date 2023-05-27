@@ -1,5 +1,7 @@
-use std::env;
+// use std::env;
 // use std::error::Error;
+use lazy_static::lazy_static;
+use regex::Regex;
 
 pub mod fs;
 
@@ -71,9 +73,46 @@ pub fn search_case_insensitive<'a>(query: &str, contents: &'a str) -> Vec<&'a st
         .collect()
 }
 
+pub fn extract_test_names(contents: &str) -> Vec<&str> {
+    // (it\(['"])(?P<name>.*?)(['"])
+    // https://rustexp.lpil.uk/
+    lazy_static! {
+        static ref NAME_REGEX: Regex = Regex::new(r#"(it\(['"])(?P<name>.*?)(['"])"#).unwrap();
+    }
+
+    NAME_REGEX
+        .captures_iter(&contents)
+        .map(|c| c.name("name").unwrap().as_str())
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn extracts_single_test_name() {
+        let input = "it('should reset selected nodes from store', () => {";
+        assert_eq!(
+            vec!["should reset selected nodes from store"],
+            extract_test_names(input)
+        );
+    }
+
+    #[test]
+    fn extracts_multiple_test_names() {
+        let input = "\
+            it('should reset selected nodes from store', () => {\
+            it('should return false when entry is not shared', () => {
+        ";
+        assert_eq!(
+            vec![
+                "should reset selected nodes from store",
+                "should return false when entry is not shared"
+            ],
+            extract_test_names(input)
+        );
+    }
 
     #[test]
     fn case_sensitive() {
