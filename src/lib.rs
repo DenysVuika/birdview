@@ -74,10 +74,10 @@ pub fn search_case_insensitive<'a>(query: &str, contents: &'a str) -> Vec<&'a st
 }
 
 pub fn extract_test_names(contents: &str) -> Vec<&str> {
-    // (it\(['"])(?P<name>.*?)(['"])
+    // (\b(?:it|test)\b\(['"])(?P<name>.*?)(['"])
     // https://rustexp.lpil.uk/
     lazy_static! {
-        static ref NAME_REGEX: Regex = Regex::new(r#"(it\(['"])(?P<name>.*?)(['"])"#).unwrap();
+        static ref NAME_REGEX: Regex = Regex::new(r#"(\b(?:it|test)\b\(['"])(?P<name>.*?)(['"])"#).unwrap();
     }
 
     NAME_REGEX
@@ -110,6 +110,15 @@ mod tests {
                 "should reset selected nodes from store",
                 "should return false when entry is not shared"
             ],
+            extract_test_names(input)
+        );
+    }
+
+    #[test]
+    fn extracts_playwright_test_names() {
+        let input = "test('Create a rule with condition', async ({ personalFiles, nodesPage })";
+        assert_eq!(
+            vec!["Create a rule with condition"],
             extract_test_names(input)
         );
     }
