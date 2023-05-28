@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::path::Path;
 use walkdir::WalkDir;
-use crate::report::{Report, TestFile};
+use crate::report::{PackageFile, Report, TestFile};
 
 pub mod fs;
 pub mod report;
@@ -57,32 +57,33 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
 
 fn inspect_dir(working_dir: &Path) -> Result<Report, Box<dyn Error>> {
     let walker = WalkDir::new(working_dir).follow_links(true).into_iter();
-    let mut package_files_count = 0;
     let mut spec_files = Vec::new();
     let mut test_files = Vec::new();
+    let mut package_files = Vec::new();
 
     for entry in walker
         .filter_entry(|e| fs::is_not_hidden(e) && !fs::is_excluded(e))
         .filter_map(|e| e.ok())
     {
         let f_name = entry.file_name().to_string_lossy();
+        let entry_path = entry.path();
 
         if f_name.ends_with(".spec.ts") {
-            spec_files.push(TestFile::from_path(working_dir, entry.path())?);
+            spec_files.push(TestFile::from_path(working_dir, entry_path)?);
         }
         if f_name.ends_with(".test.ts") {
-            test_files.push(TestFile::from_path(working_dir, entry.path())?);
+            test_files.push(TestFile::from_path(working_dir, entry_path)?);
         }
 
         if f_name == "package.json" {
-            package_files_count += 1;
+            package_files.push(PackageFile::from_path(working_dir, entry_path)?)
         }
     }
 
     Ok(Report {
-        package_files_count,
-        spec_files,
-        test_files,
+        spec_files: Some(spec_files),
+        test_files: Some(test_files),
+        package_files: Some(package_files)
     })
 }
 

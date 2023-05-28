@@ -5,44 +5,65 @@ use regex::Regex;
 
 #[derive(Debug)]
 pub struct Report {
-    pub package_files_count: usize,
-
-    pub spec_files: Vec<TestFile>,
-    pub test_files: Vec<TestFile>,
+    pub spec_files: Option<Vec<TestFile>>,
+    pub test_files: Option<Vec<TestFile>>,
+    pub package_files: Option<Vec<PackageFile>>,
 }
 
 impl Report {
     pub fn print(&self) {
-        let total_spec_cases: usize = self.spec_files.iter().map(|f| f.test_names.len()).sum();
-        let total_test_cases: usize = self.test_files.iter().map(|f| f.test_names.len()).sum();
+        let mut total_spec_cases: usize = 0;
+        let mut total_test_cases: usize = 0;
+        let mut total_spec_files: usize = 0;
+        let mut total_test_files: usize = 0;
+        let mut total_package_files: usize = 0;
 
-        for test_file in &self.spec_files {
-            println!("{}", test_file.file_path);
+        if let Some(files) = &self.spec_files {
+            total_spec_files = files.len();
+            total_spec_cases = files.iter().map(|f| f.test_names.len()).sum();
 
-            for test_name in &test_file.test_names {
-                println!("  ├── {test_name}");
+            for test_file in files {
+                println!("{}", test_file.file_path);
+
+                for test_name in &test_file.test_names {
+                    println!("  ├── {test_name}");
+                }
             }
         }
 
-        for test_file in &self.test_files {
-            println!("{}", test_file.file_path);
+        if let Some(files) = &self.test_files {
+            total_test_files = files.len();
+            total_test_cases = files.iter().map(|f| f.test_names.len()).sum();
 
-            for test_name in &test_file.test_names {
-                println!("  ├── {test_name}");
+            for test_file in files {
+                println!("{}", test_file.file_path);
+
+                for test_name in &test_file.test_names {
+                    println!("  ├── {test_name}");
+                }
+            }
+        }
+
+        if let Some(files) = &self.package_files {
+            total_package_files = files.len();
+
+            for package_file in files {
+                println!("{}", package_file.file_path);
             }
         }
 
         println!(
             "Found .spec.ts files: {} ({} cases)",
-            self.spec_files.len(),
+            total_spec_files,
             total_spec_cases
         );
         println!(
             "Found .test.ts files: {} ({} cases)",
-            self.test_files.len(),
+            total_test_files,
             total_test_cases
         );
-        println!("Found package.json files: {}", self.package_files_count);
+
+        println!("Found package.json files: {}", total_package_files);
     }
 }
 
@@ -66,6 +87,24 @@ impl TestFile {
         })
     }
 }
+
+#[derive(Debug)]
+pub struct PackageFile {
+    pub file_path: String,
+    pub dependencies: Vec<String>,
+    pub dev_dependencies: Vec<String>,
+}
+
+impl PackageFile {
+    pub fn from_path(working_dir: &Path, path: &Path) -> Result<PackageFile, Box<dyn Error>> {
+        Ok(PackageFile {
+            file_path: path.strip_prefix(working_dir)?.display().to_string(),
+            dependencies: vec![],
+            dev_dependencies: vec![]
+        })
+    }
+}
+
 
 fn extract_test_names(contents: &str) -> Vec<&str> {
     // (\b(?:it|test)\b\(['"])(?P<name>.*?)(['"])
