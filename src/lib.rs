@@ -1,17 +1,14 @@
 // use std::env;
-use std::error::Error;
 use lazy_static::lazy_static;
 use regex::Regex;
-use walkdir::WalkDir;
+use std::error::Error;
 use std::path::Path;
+use walkdir::WalkDir;
 
 pub mod fs;
 
 pub struct Config {
     pub working_dir: String,
-    // pub query: String,
-    // pub file_path: String,
-    // pub ignore_case: bool,
 }
 
 impl Config {
@@ -35,18 +32,43 @@ impl Config {
 
         // let ignore_case = env::var("IGNORE_CASE").is_ok();
 
-        Ok(Config {
-            working_dir,
-            // query,
-            // file_path,
-            // ignore_case
+        Ok(Config { working_dir })
+    }
+}
+
+#[derive(Debug)]
+struct Report {
+    package_files_count: usize,
+
+    spec_files: Vec<TestFile>,
+    test_files: Vec<TestFile>,
+}
+
+#[derive(Debug)]
+struct TestFile {
+    file_path: String,
+    test_names: Vec<String>,
+}
+
+impl TestFile {
+    fn from_path(working_dir: &Path, path: &Path) -> Result<TestFile, Box<dyn Error>> {
+        let contents = std::fs::read_to_string(path)?;
+        let test_names: Vec<String> = extract_test_names(&contents)
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect();
+
+        Ok(TestFile {
+            file_path: path.strip_prefix(working_dir)?.display().to_string(),
+            test_names,
         })
     }
 }
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let working_dir = Path::new(&config.working_dir);
-    inspect_dir(working_dir)?;
+    let report = inspect_dir(working_dir)?;
+    print_report(&report);
 
     // let contents = fs::read_to_string(config.file_path)?;
 
@@ -63,13 +85,46 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn inspect_dir(working_dir: &Path) -> Result<(), Box<dyn Error>> {
+fn print_report(report: &Report) {
+    // println!("{:?}", report);
+
+    let total_spec_files: usize = report.spec_files.iter().map(|f| f.test_names.len()).sum();
+    let total_test_files: usize = report.test_files.iter().map(|f| f.test_names.len()).sum();
+
+    for test_file in &report.spec_files {
+        println!("{}", test_file.file_path);
+
+        for test_name in &test_file.test_names {
+            println!("  ├── {test_name}");
+        }
+    }
+
+    for test_file in &report.test_files {
+        println!("{}", test_file.file_path);
+
+        for test_name in &test_file.test_names {
+            println!("  ├── {test_name}");
+        }
+    }
+
+    println!(
+        "Found .spec.ts files: {} ({} cases)",
+        report.spec_files.len(),
+        total_spec_files
+    );
+    println!(
+        "Found .test.ts files: {} ({} cases)",
+        report.test_files.len(),
+        total_test_files
+    );
+    println!("Found package.json files: {}", report.package_files_count);
+}
+
+fn inspect_dir(working_dir: &Path) -> Result<Report, Box<dyn Error>> {
     let walker = WalkDir::new(working_dir).follow_links(true).into_iter();
-    let mut spec_files_count = 0;
-    let mut test_files_count = 0;
     let mut package_files_count = 0;
-    let mut total_unit_tests_count = 0;
-    let mut total_e2e_tests_count = 0;
+    let mut spec_files = Vec::new();
+    let mut test_files = Vec::new();
 
     for entry in walker
         .filter_entry(|e| fs::is_not_hidden(e) && !fs::is_excluded(e))
@@ -78,25 +133,10 @@ fn inspect_dir(working_dir: &Path) -> Result<(), Box<dyn Error>> {
         let f_name = entry.file_name().to_string_lossy();
 
         if f_name.ends_with(".spec.ts") {
-            spec_files_count += 1;
-            println!("{}", entry.path().strip_prefix(working_dir)?.display());
-
-            let contents = std::fs::read_to_string(entry.path())?;
-            for test_name in extract_test_names(&contents) {
-                total_unit_tests_count += 1;
-                println!("  ├── {test_name}");
-            }
-
+            spec_files.push(TestFile::from_path(working_dir, entry.path())?);
         }
         if f_name.ends_with(".test.ts") {
-            test_files_count += 1;
-            println!("{}", entry.path().strip_prefix(working_dir)?.display());
-
-            let contents = std::fs::read_to_string(entry.path())?;
-            for test_name in extract_test_names(&contents) {
-                total_e2e_tests_count += 1;
-                println!("  ├── {test_name}");
-            }
+            test_files.push(TestFile::from_path(working_dir, entry.path())?);
         }
 
         if f_name == "package.json" {
@@ -104,11 +144,11 @@ fn inspect_dir(working_dir: &Path) -> Result<(), Box<dyn Error>> {
         }
     }
 
-    println!("Found .spec.ts files: {} ({} cases)", spec_files_count, total_unit_tests_count);
-    println!("Found .test.ts files: {}, ({} cases)", test_files_count, total_e2e_tests_count);
-    println!("Found package.json files: {}", package_files_count);
-
-    Ok(())
+    Ok(Report {
+        package_files_count,
+        spec_files,
+        test_files,
+    })
 }
 
 pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
@@ -130,7 +170,8 @@ pub fn extract_test_names(contents: &str) -> Vec<&str> {
     // (\b(?:it|test)\b\(['"])(?P<name>.*?)(['"])
     // https://rustexp.lpil.uk/
     lazy_static! {
-        static ref NAME_REGEX: Regex = Regex::new(r#"(\b(?:it|test)\b\(['"])(?P<name>.*?)(['"])"#).unwrap();
+        static ref NAME_REGEX: Regex =
+            Regex::new(r#"(\b(?:it|test)\b\(['"])(?P<name>.*?)(['"])"#).unwrap();
     }
 
     NAME_REGEX
