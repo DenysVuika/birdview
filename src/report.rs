@@ -14,77 +14,77 @@ pub struct Report {
 }
 
 impl Report {
-    pub fn print(&self) {
-        let mut total_spec_cases: usize = 0;
-        let mut total_test_cases: usize = 0;
-        let mut total_spec_files: usize = 0;
-        let mut total_test_files: usize = 0;
-        let mut total_package_files: usize = 0;
-
+    pub fn print(&self, verbose: &bool) {
         if let Some(files) = &self.spec_files {
-            total_spec_files = files.len();
-            total_spec_cases = files.iter().map(|f| f.test_names.len()).sum();
+            let total_files: usize = files.len();
+            let total_tests: usize = files.iter().map(|f| f.test_names.len()).sum();
 
-            for test_file in files {
-                println!("{}", test_file.file_path);
+            if total_files > 0 {
+                println!(
+                    "Found .spec.ts files: {} ({} cases)",
+                    total_files, total_tests
+                );
 
-                for test_name in &test_file.test_names {
-                    println!("  ├── {test_name}");
+                if *verbose {
+                    for test_file in files {
+                        println!("{}", test_file.file_path);
+
+                        for test_name in &test_file.test_names {
+                            println!("  ├── {test_name}");
+                        }
+                    }
                 }
             }
         }
 
         if let Some(files) = &self.test_files {
-            total_test_files = files.len();
-            total_test_cases = files.iter().map(|f| f.test_names.len()).sum();
+            let total_files: usize = files.len();
+            let total_tests: usize = files.iter().map(|f| f.test_names.len()).sum();
 
-            for test_file in files {
-                println!("{}", test_file.file_path);
+            if total_files > 0 {
+                println!(
+                    "Found .test.ts files: {} ({} cases)",
+                    total_files, total_tests
+                );
 
-                for test_name in &test_file.test_names {
-                    println!("  ├── {test_name}");
+                if *verbose {
+                    for test_file in files {
+                        println!("{}", test_file.file_path);
+
+                        for test_name in &test_file.test_names {
+                            println!("  ├── {test_name}");
+                        }
+                    }
                 }
             }
         }
 
         if let Some(files) = &self.package_files {
-            total_package_files = files.len();
+            let total_files: usize = files.len();
 
-            for package_file in files {
-                println!("{}", package_file.file_path);
+            if total_files > 0 {
+                println!("Found package.json files: {}", total_files);
 
-                if package_file.dependencies.len() > 0 {
-                    println!("  ├── dependencies");
-                    for dependency in &package_file.dependencies {
-                        println!("\t├── {}", dependency);
-                    }
-                }
+                if *verbose {
+                    for package_file in files {
+                        println!("{}", package_file.file_path);
 
-                if package_file.dev_dependencies.len() > 0 {
-                    println!("  ├── devDependencies");
-                    for dependency in &package_file.dev_dependencies {
-                        println!("\t├── {}", dependency);
+                        if package_file.dependencies.len() > 0 {
+                            println!("  ├── dependencies");
+                            for dependency in &package_file.dependencies {
+                                println!("\t├── {}", dependency);
+                            }
+                        }
+
+                        if package_file.dev_dependencies.len() > 0 {
+                            println!("  ├── devDependencies");
+                            for dependency in &package_file.dev_dependencies {
+                                println!("\t├── {}", dependency);
+                            }
+                        }
                     }
                 }
             }
-        }
-
-        if total_spec_files > 0 {
-            println!(
-                "Found .spec.ts files: {} ({} cases)",
-                total_spec_files, total_spec_cases
-            );
-        }
-
-        if total_test_files > 0 {
-            println!(
-                "Found .test.ts files: {} ({} cases)",
-                total_test_files, total_test_cases
-            );
-        }
-
-        if total_package_files > 0 {
-            println!("Found package.json files: {}", total_package_files);
         }
     }
 }

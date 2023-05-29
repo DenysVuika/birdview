@@ -23,6 +23,10 @@ enum Commands {
         /// Workspace directory
         dir: PathBuf,
 
+        /// Run all inspections
+        #[arg(long)]
+        all: bool,
+
         /// Inspect test files
         #[arg(short, long)]
         tests: bool,
@@ -30,6 +34,10 @@ enum Commands {
         /// Inspect dependencies
         #[arg(short, long)]
         deps: bool,
+
+        /// Verbose output
+        #[arg(long)]
+        verbose: bool,
     },
 }
 
@@ -41,13 +49,20 @@ fn main() {
     }
 
     match &cli.command {
-        Some(Commands::Inspect { dir, tests, deps }) => {
+        Some(Commands::Inspect {
+            dir,
+            tests,
+            deps,
+            all,
+            verbose,
+        }) => {
             println!("workspace: {}", dir.display());
 
             let config = Config {
                 working_dir: PathBuf::from(dir),
-                inspect_tests: *tests,
-                inspect_deps: *deps,
+                inspect_tests: *all | *tests,
+                inspect_deps: *all | *deps,
+                verbose: *verbose,
             };
 
             if let Err(e) = run(config) {

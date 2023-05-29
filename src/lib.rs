@@ -10,17 +10,18 @@ pub struct Config {
     pub working_dir: PathBuf,
     pub inspect_tests: bool,
     pub inspect_deps: bool,
+    pub verbose: bool,
 }
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
-    let report = inspect_dir(config)?;
-    report.print();
+    let report = inspect_dir(&config)?;
+    report.print(&config.verbose);
 
     println!("Inspection complete");
     Ok(())
 }
 
-fn inspect_dir(config: Config) -> Result<Report, Box<dyn Error>> {
+fn inspect_dir(config: &Config) -> Result<Report, Box<dyn Error>> {
     let working_dir = &config.working_dir;
     let walker = WalkDir::new(working_dir).follow_links(true).into_iter();
     let mut spec_files = Vec::new();
@@ -57,47 +58,7 @@ fn inspect_dir(config: Config) -> Result<Report, Box<dyn Error>> {
     })
 }
 
-pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
-    contents
-        .lines()
-        .filter(|line| line.contains(query))
-        .collect()
-}
-
-pub fn search_case_insensitive<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
-    let query = query.to_lowercase();
-    contents
-        .lines()
-        .filter(|line| line.to_lowercase().contains(&query))
-        .collect()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn case_sensitive() {
-        let query = "duct";
-        let contents = "\
-Rust:
-safe, fast, productive.
-Pick three.";
-        assert_eq!(vec!["safe, fast, productive."], search(query, contents));
-    }
-
-    #[test]
-    fn case_insensitive() {
-        let query = "rUsT";
-        let contents = "\
-Rust:
-safe, fast, productive.
-Pick three.
-Trust me.";
-
-        assert_eq!(
-            vec!["Rust:", "Trust me."],
-            search_case_insensitive(query, contents)
-        );
-    }
 }
