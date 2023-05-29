@@ -1,56 +1,14 @@
+use crate::report::{PackageFile, Report, TestFile};
 use std::error::Error;
 use std::path::Path;
 use walkdir::WalkDir;
-use crate::report::{PackageFile, Report, TestFile};
 
 pub mod fs;
 pub mod report;
 
-pub struct Config {
-    pub working_dir: String,
-}
-
-impl Config {
-    pub fn build(mut args: impl Iterator<Item = String>) -> Result<Config, &'static str> {
-        args.next();
-
-        let working_dir = match args.next() {
-            Some(arg) => arg,
-            None => return Err("Missing working directory"),
-        };
-
-        // let query = match args.next() {
-        //     Some(arg) => arg,
-        //     None => return Err("Didn't find a query string")
-        // };
-        //
-        // let file_path = match args.next() {
-        //     Some(arg) => arg,
-        //     None => return Err("Didn't get a file path")
-        // };
-
-        // let ignore_case = env::var("IGNORE_CASE").is_ok();
-
-        Ok(Config { working_dir })
-    }
-}
-
-pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
-    let working_dir = Path::new(&config.working_dir);
+pub fn run(working_dir: &Path) -> Result<(), Box<dyn Error>> {
     let report = inspect_dir(working_dir)?;
     report.print();
-
-    // let contents = fs::read_to_string(config.file_path)?;
-
-    // let results = if config.ignore_case {
-    //     search_case_insensitive(&config.query, &contents)
-    // } else {
-    //     search(&config.query, &contents)
-    // };
-    //
-    // for line in results {
-    //     println!("{line}");
-    // }
 
     Ok(())
 }
@@ -83,7 +41,7 @@ fn inspect_dir(working_dir: &Path) -> Result<Report, Box<dyn Error>> {
     Ok(Report {
         spec_files: Some(spec_files),
         test_files: Some(test_files),
-        package_files: Some(package_files)
+        package_files: Some(package_files),
     })
 }
 
