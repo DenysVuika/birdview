@@ -21,7 +21,7 @@ impl Report {
 
             if total_files > 0 {
                 println!(
-                    "Found unit test files (.spec.ts): {} ({} cases)",
+                    "unit test files (.spec.ts): {} ({} cases)",
                     total_files, total_tests
                 );
 
@@ -43,7 +43,7 @@ impl Report {
 
             if total_files > 0 {
                 println!(
-                    "Found e2e test files files (.test.ts, .e2e.ts): {} ({} cases)",
+                    "e2e test files (.test.ts, .e2e.ts): {} ({} cases)",
                     total_files, total_tests
                 );
 
