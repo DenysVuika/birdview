@@ -1,7 +1,10 @@
-use std::path::Path;
-use std::error::Error;
 use lazy_static::lazy_static;
 use regex::Regex;
+use serde_json::Value;
+use std::error::Error;
+use std::fs::File;
+use std::io::BufReader;
+use std::path::Path;
 
 #[derive(Debug)]
 pub struct Report {
@@ -49,18 +52,30 @@ impl Report {
 
             for package_file in files {
                 println!("{}", package_file.file_path);
+
+                if package_file.dependencies.len() > 0 {
+                    println!("  ├── dependencies");
+                    for dependency in &package_file.dependencies {
+                        println!("\t├── {}", dependency);
+                    }
+                }
+
+                if package_file.dev_dependencies.len() > 0 {
+                    println!("  ├── devDependencies");
+                    for dependency in &package_file.dev_dependencies {
+                        println!("\t├── {}", dependency);
+                    }
+                }
             }
         }
 
         println!(
             "Found .spec.ts files: {} ({} cases)",
-            total_spec_files,
-            total_spec_cases
+            total_spec_files, total_spec_cases
         );
         println!(
             "Found .test.ts files: {} ({} cases)",
-            total_test_files,
-            total_test_cases
+            total_test_files, total_test_cases
         );
 
         println!("Found package.json files: {}", total_package_files);
@@ -97,14 +112,33 @@ pub struct PackageFile {
 
 impl PackageFile {
     pub fn from_path(working_dir: &Path, path: &Path) -> Result<PackageFile, Box<dyn Error>> {
+        let file = File::open(path)?;
+        let reader = BufReader::new(file);
+        let value: Value = serde_json::from_reader(reader)?;
+        let mut dependencies: Vec<String> = Vec::new();
+        let mut dev_dependencies: Vec<String> = Vec::new();
+
+        if let Some(data) = value["dependencies"].as_object() {
+            for (key, _value) in data {
+                // println!("{} {}: {}", path.display(), key, value);
+                dependencies.push(key.to_string());
+            }
+        }
+
+        if let Some(data) = value["devDependencies"].as_object() {
+            for (key, _value) in data {
+                // println!("{} {}: {}", path.display(), key, value);
+                dev_dependencies.push(key.to_string());
+            }
+        }
+
         Ok(PackageFile {
             file_path: path.strip_prefix(working_dir)?.display().to_string(),
-            dependencies: vec![],
-            dev_dependencies: vec![]
+            dependencies,
+            dev_dependencies,
         })
     }
 }
-
 
 fn extract_test_names(contents: &str) -> Vec<&str> {
     // (\b(?:it|test)\b\(['"])(?P<name>.*?)(['"])
