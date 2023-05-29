@@ -1,4 +1,4 @@
-use birdview::run;
+use birdview::{run, Config};
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 use std::process;
@@ -18,12 +18,18 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// does testing things
-    Test {
-        workspace: PathBuf,
-        /// lists test values
+    /// Inspect the workspace
+    Inspect {
+        /// Workspace directory
+        dir: PathBuf,
+
+        /// Inspect test files
         #[arg(short, long)]
-        list: bool,
+        tests: bool,
+
+        /// Inspect dependencies
+        #[arg(short, long)]
+        deps: bool,
     },
 }
 
@@ -35,17 +41,18 @@ fn main() {
     }
 
     match &cli.command {
-        Some(Commands::Test { workspace, list }) => {
-            println!("workspace: {}", workspace.display());
+        Some(Commands::Inspect { dir, tests, deps }) => {
+            println!("workspace: {}", dir.display());
 
-            if *list {
-                println!("Printing testing lists...");
-                if let Err(e) = run(workspace) {
-                    eprintln!("Application error {e}");
-                    process::exit(1);
-                }
-            } else {
-                println!("Not printing testing lists...");
+            let config = Config {
+                working_dir: PathBuf::from(dir),
+                inspect_tests: *tests,
+                inspect_deps: *deps,
+            };
+
+            if let Err(e) = run(config) {
+                eprintln!("Application error {e}");
+                process::exit(1);
             }
         }
         None => {}

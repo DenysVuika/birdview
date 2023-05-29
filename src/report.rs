@@ -69,16 +69,23 @@ impl Report {
             }
         }
 
-        println!(
-            "Found .spec.ts files: {} ({} cases)",
-            total_spec_files, total_spec_cases
-        );
-        println!(
-            "Found .test.ts files: {} ({} cases)",
-            total_test_files, total_test_cases
-        );
+        if total_spec_files > 0 {
+            println!(
+                "Found .spec.ts files: {} ({} cases)",
+                total_spec_files, total_spec_cases
+            );
+        }
 
-        println!("Found package.json files: {}", total_package_files);
+        if total_test_files > 0 {
+            println!(
+                "Found .test.ts files: {} ({} cases)",
+                total_test_files, total_test_cases
+            );
+        }
+
+        if total_package_files > 0 {
+            println!("Found package.json files: {}", total_package_files);
+        }
     }
 }
 

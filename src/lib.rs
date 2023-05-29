@@ -1,19 +1,27 @@
 use crate::report::{PackageFile, Report, TestFile};
 use std::error::Error;
-use std::path::Path;
+use std::path::PathBuf;
 use walkdir::WalkDir;
 
 pub mod fs;
 pub mod report;
 
-pub fn run(working_dir: &Path) -> Result<(), Box<dyn Error>> {
-    let report = inspect_dir(working_dir)?;
+pub struct Config {
+    pub working_dir: PathBuf,
+    pub inspect_tests: bool,
+    pub inspect_deps: bool,
+}
+
+pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
+    let report = inspect_dir(config)?;
     report.print();
 
+    println!("Inspection complete");
     Ok(())
 }
 
-fn inspect_dir(working_dir: &Path) -> Result<Report, Box<dyn Error>> {
+fn inspect_dir(config: Config) -> Result<Report, Box<dyn Error>> {
+    let working_dir = &config.working_dir;
     let walker = WalkDir::new(working_dir).follow_links(true).into_iter();
     let mut spec_files = Vec::new();
     let mut test_files = Vec::new();
@@ -26,15 +34,19 @@ fn inspect_dir(working_dir: &Path) -> Result<Report, Box<dyn Error>> {
         let f_name = entry.file_name().to_string_lossy();
         let entry_path = entry.path();
 
-        if f_name.ends_with(".spec.ts") {
-            spec_files.push(TestFile::from_path(working_dir, entry_path)?);
-        }
-        if f_name.ends_with(".test.ts") {
-            test_files.push(TestFile::from_path(working_dir, entry_path)?);
+        if config.inspect_tests {
+            if f_name.ends_with(".spec.ts") {
+                spec_files.push(TestFile::from_path(working_dir, entry_path)?);
+            }
+            if f_name.ends_with(".test.ts") {
+                test_files.push(TestFile::from_path(working_dir, entry_path)?);
+            }
         }
 
-        if f_name == "package.json" {
-            package_files.push(PackageFile::from_path(working_dir, entry_path)?)
+        if config.inspect_deps {
+            if f_name == "package.json" {
+                package_files.push(PackageFile::from_path(working_dir, entry_path)?)
+            }
         }
     }
 

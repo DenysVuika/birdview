@@ -5,6 +5,8 @@ TDB
 ## Examples:
 
 ```shell
-birdview test <project-dir>
-birdview test --list <project-dir>
+birdview inspect <project>
+birdview inspect --tests <project>
+birdview inspect --deps <project>
+birdview inspect --tests --deps <project>
 ```
