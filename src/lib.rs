@@ -24,8 +24,8 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
 fn inspect_dir(config: &Config) -> Result<Report, Box<dyn Error>> {
     let working_dir = &config.working_dir;
     let walker = WalkDir::new(working_dir).follow_links(true).into_iter();
-    let mut spec_files = Vec::new();
-    let mut test_files = Vec::new();
+    let mut unit_files = Vec::new();
+    let mut e2e_tests = Vec::new();
     let mut package_files = Vec::new();
 
     for entry in walker
@@ -37,10 +37,10 @@ fn inspect_dir(config: &Config) -> Result<Report, Box<dyn Error>> {
 
         if config.inspect_tests {
             if f_name.ends_with(".spec.ts") {
-                spec_files.push(TestFile::from_path(working_dir, entry_path)?);
+                unit_files.push(TestFile::from_path(working_dir, entry_path)?);
             }
-            if f_name.ends_with(".test.ts") {
-                test_files.push(TestFile::from_path(working_dir, entry_path)?);
+            if f_name.ends_with(".test.ts") | f_name.ends_with(".e2e.ts") {
+                e2e_tests.push(TestFile::from_path(working_dir, entry_path)?);
             }
         }
 
@@ -52,8 +52,8 @@ fn inspect_dir(config: &Config) -> Result<Report, Box<dyn Error>> {
     }
 
     Ok(Report {
-        spec_files: Some(spec_files),
-        test_files: Some(test_files),
+        unit_tests: Some(unit_files),
+        e2e_tests: Some(e2e_tests),
         package_files: Some(package_files),
     })
 }

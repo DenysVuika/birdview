@@ -6,7 +6,6 @@ description = "Command line tools for project reviews"
 keywords = ["angular", "cli"]
 categories = ["command-line-utilities", "development-tools"]
 license = "Apache-2.0"
-license-file = "LICENSE"
 edition = "2021"
 repository = "https://github.com/DenysVuika/birdview.git"
 

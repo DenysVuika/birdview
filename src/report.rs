@@ -8,20 +8,20 @@ use std::path::Path;
 
 #[derive(Debug)]
 pub struct Report {
-    pub spec_files: Option<Vec<TestFile>>,
-    pub test_files: Option<Vec<TestFile>>,
+    pub unit_tests: Option<Vec<TestFile>>,
+    pub e2e_tests: Option<Vec<TestFile>>,
     pub package_files: Option<Vec<PackageFile>>,
 }
 
 impl Report {
     pub fn print(&self, verbose: &bool) {
-        if let Some(files) = &self.spec_files {
+        if let Some(files) = &self.unit_tests {
             let total_files: usize = files.len();
             let total_tests: usize = files.iter().map(|f| f.test_names.len()).sum();
 
             if total_files > 0 {
                 println!(
-                    "Found .spec.ts files: {} ({} cases)",
+                    "Found unit test files (.spec.ts): {} ({} cases)",
                     total_files, total_tests
                 );
 
@@ -37,13 +37,13 @@ impl Report {
             }
         }
 
-        if let Some(files) = &self.test_files {
+        if let Some(files) = &self.e2e_tests {
             let total_files: usize = files.len();
             let total_tests: usize = files.iter().map(|f| f.test_names.len()).sum();
 
             if total_files > 0 {
                 println!(
-                    "Found .test.ts files: {} ({} cases)",
+                    "Found e2e test files files (.test.ts, .e2e.ts): {} ({} cases)",
                     total_files, total_tests
                 );
 
