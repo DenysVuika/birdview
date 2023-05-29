@@ -1,3 +1,5 @@
+use crate::fs::{is_excluded, is_not_hidden};
+use crate::Config;
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde_json::Value;
@@ -5,6 +7,7 @@ use std::error::Error;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
+use walkdir::WalkDir;
 
 #[derive(Debug)]
 pub struct Report {
@@ -14,6 +17,43 @@ pub struct Report {
 }
 
 impl Report {
+    pub fn generate(config: &Config) -> Result<Report, Box<dyn Error>> {
+        let working_dir = &config.working_dir;
+        let walker = WalkDir::new(working_dir).follow_links(true).into_iter();
+        let mut unit_files = Vec::new();
+        let mut e2e_tests = Vec::new();
+        let mut package_files = Vec::new();
+
+        for entry in walker
+            .filter_entry(|e| is_not_hidden(e) && !is_excluded(e))
+            .filter_map(|e| e.ok())
+        {
+            let f_name = entry.file_name().to_string_lossy();
+            let entry_path = entry.path();
+
+            if config.inspect_tests {
+                if f_name.ends_with(".spec.ts") {
+                    unit_files.push(TestFile::from_path(working_dir, entry_path)?);
+                }
+                if f_name.ends_with(".test.ts") | f_name.ends_with(".e2e.ts") {
+                    e2e_tests.push(TestFile::from_path(working_dir, entry_path)?);
+                }
+            }
+
+            if config.inspect_deps {
+                if f_name == "package.json" {
+                    package_files.push(PackageFile::from_path(working_dir, entry_path)?)
+                }
+            }
+        }
+
+        Ok(Report {
+            unit_tests: Some(unit_files),
+            e2e_tests: Some(e2e_tests),
+            package_files: Some(package_files),
+        })
+    }
+
     pub fn print(&self, verbose: &bool) {
         if let Some(files) = &self.unit_tests {
             let total_files: usize = files.len();
