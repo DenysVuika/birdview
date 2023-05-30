@@ -36,8 +36,50 @@ birdview inspect --all <project>
 birdview inspect --all --verbose <project>
 ```
 
-### Generating reports
+### Generating Reports
+
+For additional processing or visualisation, you can generate full reports in the `JSON` format by using `--output` flag:
 
 ```shell
  birdview inspect <project> --all --output output.json
+```
+
+The format of the output is as follows:
+
+```json
+{
+  "project_name": "<package.json>/name",
+  "project_version": "<package.json>/version",
+  "unit_tests": [
+    {
+      "path": "<workspace>/<path>.spec.ts",
+      "cases": [
+        "case name 1",
+        "case name 2"
+      ]
+    }
+  ],
+  "e2e_tests": [
+    {
+      "path": "<workspace>/<path>.e2e.ts",
+      "cases": [
+        "case name 1",
+        "case name 2"
+      ]
+    }
+  ],
+  "packages": [
+    {
+      "path": "<workspace>/<path>/package.json",
+      "dependencies": [
+        "lib1",
+        "lib2"
+      ],
+      "devDependencies": [
+        "lib1",
+        "lib2"
+      ]
+    }
+  ]
+}
 ```
