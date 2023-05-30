@@ -2,12 +2,23 @@ use crate::fs::{is_excluded, is_not_hidden};
 use crate::Config;
 use lazy_static::lazy_static;
 use regex::Regex;
+use serde::Serialize;
 use serde_json::Value;
 use std::error::Error;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
 use walkdir::WalkDir;
+
+#[derive(Serialize, Debug)]
+pub struct JsonReport {
+    pub project_name: String,
+    pub project_version: String,
+
+    pub unit_tests: Option<Vec<TestFile>>,
+    pub e2e_tests: Option<Vec<TestFile>>,
+    pub packages: Option<Vec<PackageFile>>,
+}
 
 #[derive(Debug)]
 pub struct Report {
@@ -57,7 +68,7 @@ impl Report {
     pub fn print(&self, verbose: &bool) {
         if let Some(files) = &self.unit_tests {
             let total_files: usize = files.len();
-            let total_tests: usize = files.iter().map(|f| f.test_names.len()).sum();
+            let total_tests: usize = files.iter().map(|f| f.cases.len()).sum();
 
             if total_files > 0 {
                 println!(
@@ -67,9 +78,9 @@ impl Report {
 
                 if *verbose {
                     for test_file in files {
-                        println!("{}", test_file.file_path);
+                        println!("{}", test_file.path);
 
-                        for test_name in &test_file.test_names {
+                        for test_name in &test_file.cases {
                             println!("  ├── {test_name}");
                         }
                     }
@@ -79,7 +90,7 @@ impl Report {
 
         if let Some(files) = &self.e2e_tests {
             let total_files: usize = files.len();
-            let total_tests: usize = files.iter().map(|f| f.test_names.len()).sum();
+            let total_tests: usize = files.iter().map(|f| f.cases.len()).sum();
 
             if total_files > 0 {
                 println!(
@@ -89,9 +100,9 @@ impl Report {
 
                 if *verbose {
                     for test_file in files {
-                        println!("{}", test_file.file_path);
+                        println!("{}", test_file.path);
 
-                        for test_name in &test_file.test_names {
+                        for test_name in &test_file.cases {
                             println!("  ├── {test_name}");
                         }
                     }
@@ -107,7 +118,7 @@ impl Report {
 
                 if *verbose {
                     for package_file in files {
-                        println!("{}", package_file.file_path);
+                        println!("{}", package_file.path);
 
                         if package_file.dependencies.len() > 0 {
                             println!("  ├── dependencies");
@@ -129,10 +140,10 @@ impl Report {
     }
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Debug)]
 pub struct TestFile {
-    pub file_path: String,
-    pub test_names: Vec<String>,
+    pub path: String,
+    pub cases: Vec<String>,
 }
 
 impl TestFile {
@@ -144,15 +155,15 @@ impl TestFile {
             .collect();
 
         Ok(TestFile {
-            file_path: path.strip_prefix(working_dir)?.display().to_string(),
-            test_names,
+            path: path.strip_prefix(working_dir)?.display().to_string(),
+            cases: test_names,
         })
     }
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Debug)]
 pub struct PackageFile {
-    pub file_path: String,
+    pub path: String,
     pub dependencies: Vec<String>,
     pub dev_dependencies: Vec<String>,
 }
@@ -180,7 +191,7 @@ impl PackageFile {
         }
 
         Ok(PackageFile {
-            file_path: path.strip_prefix(working_dir)?.display().to_string(),
+            path: path.strip_prefix(working_dir)?.display().to_string(),
             dependencies,
             dev_dependencies,
         })

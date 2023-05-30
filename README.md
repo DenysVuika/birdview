@@ -23,3 +23,9 @@ birdview inspect --all <project>
 # run all available inspections with detailed output
 birdview inspect --all --verbose <project>
 ```
+
+## Generating reports
+
+```shell
+ birdview inspect <project> --all --output output.json
+```

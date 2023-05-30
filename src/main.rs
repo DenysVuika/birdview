@@ -38,6 +38,10 @@ enum Commands {
         /// Verbose output
         #[arg(long)]
         verbose: bool,
+
+        /// Output report file
+        #[arg(short, long)]
+        output: Option<PathBuf>,
     },
 }
 
@@ -55,6 +59,7 @@ fn main() {
             deps,
             all,
             verbose,
+            output,
         }) => {
             println!("workspace: {}", dir.display());
 
@@ -63,6 +68,7 @@ fn main() {
                 inspect_tests: *all | *tests,
                 inspect_deps: *all | *deps,
                 verbose: *verbose,
+                output: output.to_owned(),
             };
 
             if let Err(e) = run(config) {
