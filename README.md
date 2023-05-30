@@ -1,8 +1,20 @@
 # BirdView
 
-TDB
+Command-line utilities to gather statistics for the Angular projects.
 
-## Examples:
+## Getting Help
+
+```shell
+birdview --help
+```
+
+## Code Inspection
+
+```shell
+birdview inspect --help
+```
+
+### Examples:
 
 ```shell
 # generic inspection
@@ -24,7 +36,7 @@ birdview inspect --all <project>
 birdview inspect --all --verbose <project>
 ```
 
-## Generating reports
+### Generating reports
 
 ```shell
  birdview inspect <project> --all --output output.json
