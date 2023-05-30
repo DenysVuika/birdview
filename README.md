@@ -15,6 +15,27 @@ cargo install birdview
 birdview --help
 ```
 
+## Basic Usage
+
+```shell
+cd <path-to-project>
+birdview inspect . --all
+```
+
+Gives an output similar to the following:
+
+```text
+workspace: .
+unit test files (.spec.ts): 109 (906 cases)
+e2e test files (.test.ts, .e2e.ts): 74 (768 cases)
+Found package.json files: 8
+Found root package.json file
+  ├── scripts: 27
+  ├── dependencies: 29
+  ├── devDependencies: 67
+Inspection complete
+```
+
 ## Code Inspection
 
 ```shell
