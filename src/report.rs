@@ -1,5 +1,6 @@
 use crate::fs::{is_excluded, is_not_hidden};
 use crate::Config;
+use chrono::{DateTime, Utc};
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::Serialize;
@@ -14,6 +15,7 @@ use walkdir::WalkDir;
 pub struct JsonReport {
     pub project_name: String,
     pub project_version: String,
+    pub report_date: DateTime<Utc>,
 
     pub unit_tests: Option<Vec<TestFile>>,
     pub e2e_tests: Option<Vec<TestFile>>,

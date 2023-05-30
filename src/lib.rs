@@ -1,4 +1,5 @@
 use crate::report::{JsonReport, Report};
+use chrono::Utc;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::error::Error;
@@ -67,6 +68,7 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
         let json_report = JsonReport {
             project_name,
             project_version,
+            report_date: Utc::now(),
             unit_tests: report.unit_tests,
             e2e_tests: report.e2e_tests,
             packages: report.package_files,
