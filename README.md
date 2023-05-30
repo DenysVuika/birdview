@@ -2,9 +2,16 @@
 
 Command-line utilities to gather statistics for the Angular projects.
 
-## Getting Help
+## Installing
+
+Install Rust and Cargo  
+https://doc.rust-lang.org/cargo/getting-started/installation.html
 
 ```shell
+# with Cargo
+cargo install birdview
+
+# and then
 birdview --help
 ```
 
