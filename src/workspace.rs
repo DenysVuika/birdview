@@ -87,18 +87,12 @@ pub trait FileInspector {
     fn finalize(&self, workspace: &Workspace, output: &mut Map<String, Value>);
 }
 
-pub struct UnitTestInspector {
-    total_files: usize,
-    total_cases: usize,
-}
+pub struct UnitTestInspector {}
 
 impl UnitTestInspector {
     /// Creates a new instance of the inspector
     pub fn new() -> UnitTestInspector {
-        UnitTestInspector {
-            total_files: 0,
-            total_cases: 0,
-        }
+        UnitTestInspector {}
     }
 }
 
@@ -131,28 +125,50 @@ impl FileInspector for UnitTestInspector {
         });
 
         unit_tests.push(entry);
+
+        let total_files = output
+            .entry("total_unit_test_files")
+            .or_insert(json!(0))
+            .as_i64()
+            .unwrap();
+
+        output["total_unit_test_files"] = json!(total_files + 1);
+
+        let total_cases = output
+            .entry("total_unit_test_cases")
+            .or_insert(json!(0))
+            .as_i64()
+            .unwrap();
+
+        output["total_unit_test_cases"] = json!(total_cases + test_names.len() as i64);
     }
 
     fn finalize(&self, workspace: &Workspace, output: &mut Map<String, Value>) {
+        let total_files = output
+            .entry("total_unit_test_files")
+            .or_insert(json!(0))
+            .as_i64()
+            .unwrap();
+
+        let total_cases = output
+            .entry("total_unit_test_cases")
+            .or_insert(json!(0))
+            .as_i64()
+            .unwrap();
+
         println!(
             "unit test files (.spec.ts): {} ({} cases))",
-            self.total_files, self.total_cases
+            total_files, total_cases
         );
     }
 }
 
-pub struct EndToEndTestInspector {
-    total_files: usize,
-    total_cases: usize,
-}
+pub struct EndToEndTestInspector {}
 
 impl EndToEndTestInspector {
     /// Creates a new instance of the inspector
     pub fn new() -> EndToEndTestInspector {
-        EndToEndTestInspector {
-            total_files: 0,
-            total_cases: 0,
-        }
+        EndToEndTestInspector {}
     }
 }
 
@@ -187,30 +203,47 @@ impl FileInspector for EndToEndTestInspector {
         });
 
         unit_tests.push(entry);
+
+        let total_files = output
+            .entry("total_e2e_test_files")
+            .or_insert(json!(0))
+            .as_i64()
+            .unwrap();
+        output["total_e2e_test_files"] = json!(total_files + 1);
+
+        let total_cases = output
+            .entry("total_e2e_test_cases")
+            .or_insert(json!(0))
+            .as_i64()
+            .unwrap();
+        output["total_e2e_test_cases"] = json!(total_cases + test_names.len() as i64);
     }
 
     fn finalize(&self, workspace: &Workspace, output: &mut Map<String, Value>) {
+        let total_files = output
+            .entry("total_e2e_test_files")
+            .or_insert(json!(0))
+            .as_i64()
+            .unwrap();
+        let total_cases = output
+            .entry("total_e2e_test_cases")
+            .or_insert(json!(0))
+            .as_i64()
+            .unwrap();
+
         println!(
             "e2e test files (.test.ts, .e2e.ts): {} ({} cases))",
-            self.total_files, self.total_cases
+            total_files, total_cases
         );
     }
 }
 
-pub struct PackageJsonInspector {
-    total_files: usize,
-    total_deps: usize,
-    total_dev_deps: usize,
-}
+pub struct PackageJsonInspector {}
 
 impl PackageJsonInspector {
     /// Creates a new instance of the inspector
     pub fn new() -> PackageJsonInspector {
-        PackageJsonInspector {
-            total_files: 0,
-            total_deps: 0,
-            total_dev_deps: 0,
-        }
+        PackageJsonInspector {}
     }
 }
 
@@ -235,6 +268,8 @@ impl FileInspector for PackageJsonInspector {
             .to_string();
 
         let mut dependencies: Vec<Value> = Vec::new();
+        let mut total_deps: i64 = 0;
+        let mut total_dev_deps: i64 = 0;
 
         if let Some(data) = value["dependencies"].as_object() {
             for (key, value) in data {
@@ -245,6 +280,7 @@ impl FileInspector for PackageJsonInspector {
                 });
                 dependencies.push(entry);
             }
+            total_deps = data.len() as i64;
         }
 
         if let Some(data) = value["devDependencies"].as_object() {
@@ -256,6 +292,7 @@ impl FileInspector for PackageJsonInspector {
                 });
                 dependencies.push(entry);
             }
+            total_dev_deps = data.len() as i64;
         }
 
         let entry = json!({
@@ -264,13 +301,51 @@ impl FileInspector for PackageJsonInspector {
         });
 
         packages.push(entry);
-        // self.total_files += 1;
+
+        let total_package_files = output
+            .entry("total_package_files")
+            .or_insert(json!(0))
+            .as_i64()
+            .unwrap();
+        output["total_package_files"] = json!(total_package_files + 1);
+
+        let total_package_deps = output
+            .entry("total_package_deps")
+            .or_insert(json!(0))
+            .as_i64()
+            .unwrap();
+        output["total_package_deps"] = json!(total_package_deps + total_deps);
+
+        let total_package_dev_deps = output
+            .entry("total_package_dev_deps")
+            .or_insert(json!(0))
+            .as_i64()
+            .unwrap();
+        output["total_package_dev_deps"] = json!(total_package_dev_deps + total_dev_deps);
     }
 
     fn finalize(&self, workspace: &Workspace, output: &mut Map<String, Value>) {
+        let total_package_files = output
+            .entry("total_package_files")
+            .or_insert(json!(0))
+            .as_i64()
+            .unwrap();
+
+        let total_package_deps = output
+            .entry("total_package_deps")
+            .or_insert(json!(0))
+            .as_i64()
+            .unwrap();
+
+        let total_package_dev_deps = output
+            .entry("total_package_dev_deps")
+            .or_insert(json!(0))
+            .as_i64()
+            .unwrap();
+
         println!(
             "package.json files: {} ({} deps, {} dev deps)",
-            self.total_files, self.total_deps, self.total_dev_deps
+            total_package_files, total_package_deps, total_package_dev_deps
         );
     }
 }
