@@ -34,7 +34,7 @@ enum Commands {
 
         /// Inspect dependencies
         #[arg(short, long)]
-        deps: bool,
+        packages: bool,
 
         /// Verbose output
         #[arg(long)]
@@ -57,7 +57,7 @@ fn main() {
         Some(Commands::Inspect {
             dir,
             tests,
-            deps,
+            packages,
             all,
             verbose,
             output,
@@ -65,12 +65,12 @@ fn main() {
             let config = Config {
                 working_dir: PathBuf::from(dir),
                 inspect_tests: *all | *tests,
-                inspect_deps: *all | *deps,
+                inspect_packages: *all | *packages,
                 verbose: *verbose,
                 output: output.to_owned(),
             };
 
-            if let Err(e) = run(config) {
+            if let Err(e) = run(&config) {
                 eprintln!("Application error {e}");
                 process::exit(1);
             }

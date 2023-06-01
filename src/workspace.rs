@@ -143,7 +143,7 @@ impl FileInspector for UnitTestInspector {
         output["total_unit_test_cases"] = json!(total_cases + test_names.len() as i64);
     }
 
-    fn finalize(&self, workspace: &Workspace, output: &mut Map<String, Value>) {
+    fn finalize(&self, _workspace: &Workspace, output: &mut Map<String, Value>) {
         let total_files = output
             .entry("total_unit_test_files")
             .or_insert(json!(0))
@@ -219,7 +219,7 @@ impl FileInspector for EndToEndTestInspector {
         output["total_e2e_test_cases"] = json!(total_cases + test_names.len() as i64);
     }
 
-    fn finalize(&self, workspace: &Workspace, output: &mut Map<String, Value>) {
+    fn finalize(&self, _workspace: &Workspace, output: &mut Map<String, Value>) {
         let total_files = output
             .entry("total_e2e_test_files")
             .or_insert(json!(0))
@@ -324,7 +324,7 @@ impl FileInspector for PackageJsonInspector {
         output["total_package_dev_deps"] = json!(total_package_dev_deps + total_dev_deps);
     }
 
-    fn finalize(&self, workspace: &Workspace, output: &mut Map<String, Value>) {
+    fn finalize(&self, _workspace: &Workspace, output: &mut Map<String, Value>) {
         let total_package_files = output
             .entry("total_package_files")
             .or_insert(json!(0))

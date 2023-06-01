@@ -25,13 +25,10 @@ birdview inspect . --all
 Gives an output similar to the following:
 
 ```text
-unit test files (.spec.ts): 109 (906 cases)
-e2e test files (.test.ts, .e2e.ts): 74 (768 cases)
-Found package.json files: 8
-Found root package.json file
-  ├── scripts: 27
-  ├── dependencies: 29
-  ├── devDependencies: 67
+package.json files: 8 (35 deps, 67 dev deps)
+unit test files (.spec.ts): 109 (906 cases))
+e2e test files (.test.ts, .e2e.ts): 74 (768 cases))
+Saved report to: .tmp/output.json
 Inspection complete
 ```
 
@@ -50,11 +47,11 @@ birdview inspect <project>
 # inspect tests
 birdview inspect --tests <project>
 
-# inspect dependencies
-birdview inspect --deps <project>
+# inspect packages
+birdview inspect --packages <project>
 
-# inspect tests and dependencies
-birdview inspect --tests --deps <project>
+# inspect tests and packages
+birdview inspect --tests --packages <project>
 
 # run all available inspections
 birdview inspect --all <project>
@@ -71,12 +68,19 @@ For additional processing or visualisation, you can generate full reports in the
  birdview inspect <project> --all --output output.json
 ```
 
-The format of the output is as follows:
+The format of the output is similar to the following example:
 
 ```json
 {
   "project_name": "<package.json>/name",
   "project_version": "<package.json>/version",
+  
+  "total_package_files": 8,
+  "total_package_deps": 35,
+  "total_package_dev_deps": 67,
+  "total_unit_test_files": 109,
+  "total_unit_test_cases": 906,
+  
   "unit_tests": [
     {
       "path": "<workspace>/<path>.spec.ts",
