@@ -61,8 +61,6 @@ fn main() {
             verbose,
             output,
         }) => {
-            println!("workspace: {}", dir.display());
-
             let config = Config {
                 working_dir: PathBuf::from(dir),
                 inspect_tests: *all | *tests,
