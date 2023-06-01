@@ -63,14 +63,13 @@ fn main() {
             output,
         }) => {
             let config = Config {
-                working_dir: PathBuf::from(dir),
                 inspect_tests: *all | *tests,
                 inspect_packages: *all | *packages,
                 verbose: *verbose,
                 output: output.to_owned(),
             };
 
-            if let Err(e) = run(&config) {
+            if let Err(e) = run(&config, &dir) {
                 eprintln!("Application error {e}");
                 process::exit(1);
             }

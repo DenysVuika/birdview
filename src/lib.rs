@@ -3,23 +3,31 @@ pub mod fs;
 pub mod workspace;
 
 use crate::config::Config;
-use crate::workspace::{EndToEndTestInspector, PackageJsonInspector, UnitTestInspector, Workspace};
+use crate::workspace::{
+    EndToEndTestInspector, FileInspector, PackageJsonInspector, UnitTestInspector, Workspace,
+};
 use std::error::Error;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 
-pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
-    let working_dir = &config.working_dir;
+pub fn run(config: &Config, working_dir: &PathBuf) -> Result<(), Box<dyn Error>> {
+    let mut inspectors: Vec<Box<dyn FileInspector>> = Vec::new();
 
-    let workspace = Workspace::setup(
-        PathBuf::from(working_dir),
-        vec![
-            Box::new(PackageJsonInspector::new()),
-            Box::new(UnitTestInspector::new()),
-            Box::new(EndToEndTestInspector::new()),
-        ],
-    );
+    if config.inspect_packages {
+        inspectors.push(Box::new(PackageJsonInspector::new()));
+    }
+    if config.inspect_tests {
+        inspectors.push(Box::new(UnitTestInspector::new()));
+        inspectors.push(Box::new(EndToEndTestInspector::new()));
+    }
+
+    if inspectors.len() == 0 {
+        println!("No inspectors defined.\nRun 'birdview inspect --help' for available options.");
+        return Ok(());
+    }
+
+    let workspace = Workspace::setup(PathBuf::from(working_dir), inspectors);
 
     let output = workspace.inspect()?;
     let json_string = serde_json::to_string_pretty(&output)?;
