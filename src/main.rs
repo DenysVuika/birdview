@@ -1,4 +1,5 @@
-use birdview::{run, Config};
+use birdview::config::Config;
+use birdview::run;
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 use std::process;

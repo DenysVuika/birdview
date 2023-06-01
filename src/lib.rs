@@ -1,19 +1,13 @@
+pub mod config;
+pub mod fs;
+pub mod workspace;
+
+use crate::config::Config;
 use crate::workspace::{EndToEndTestInspector, PackageJsonInspector, UnitTestInspector, Workspace};
 use std::error::Error;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
-
-pub mod fs;
-pub mod workspace;
-
-pub struct Config {
-    pub working_dir: PathBuf,
-    pub inspect_tests: bool,
-    pub inspect_deps: bool,
-    pub verbose: bool,
-    pub output: Option<PathBuf>,
-}
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let working_dir = &config.working_dir;
