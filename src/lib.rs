@@ -27,14 +27,15 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
         ],
     );
 
-    let output = workspace.inspect();
-    let json_string = serde_json::to_string_pretty(&output).unwrap();
-    println!("{}", json_string);
+    let output = workspace.inspect()?;
+    let json_string = serde_json::to_string_pretty(&output)?;
 
     if let Some(output) = config.output {
         let mut output_file = File::create(&output)?;
         write!(output_file, "{}", json_string)?;
-        println!("Saved full report to {}", &output.display());
+        println!("Saved report to: {}", &output.display());
+    } else {
+        println!("{}", json_string);
     }
 
     println!("Inspection complete");

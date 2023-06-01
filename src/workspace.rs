@@ -3,6 +3,7 @@ use chrono::Utc;
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde_json::{json, Map, Value};
+use std::error::Error;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
@@ -28,16 +29,14 @@ impl Workspace {
         value
     }
 
-    pub fn inspect(&self) -> Value {
+    pub fn inspect(&self) -> Result<Value, Box<dyn Error>> {
         let mut map = Map::new();
 
         let package_json_path = &self.working_dir.join("package.json");
         if package_json_path.exists() {
-            println!("Found root package.json file");
-
-            let file = File::open(package_json_path).unwrap();
+            let file = File::open(package_json_path)?;
             let reader = BufReader::new(file);
-            let value: Value = serde_json::from_reader(reader).unwrap();
+            let value: Value = serde_json::from_reader(reader)?;
 
             map.insert("project_name".to_owned(), value["name"].to_owned());
             map.insert("project_version".to_owned(), value["version"].to_owned());
@@ -51,7 +50,7 @@ impl Workspace {
         );
 
         self.run_inspectors(&mut map);
-        Value::Object(map)
+        Ok(Value::Object(map))
     }
 
     fn run_inspectors(&self, map: &mut Map<String, Value>) {
@@ -110,8 +109,7 @@ impl FileInspector for UnitTestInspector {
             "cases": test_names,
         });
 
-        let v = serde_json::to_value(entry).unwrap();
-        unit_tests.push(v);
+        unit_tests.push(entry);
     }
 }
 
@@ -147,8 +145,7 @@ impl FileInspector for EndToEndTestInspector {
             "cases": test_names,
         });
 
-        let v = serde_json::to_value(entry).unwrap();
-        unit_tests.push(v);
+        unit_tests.push(entry);
     }
 }
 
