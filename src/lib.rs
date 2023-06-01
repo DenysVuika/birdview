@@ -1,11 +1,13 @@
 pub mod config;
 pub mod fs;
+pub mod inspectors;
 pub mod workspace;
 
 use crate::config::Config;
-use crate::workspace::{
-    EndToEndTestInspector, FileInspector, PackageJsonInspector, UnitTestInspector, Workspace,
+use crate::inspectors::{
+    EndToEndTestInspector, FileInspector, PackageJsonInspector, UnitTestInspector,
 };
+use crate::workspace::Workspace;
 use std::error::Error;
 use std::fs::File;
 use std::io::Write;
