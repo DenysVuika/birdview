@@ -9,7 +9,7 @@ pub fn is_not_hidden(entry: &DirEntry) -> bool {
 }
 
 pub fn is_excluded(entry: &DirEntry) -> bool {
-    let exclude = vec!["nxcache", "node_modules"];
+    let exclude = vec!["nxcache", "node_modules", "coverage"];
     entry
         .file_name()
         .to_str()

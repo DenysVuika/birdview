@@ -12,13 +12,19 @@ use walkdir::WalkDir;
 pub struct Workspace {
     working_dir: PathBuf,
     file_inspectors: Vec<Box<dyn FileInspector>>,
+    verbose: bool,
 }
 
 impl Workspace {
-    pub fn setup(working_dir: PathBuf, inspectors: Vec<Box<dyn FileInspector>>) -> Workspace {
+    pub fn setup(
+        working_dir: PathBuf,
+        inspectors: Vec<Box<dyn FileInspector>>,
+        verbose: bool,
+    ) -> Workspace {
         Workspace {
             working_dir,
             file_inspectors: inspectors,
+            verbose,
         }
     }
 
@@ -31,9 +37,18 @@ impl Workspace {
 
     pub fn inspect(&self) -> Result<Value, Box<dyn Error>> {
         let mut map = Map::new();
+        if self.verbose {
+            println!("{}", self.working_dir.display());
+        }
 
         let package_json_path = &self.working_dir.join("package.json");
         if package_json_path.exists() {
+            if self.verbose {
+                println!(
+                    "├── {}",
+                    package_json_path.strip_prefix(&self.working_dir)?.display()
+                );
+            }
             let file = File::open(package_json_path)?;
             let reader = BufReader::new(file);
             let value: Value = serde_json::from_reader(reader)?;
@@ -65,8 +80,28 @@ impl Workspace {
             // let f_name = entry.file_name().to_string_lossy();
             let entry_path = entry.path();
 
+            if self.verbose {
+                println!(
+                    "├── 🔎 {}",
+                    entry_path
+                        .strip_prefix(&self.working_dir)
+                        .unwrap()
+                        .display()
+                );
+            }
+
             for inspector in &self.file_inspectors {
                 if inspector.supports_file(&entry_path) {
+                    if self.verbose {
+                        println!(
+                            "├── ✅  {}",
+                            entry_path
+                                .strip_prefix(&self.working_dir)
+                                .unwrap()
+                                .display()
+                        );
+                    }
+
                     inspector.inspect_file(&self, entry_path, map);
                 }
             }

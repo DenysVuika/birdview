@@ -27,17 +27,15 @@ pub fn run(config: &Config, working_dir: &PathBuf) -> Result<(), Box<dyn Error>>
         return Ok(());
     }
 
-    let workspace = Workspace::setup(PathBuf::from(working_dir), inspectors);
+    let workspace = Workspace::setup(PathBuf::from(working_dir), inspectors, config.verbose);
 
     let output = workspace.inspect()?;
-    let json_string = serde_json::to_string_pretty(&output)?;
 
-    if let Some(output) = &config.output {
-        let mut output_file = File::create(&output)?;
+    if let Some(output_path) = &config.output {
+        let mut output_file = File::create(&output_path)?;
+        let json_string = serde_json::to_string_pretty(&output)?;
         write!(output_file, "{}", json_string)?;
-        println!("Saved report to: {}", &output.display());
-    } else {
-        println!("{}", json_string);
+        println!("Saved report to: {}", &output_path.display());
     }
 
     println!("Inspection complete");
