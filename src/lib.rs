@@ -1,11 +1,10 @@
-use crate::report::{JsonReport, Report};
+use crate::workspace::{EndToEndTestInspector, PackageJsonInspector, UnitTestInspector, Workspace};
 use std::error::Error;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 
 pub mod fs;
-pub mod report;
 pub mod workspace;
 
 pub struct Config {
@@ -17,16 +16,24 @@ pub struct Config {
 }
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
-    let report = Report::generate(&config)?;
-    report.print(&config.verbose);
+    let working_dir = &config.working_dir;
+
+    let workspace = Workspace::setup(
+        PathBuf::from(working_dir),
+        vec![
+            Box::new(PackageJsonInspector {}),
+            Box::new(UnitTestInspector {}),
+            Box::new(EndToEndTestInspector {}),
+        ],
+    );
+
+    let output = workspace.inspect();
+    let json_string = serde_json::to_string_pretty(&output).unwrap();
+    println!("{}", json_string);
 
     if let Some(output) = config.output {
-        let json_report = JsonReport {};
-
-        let serialized = serde_json::to_string_pretty(&json_report).unwrap();
         let mut output_file = File::create(&output)?;
-        write!(output_file, "{}", serialized)?;
-
+        write!(output_file, "{}", json_string)?;
         println!("Saved full report to {}", &output.display());
     }
 

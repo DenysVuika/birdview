@@ -100,12 +100,16 @@ The format of the output is as follows:
     {
       "path": "<workspace>/<path>/package.json",
       "dependencies": [
-        "lib1",
-        "lib2"
-      ],
-      "devDependencies": [
-        "lib1",
-        "lib2"
+        {
+          "name": "tslib",
+          "version": "^2.0.0",
+          "dev": false
+        },
+        {
+          "name": "typescript",
+          "version": "4.7.4",
+          "dev": true
+        }
       ]
     }
   ]

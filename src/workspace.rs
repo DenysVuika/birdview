@@ -28,7 +28,7 @@ impl Workspace {
         value
     }
 
-    pub fn inspect(&self) -> Map<String, Value> {
+    pub fn inspect(&self) -> Value {
         let mut map = Map::new();
 
         let package_json_path = &self.working_dir.join("package.json");
@@ -51,7 +51,7 @@ impl Workspace {
         );
 
         self.run_inspectors(&mut map);
-        map
+        Value::Object(map)
     }
 
     fn run_inspectors(&self, map: &mut Map<String, Value>) {
@@ -174,14 +174,36 @@ impl FileInspector for PackageJsonInspector {
             .display()
             .to_string();
 
+        let mut dependencies: Vec<Value> = Vec::new();
+
+        if let Some(data) = value["dependencies"].as_object() {
+            for (key, value) in data {
+                let entry = json!({
+                   "name": key,
+                    "version": value,
+                    "dev": false
+                });
+                dependencies.push(entry);
+            }
+        }
+
+        if let Some(data) = value["devDependencies"].as_object() {
+            for (key, value) in data {
+                let entry = json!({
+                   "name": key,
+                    "version": value,
+                    "dev": true
+                });
+                dependencies.push(entry);
+            }
+        }
+
         let entry = json!({
             "path": workspace_path,
-            "dependencies": value["dependencies"],
-            "devDependencies": value["devDependencies"]
+            "dependencies": dependencies
         });
 
-        let v = serde_json::to_value(entry).unwrap();
-        packages.push(v);
+        packages.push(entry);
     }
 }
 
