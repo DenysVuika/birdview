@@ -25,7 +25,6 @@ birdview inspect . --all
 Gives an output similar to the following:
 
 ```text
-workspace: .
 unit test files (.spec.ts): 109 (906 cases)
 e2e test files (.test.ts, .e2e.ts): 74 (768 cases)
 Found package.json files: 8

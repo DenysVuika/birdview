@@ -71,15 +71,36 @@ impl Workspace {
                 }
             }
         }
+
+        for inspector in &self.file_inspectors {
+            inspector.finalize(&self, map);
+        }
     }
 }
 
 pub trait FileInspector {
+    /// Check if the inspector supports the file
     fn supports_file(&self, path: &Path) -> bool;
+    /// Run inspections for the file
     fn inspect_file(&self, workspace: &Workspace, path: &Path, output: &mut Map<String, Value>);
+    /// Perform final tasks after all inspectors finished
+    fn finalize(&self, workspace: &Workspace, output: &mut Map<String, Value>);
 }
 
-pub struct UnitTestInspector {}
+pub struct UnitTestInspector {
+    total_files: usize,
+    total_cases: usize,
+}
+
+impl UnitTestInspector {
+    /// Creates a new instance of the inspector
+    pub fn new() -> UnitTestInspector {
+        UnitTestInspector {
+            total_files: 0,
+            total_cases: 0,
+        }
+    }
+}
 
 impl FileInspector for UnitTestInspector {
     fn supports_file(&self, path: &Path) -> bool {
@@ -111,9 +132,29 @@ impl FileInspector for UnitTestInspector {
 
         unit_tests.push(entry);
     }
+
+    fn finalize(&self, workspace: &Workspace, output: &mut Map<String, Value>) {
+        println!(
+            "unit test files (.spec.ts): {} ({} cases))",
+            self.total_files, self.total_cases
+        );
+    }
 }
 
-pub struct EndToEndTestInspector {}
+pub struct EndToEndTestInspector {
+    total_files: usize,
+    total_cases: usize,
+}
+
+impl EndToEndTestInspector {
+    /// Creates a new instance of the inspector
+    pub fn new() -> EndToEndTestInspector {
+        EndToEndTestInspector {
+            total_files: 0,
+            total_cases: 0,
+        }
+    }
+}
 
 impl FileInspector for EndToEndTestInspector {
     fn supports_file(&self, path: &Path) -> bool {
@@ -147,9 +188,31 @@ impl FileInspector for EndToEndTestInspector {
 
         unit_tests.push(entry);
     }
+
+    fn finalize(&self, workspace: &Workspace, output: &mut Map<String, Value>) {
+        println!(
+            "e2e test files (.test.ts, .e2e.ts): {} ({} cases))",
+            self.total_files, self.total_cases
+        );
+    }
 }
 
-pub struct PackageJsonInspector {}
+pub struct PackageJsonInspector {
+    total_files: usize,
+    total_deps: usize,
+    total_dev_deps: usize,
+}
+
+impl PackageJsonInspector {
+    /// Creates a new instance of the inspector
+    pub fn new() -> PackageJsonInspector {
+        PackageJsonInspector {
+            total_files: 0,
+            total_deps: 0,
+            total_dev_deps: 0,
+        }
+    }
+}
 
 impl FileInspector for PackageJsonInspector {
     fn supports_file(&self, path: &Path) -> bool {
@@ -201,6 +264,14 @@ impl FileInspector for PackageJsonInspector {
         });
 
         packages.push(entry);
+        // self.total_files += 1;
+    }
+
+    fn finalize(&self, workspace: &Workspace, output: &mut Map<String, Value>) {
+        println!(
+            "package.json files: {} ({} deps, {} dev deps)",
+            self.total_files, self.total_deps, self.total_dev_deps
+        );
     }
 }
 

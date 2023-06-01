@@ -15,9 +15,9 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let workspace = Workspace::setup(
         PathBuf::from(working_dir),
         vec![
-            Box::new(PackageJsonInspector {}),
-            Box::new(UnitTestInspector {}),
-            Box::new(EndToEndTestInspector {}),
+            Box::new(PackageJsonInspector::new()),
+            Box::new(UnitTestInspector::new()),
+            Box::new(EndToEndTestInspector::new()),
         ],
     );
 
