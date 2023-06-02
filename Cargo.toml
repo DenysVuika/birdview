@@ -1,6 +1,6 @@
 [package]
 name = "birdview"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Denys Vuika <denys.vuika@gmail.com>"]
 description = "Command line tools for project reviews"
 keywords = ["angular", "cli"]

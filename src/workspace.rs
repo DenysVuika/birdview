@@ -1,4 +1,3 @@
-use crate::fs::{is_excluded, is_not_hidden};
 use crate::inspectors::FileInspector;
 use chrono::Utc;
 use serde_json::{Map, Value};
@@ -6,7 +5,7 @@ use std::error::Error;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::PathBuf;
-use walkdir::WalkDir;
+use walkdir::{DirEntry, WalkDir};
 
 pub struct Workspace {
     pub working_dir: PathBuf,
@@ -103,4 +102,21 @@ impl Workspace {
             inspector.finalize(&self, map);
         }
     }
+}
+
+fn is_not_hidden(entry: &DirEntry) -> bool {
+    entry
+        .file_name()
+        .to_str()
+        .map(|s| entry.depth() == 0 || !s.starts_with("."))
+        .unwrap_or(false)
+}
+
+fn is_excluded(entry: &DirEntry) -> bool {
+    let exclude = vec!["nxcache", "node_modules", "coverage"];
+    entry
+        .file_name()
+        .to_str()
+        .map(|s| exclude.contains(&s))
+        .unwrap_or(false)
 }
