@@ -31,7 +31,7 @@ pub fn run(config: &Config, working_dir: &PathBuf) -> Result<(), Box<dyn Error>>
         return Ok(());
     }
 
-    let workspace = Workspace::setup(PathBuf::from(working_dir), vec![], config.verbose);
+    let workspace = Workspace::setup(working_dir.to_owned(), config.verbose);
 
     let output = workspace.inspect(inspectors)?;
 

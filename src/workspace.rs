@@ -9,19 +9,13 @@ use walkdir::{DirEntry, WalkDir};
 
 pub struct Workspace {
     pub working_dir: PathBuf,
-    file_inspectors: Vec<Box<dyn FileInspector>>,
     verbose: bool,
 }
 
 impl Workspace {
-    pub fn setup(
-        working_dir: PathBuf,
-        inspectors: Vec<Box<dyn FileInspector>>,
-        verbose: bool,
-    ) -> Workspace {
+    pub fn setup(working_dir: PathBuf, verbose: bool) -> Workspace {
         Workspace {
             working_dir,
-            file_inspectors: inspectors,
             verbose,
         }
     }
