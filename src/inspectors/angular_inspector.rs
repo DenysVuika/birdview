@@ -3,12 +3,19 @@ use crate::workspace::Workspace;
 use serde_json::{json, Map, Value};
 use std::path::Path;
 
-#[derive(Default)]
-pub struct AngularInspector {}
+pub struct AngularInspector {
+    components: Vec<String>,
+}
 
 impl AngularInspector {
     pub fn new() -> Self {
-        Default::default()
+        AngularInspector { components: vec![] }
+    }
+}
+
+impl Default for AngularInspector {
+    fn default() -> Self {
+        AngularInspector::new()
     }
 }
 
@@ -17,19 +24,12 @@ impl FileInspector for AngularInspector {
         path.is_file() && path.display().to_string().ends_with(".component.ts")
     }
 
-    fn inspect_file(&self, workspace: &Workspace, path: &Path, output: &mut Map<String, Value>) {
-        let angular = output
-            .entry("angular")
-            .or_insert(json!({}))
-            .as_object_mut()
-            .unwrap();
-
-        let components = angular
-            .entry("components")
-            .or_insert(json!([]))
-            .as_array_mut()
-            .unwrap();
-
+    fn inspect_file(
+        &mut self,
+        workspace: &Workspace,
+        path: &Path,
+        _output: &mut Map<String, Value>,
+    ) {
         let workspace_path = path
             .strip_prefix(&workspace.working_dir)
             .unwrap()
@@ -37,15 +37,16 @@ impl FileInspector for AngularInspector {
             .to_string();
 
         // todo: check for the @Component decorator
-
-        let entry = json!({
-            "path": workspace_path,
-        });
-
-        components.push(entry);
+        self.components.push(workspace_path.to_string());
     }
 
-    fn finalize(&self, workspace: &Workspace, output: &mut Map<String, Value>) {
-        // println!("Done inspecting angular files");
+    fn finalize(&self, _workspace: &Workspace, output: &mut Map<String, Value>) {
+        let angular = output
+            .entry("angular")
+            .or_insert(json!({}))
+            .as_object_mut()
+            .unwrap();
+
+        angular["components"] = json!(self.components);
     }
 }

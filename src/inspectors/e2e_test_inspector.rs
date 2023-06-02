@@ -21,7 +21,12 @@ impl FileInspector for EndToEndTestInspector {
                 || path.display().to_string().ends_with(".e2e.ts"))
     }
 
-    fn inspect_file(&self, workspace: &Workspace, path: &Path, output: &mut Map<String, Value>) {
+    fn inspect_file(
+        &mut self,
+        workspace: &Workspace,
+        path: &Path,
+        output: &mut Map<String, Value>,
+    ) {
         let contents = std::fs::read_to_string(path).unwrap();
         let test_names: Vec<String> = utils::extract_test_names(&contents)
             .into_iter()

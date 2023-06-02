@@ -31,9 +31,9 @@ pub fn run(config: &Config, working_dir: &PathBuf) -> Result<(), Box<dyn Error>>
         return Ok(());
     }
 
-    let workspace = Workspace::setup(PathBuf::from(working_dir), inspectors, config.verbose);
+    let workspace = Workspace::setup(PathBuf::from(working_dir), vec![], config.verbose);
 
-    let output = workspace.inspect()?;
+    let output = workspace.inspect(inspectors)?;
 
     if let Some(output_path) = &config.output {
         let mut output_file = File::create(output_path)?;

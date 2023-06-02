@@ -26,7 +26,10 @@ impl Workspace {
         }
     }
 
-    pub fn inspect(&self) -> Result<Value, Box<dyn Error>> {
+    pub fn inspect(
+        &self,
+        mut inspectors: Vec<Box<dyn FileInspector>>,
+    ) -> Result<Value, Box<dyn Error>> {
         let mut map = Map::new();
         if self.verbose {
             println!("{}", self.working_dir.display());
@@ -55,11 +58,15 @@ impl Workspace {
             Value::String(Utc::now().to_string()),
         );
 
-        self.run_inspectors(&mut map);
+        self.run_inspectors(&mut inspectors, &mut map);
         Ok(Value::Object(map))
     }
 
-    fn run_inspectors(&self, map: &mut Map<String, Value>) {
+    fn run_inspectors(
+        &self,
+        inspectors: &mut Vec<Box<dyn FileInspector>>,
+        map: &mut Map<String, Value>,
+    ) {
         let walker = WalkDir::new(&self.working_dir)
             .follow_links(true)
             .into_iter();
@@ -81,7 +88,7 @@ impl Workspace {
                 );
             }
 
-            for inspector in &self.file_inspectors {
+            for inspector in inspectors.iter_mut() {
                 if inspector.supports_file(entry_path) {
                     if self.verbose {
                         println!(
@@ -98,7 +105,7 @@ impl Workspace {
             }
         }
 
-        for inspector in &self.file_inspectors {
+        for inspector in inspectors {
             inspector.finalize(self, map);
         }
     }

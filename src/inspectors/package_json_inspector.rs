@@ -19,7 +19,12 @@ impl FileInspector for PackageJsonInspector {
         path.is_file() && path.ends_with("package.json")
     }
 
-    fn inspect_file(&self, workspace: &Workspace, path: &Path, output: &mut Map<String, Value>) {
+    fn inspect_file(
+        &mut self,
+        workspace: &Workspace,
+        path: &Path,
+        output: &mut Map<String, Value>,
+    ) {
         let value = utils::load_json_file(path);
 
         let packages = output
