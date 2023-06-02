@@ -21,7 +21,7 @@ pub fn extract_test_names(contents: &str) -> Vec<&str> {
     }
 
     NAME_REGEX
-        .captures_iter(&contents)
+        .captures_iter(contents)
         .map(|c| c.name("name").unwrap().as_str())
         .collect()
 }

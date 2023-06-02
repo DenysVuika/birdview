@@ -4,12 +4,13 @@ use crate::workspace::Workspace;
 use serde_json::{json, Map, Value};
 use std::path::Path;
 
+#[derive(Default)]
 pub struct UnitTestInspector {}
 
 impl UnitTestInspector {
     /// Creates a new instance of the inspector
-    pub fn new() -> UnitTestInspector {
-        UnitTestInspector {}
+    pub fn new() -> Self {
+        Default::default()
     }
 }
 

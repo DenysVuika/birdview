@@ -4,6 +4,7 @@ use std::path::PathBuf;
 pub struct Config {
     pub inspect_tests: bool,
     pub inspect_packages: bool,
+    pub inspect_angular: bool,
     pub verbose: bool,
     pub output: Option<PathBuf>,
 }

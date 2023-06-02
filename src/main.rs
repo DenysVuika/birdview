@@ -36,6 +36,9 @@ enum Commands {
         #[arg(short, long)]
         packages: bool,
 
+        #[arg(short, long)]
+        angular: bool,
+
         /// Verbose output
         #[arg(long)]
         verbose: bool,
@@ -58,6 +61,7 @@ fn main() {
             dir,
             tests,
             packages,
+            angular,
             all,
             verbose,
             output,
@@ -65,11 +69,12 @@ fn main() {
             let config = Config {
                 inspect_tests: *all | *tests,
                 inspect_packages: *all | *packages,
+                inspect_angular: *all | *angular,
                 verbose: *verbose,
                 output: output.to_owned(),
             };
 
-            if let Err(e) = run(&config, &dir) {
+            if let Err(e) = run(&config, dir) {
                 eprintln!("Application error {e}");
                 process::exit(1);
             }

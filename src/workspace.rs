@@ -82,7 +82,7 @@ impl Workspace {
             }
 
             for inspector in &self.file_inspectors {
-                if inspector.supports_file(&entry_path) {
+                if inspector.supports_file(entry_path) {
                     if self.verbose {
                         println!(
                             "├── ✅  {}",
@@ -93,13 +93,13 @@ impl Workspace {
                         );
                     }
 
-                    inspector.inspect_file(&self, entry_path, map);
+                    inspector.inspect_file(self, entry_path, map);
                 }
             }
         }
 
         for inspector in &self.file_inspectors {
-            inspector.finalize(&self, map);
+            inspector.finalize(self, map);
         }
     }
 }
@@ -108,7 +108,7 @@ fn is_not_hidden(entry: &DirEntry) -> bool {
     entry
         .file_name()
         .to_str()
-        .map(|s| entry.depth() == 0 || !s.starts_with("."))
+        .map(|s| entry.depth() == 0 || !s.starts_with('.'))
         .unwrap_or(false)
 }
 

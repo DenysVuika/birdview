@@ -4,12 +4,13 @@ use crate::workspace::Workspace;
 use serde_json::{json, Map, Value};
 use std::path::Path;
 
+#[derive(Default)]
 pub struct PackageJsonInspector {}
 
 impl PackageJsonInspector {
     /// Creates a new instance of the inspector
-    pub fn new() -> PackageJsonInspector {
-        PackageJsonInspector {}
+    pub fn new() -> Self {
+        Default::default()
     }
 }
 
