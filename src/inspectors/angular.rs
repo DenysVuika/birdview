@@ -80,30 +80,30 @@ impl FileInspector for AngularInspector {
             "dialogs": self.dialogs
         }));
 
-        println!("Angular");
-        println!(" ├── Module: {}", self.modules.len());
-        println!(" ├── Component: {}", self.components.len());
-        println!(" ├── Directive: {}", self.directives.len());
-        println!(" ├── Service: {}", self.services.len());
-        println!(" ├── Pipe: {}", self.pipes.len());
-        println!(" └── Dialog: {}", self.dialogs.len());
-
         let stats = output
             .entry("stats")
             .or_insert(json!({}))
             .as_object_mut()
             .unwrap();
 
-        stats.entry("module").or_insert(json!(self.modules.len()));
         stats
-            .entry("component")
+            .entry("angular_module")
+            .or_insert(json!(self.modules.len()));
+        stats
+            .entry("angular_component")
             .or_insert(json!(self.components.len()));
         stats
-            .entry("directive")
+            .entry("angular_directive")
             .or_insert(json!(self.directives.len()));
-        stats.entry("service").or_insert(json!(self.services.len()));
-        stats.entry("pipe").or_insert(json!(self.pipes.len()));
-        stats.entry("dialog").or_insert(json!(self.dialogs.len()));
+        stats
+            .entry("angular_service")
+            .or_insert(json!(self.services.len()));
+        stats
+            .entry("angular_pipe")
+            .or_insert(json!(self.pipes.len()));
+        stats
+            .entry("angular_dialog")
+            .or_insert(json!(self.dialogs.len()));
 
         // cleanup
         self.modules = Vec::new();
@@ -112,5 +112,13 @@ impl FileInspector for AngularInspector {
         self.services = Vec::new();
         self.pipes = Vec::new();
         self.dialogs = Vec::new();
+
+        println!("Angular");
+        println!(" ├── Module: {}", self.modules.len());
+        println!(" ├── Component: {}", self.components.len());
+        println!(" ├── Directive: {}", self.directives.len());
+        println!(" ├── Service: {}", self.services.len());
+        println!(" ├── Pipe: {}", self.pipes.len());
+        println!(" └── Dialog: {}", self.dialogs.len());
     }
 }

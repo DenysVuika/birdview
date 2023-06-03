@@ -42,7 +42,14 @@ Angular
  ├── Service: 181
  ├── Pipe: 23
  └── Dialog: 8
-Markdown files: 497
+Project Files
+ ├── HTML: 379
+ ├── SCSS: 536
+ ├── CSS: 33
+ ├── TypeScript: 5125
+ ├── JavaScript: 301
+ ├── JSON: 548
+ └── Markdown: 497
 Inspection complete
 ```
 
@@ -95,17 +102,27 @@ The format of the output is similar to the following example:
     "package": 32,
     "package_deps": 145,
     "package_dev_deps": 104,
+    
     "unit_test": 452,
     "unit_test_case": 5635,
+    
     "e2e_test": 168,
     "e2e_test_case": 928,
-    "module": 149,
-    "component": 415,
-    "directive": 58,
-    "service": 181,
-    "pipe": 23,
-    "dialog": 8,
-    "markdown": 497
+    
+    "angular_module": 149,
+    "angular_component": 415,
+    "angular_directive": 58,
+    "angular_service": 181,
+    "angular_pipe": 23,
+    "angular_dialog": 8,
+    
+    "types_html": 379,
+    "types_scss": 536,
+    "types_css": 33,
+    "types_ts": 5125,
+    "types_js": 301,
+    "types_md": 497,
+    "types_json": 548
   },
 
   "angular": {

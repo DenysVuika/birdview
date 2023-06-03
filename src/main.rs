@@ -40,9 +40,9 @@ enum Commands {
         #[arg(short, long)]
         angular: bool,
 
-        /// Inspect markdown files
-        #[arg(short, long)]
-        markdown: bool,
+        /// Inspect file types
+        #[arg(long)]
+        types: bool,
 
         /// Verbose output
         #[arg(long)]
@@ -67,7 +67,7 @@ fn main() {
             tests,
             packages,
             angular,
-            markdown,
+            types,
             all,
             verbose,
             output,
@@ -76,7 +76,7 @@ fn main() {
                 inspect_tests: *all | *tests,
                 inspect_packages: *all | *packages,
                 inspect_angular: *all | *angular,
-                inspect_markdown: *all | *markdown,
+                inspect_types: *all | *types,
                 verbose: *verbose,
                 output: output.to_owned(),
             };
