@@ -28,6 +28,7 @@ Gives an output similar to the following:
 package.json files: 8 (35 deps, 67 dev deps)
 unit tests: 5635 (452 files)
 e2e tests: 928 (168 files)
+Modules: 149
 Components: 415
 Directives: 58
 Services: 181

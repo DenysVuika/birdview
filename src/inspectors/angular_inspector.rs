@@ -4,6 +4,7 @@ use serde_json::{json, Map, Value};
 use std::path::Path;
 
 pub struct AngularInspector {
+    modules: Vec<String>,
     components: Vec<String>,
     directives: Vec<String>,
     services: Vec<String>,
@@ -14,6 +15,7 @@ pub struct AngularInspector {
 impl AngularInspector {
     pub fn new() -> Self {
         AngularInspector {
+            modules: vec![],
             components: vec![],
             directives: vec![],
             services: vec![],
@@ -33,7 +35,8 @@ impl FileInspector for AngularInspector {
     fn supports_file(&self, path: &Path) -> bool {
         let display_path = path.display().to_string();
         path.is_file()
-            && (display_path.ends_with(".component.ts")
+            && (display_path.ends_with(".module.ts")
+                || display_path.ends_with(".component.ts")
                 || display_path.ends_with(".directive.ts")
                 || display_path.ends_with(".service.ts")
                 || display_path.ends_with(".pipe.ts")
@@ -52,7 +55,9 @@ impl FileInspector for AngularInspector {
             .display()
             .to_string();
 
-        if workspace_path.ends_with(".component.ts") {
+        if workspace_path.ends_with(".module.ts") {
+            self.modules.push(workspace_path);
+        } else if workspace_path.ends_with(".component.ts") {
             self.components.push(workspace_path);
         } else if workspace_path.ends_with(".directive.ts") {
             self.directives.push(workspace_path);
@@ -66,24 +71,16 @@ impl FileInspector for AngularInspector {
     }
 
     fn finalize(&mut self, _workspace: &Workspace, output: &mut Map<String, Value>) {
-        let angular = output
-            .entry("angular")
-            .or_insert(json!({
-                "components": [],
-                "directives": [],
-                "services": [],
-                "pipes": [],
-                "dialogs": [],
-            }))
-            .as_object_mut()
-            .unwrap();
+        output.entry("angular").or_insert(json!({
+            "modules": self.modules,
+            "components": self.components,
+            "directives": self.directives,
+            "services": self.services,
+            "pipes": self.pipes,
+            "dialogs": self.dialogs
+        }));
 
-        angular["components"] = json!(self.components);
-        angular["directives"] = json!(self.directives);
-        angular["services"] = json!(self.services);
-        angular["pipes"] = json!(self.pipes);
-        angular["dialogs"] = json!(self.dialogs);
-
+        println!("Modules: {}", self.modules.len());
         println!("Components: {}", self.components.len());
         println!("Directives: {}", self.directives.len());
         println!("Services: {}", self.services.len());
@@ -91,6 +88,7 @@ impl FileInspector for AngularInspector {
         println!("Dialogs: {}", self.dialogs.len());
 
         // cleanup
+        self.modules = Vec::new();
         self.components = Vec::new();
         self.directives = Vec::new();
         self.services = Vec::new();
