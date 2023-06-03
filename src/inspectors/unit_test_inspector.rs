@@ -4,13 +4,24 @@ use crate::workspace::Workspace;
 use serde_json::{json, Map, Value};
 use std::path::Path;
 
-#[derive(Default)]
-pub struct UnitTestInspector {}
+pub struct UnitTestInspector {
+    total_files: i64,
+    total_cases: i64,
+}
 
 impl UnitTestInspector {
     /// Creates a new instance of the inspector
     pub fn new() -> Self {
-        Default::default()
+        UnitTestInspector {
+            total_files: 0,
+            total_cases: 0,
+        }
+    }
+}
+
+impl Default for UnitTestInspector {
+    fn default() -> Self {
+        UnitTestInspector::new()
     }
 }
 
@@ -49,39 +60,21 @@ impl FileInspector for UnitTestInspector {
 
         unit_tests.push(entry);
 
-        let total_files = output
-            .entry("total_unit_test_files")
-            .or_insert(json!(0))
-            .as_i64()
-            .unwrap();
-
-        output["total_unit_test_files"] = json!(total_files + 1);
-
-        let total_cases = output
-            .entry("total_unit_test_cases")
-            .or_insert(json!(0))
-            .as_i64()
-            .unwrap();
-
-        output["total_unit_test_cases"] = json!(total_cases + test_names.len() as i64);
+        self.total_files += 1;
+        self.total_cases += test_names.len() as i64;
     }
 
     fn finalize(&mut self, _workspace: &Workspace, output: &mut Map<String, Value>) {
-        let total_files = output
+        output
             .entry("total_unit_test_files")
-            .or_insert(json!(0))
-            .as_i64()
-            .unwrap();
-
-        let total_cases = output
+            .or_insert(json!(self.total_files));
+        output
             .entry("total_unit_test_cases")
-            .or_insert(json!(0))
-            .as_i64()
-            .unwrap();
+            .or_insert(json!(self.total_cases));
 
         println!(
-            "unit test files (.spec.ts): {} ({} cases))",
-            total_files, total_cases
+            "unit tests: {} ({} files)",
+            self.total_cases, self.total_files
         );
     }
 }

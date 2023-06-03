@@ -26,7 +26,7 @@ Gives an output similar to the following:
 
 ```text
 package.json files: 8 (35 deps, 67 dev deps)
-unit test files (.spec.ts): 109 (906 cases))
+unit tests: 5635 (452 files)
 e2e tests: 928 (168 files)
 Components: 415
 Directives: 58
