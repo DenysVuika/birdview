@@ -4,7 +4,8 @@ pub mod workspace;
 
 use crate::config::Config;
 use crate::inspectors::{
-    AngularInspector, EndToEndTestInspector, FileInspector, PackageJsonInspector, UnitTestInspector,
+    AngularInspector, EndToEndTestInspector, FileInspector, MarkdownInspector,
+    PackageJsonInspector, UnitTestInspector,
 };
 use crate::workspace::Workspace;
 use std::error::Error;
@@ -24,6 +25,9 @@ pub fn run(config: &Config, working_dir: &PathBuf) -> Result<(), Box<dyn Error>>
     }
     if config.inspect_angular {
         inspectors.push(Box::new(AngularInspector::new()));
+    }
+    if config.inspect_markdown {
+        inspectors.push(Box::new(MarkdownInspector::new()));
     }
 
     if inspectors.is_empty() {

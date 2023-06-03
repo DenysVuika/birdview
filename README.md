@@ -33,6 +33,7 @@ Directives: 58
 Services: 181
 Pipes: 23
 Dialogs: 8
+Markdown files: 497
 Inspection complete
 ```
 
@@ -47,6 +48,7 @@ birdview inspect --help
 - `package.json` files (`--packages`)
 - unit and e2e tests (`--tests`)
 - angular elements (`--angular`)
+- markdown files (`--markdown`)
 
 ### Examples:
 
@@ -84,12 +86,15 @@ The format of the output is similar to the following example:
 {
   "project_name": "<package.json>/name",
   "project_version": "<package.json>/version",
-  
-  "total_package_files": 8,
-  "total_package_deps": 35,
-  "total_package_dev_deps": 67,
-  "total_unit_test_files": 109,
-  "total_unit_test_cases": 906,
+
+  "total_package_files": 32,
+  "total_package_deps": 145,
+  "total_package_dev_deps": 104,
+  "total_unit_test_files": 452,
+  "total_unit_test_cases": 5635,
+  "total_e2e_test_files": 168,
+  "total_e2e_test_cases": 928,
+  "total_markdown_files": 497,
   
   "unit_tests": [
     {

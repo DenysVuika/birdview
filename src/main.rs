@@ -36,8 +36,13 @@ enum Commands {
         #[arg(short, long)]
         packages: bool,
 
+        /// Inspect angular elements
         #[arg(short, long)]
         angular: bool,
+
+        /// Inspect markdown files
+        #[arg(short, long)]
+        markdown: bool,
 
         /// Verbose output
         #[arg(long)]
@@ -62,6 +67,7 @@ fn main() {
             tests,
             packages,
             angular,
+            markdown,
             all,
             verbose,
             output,
@@ -70,6 +76,7 @@ fn main() {
                 inspect_tests: *all | *tests,
                 inspect_packages: *all | *packages,
                 inspect_angular: *all | *angular,
+                inspect_markdown: *all | *markdown,
                 verbose: *verbose,
                 output: output.to_owned(),
             };
