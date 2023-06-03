@@ -4,13 +4,26 @@ use crate::workspace::Workspace;
 use serde_json::{json, Map, Value};
 use std::path::Path;
 
-#[derive(Default)]
-pub struct PackageJsonInspector {}
+pub struct PackageJsonInspector {
+    total_package_files: i64,
+    total_deps: i64,
+    total_dev_deps: i64,
+}
 
 impl PackageJsonInspector {
     /// Creates a new instance of the inspector
     pub fn new() -> Self {
-        Default::default()
+        PackageJsonInspector {
+            total_package_files: 0,
+            total_deps: 0,
+            total_dev_deps: 0,
+        }
+    }
+}
+
+impl Default for PackageJsonInspector {
+    fn default() -> Self {
+        PackageJsonInspector::new()
     }
 }
 
@@ -40,8 +53,6 @@ impl FileInspector for PackageJsonInspector {
             .to_string();
 
         let mut dependencies: Vec<Value> = Vec::new();
-        let mut total_deps: i64 = 0;
-        let mut total_dev_deps: i64 = 0;
 
         if let Some(data) = value["dependencies"].as_object() {
             for (key, value) in data {
@@ -52,7 +63,7 @@ impl FileInspector for PackageJsonInspector {
                 });
                 dependencies.push(entry);
             }
-            total_deps = data.len() as i64;
+            self.total_deps += data.len() as i64;
         }
 
         if let Some(data) = value["devDependencies"].as_object() {
@@ -64,7 +75,7 @@ impl FileInspector for PackageJsonInspector {
                 });
                 dependencies.push(entry);
             }
-            total_dev_deps = data.len() as i64;
+            self.total_dev_deps += data.len() as i64;
         }
 
         let entry = json!({
@@ -73,51 +84,23 @@ impl FileInspector for PackageJsonInspector {
         });
 
         packages.push(entry);
-
-        let total_package_files = output
-            .entry("total_package_files")
-            .or_insert(json!(0))
-            .as_i64()
-            .unwrap();
-        output["total_package_files"] = json!(total_package_files + 1);
-
-        let total_package_deps = output
-            .entry("total_package_deps")
-            .or_insert(json!(0))
-            .as_i64()
-            .unwrap();
-        output["total_package_deps"] = json!(total_package_deps + total_deps);
-
-        let total_package_dev_deps = output
-            .entry("total_package_dev_deps")
-            .or_insert(json!(0))
-            .as_i64()
-            .unwrap();
-        output["total_package_dev_deps"] = json!(total_package_dev_deps + total_dev_deps);
+        self.total_package_files += 1;
     }
 
     fn finalize(&mut self, _workspace: &Workspace, output: &mut Map<String, Value>) {
-        let total_package_files = output
+        output
             .entry("total_package_files")
-            .or_insert(json!(0))
-            .as_i64()
-            .unwrap();
-
-        let total_package_deps = output
+            .or_insert(json!(self.total_package_files));
+        output
             .entry("total_package_deps")
-            .or_insert(json!(0))
-            .as_i64()
-            .unwrap();
-
-        let total_package_dev_deps = output
+            .or_insert(json!(self.total_deps));
+        output
             .entry("total_package_dev_deps")
-            .or_insert(json!(0))
-            .as_i64()
-            .unwrap();
+            .or_insert(json!(self.total_dev_deps));
 
         println!(
             "package.json files: {} ({} deps, {} dev deps)",
-            total_package_files, total_package_deps, total_package_dev_deps
+            self.total_package_files, self.total_deps, self.total_dev_deps
         );
     }
 }
