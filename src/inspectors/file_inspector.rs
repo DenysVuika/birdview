@@ -11,5 +11,5 @@ pub trait FileInspector {
     fn inspect_file(&mut self, workspace: &Workspace, path: &Path, output: &mut Map<String, Value>);
 
     /// Perform final tasks after all inspectors finished
-    fn finalize(&self, workspace: &Workspace, output: &mut Map<String, Value>);
+    fn finalize(&mut self, workspace: &Workspace, output: &mut Map<String, Value>);
 }

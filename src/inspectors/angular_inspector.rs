@@ -65,7 +65,7 @@ impl FileInspector for AngularInspector {
         }
     }
 
-    fn finalize(&self, _workspace: &Workspace, output: &mut Map<String, Value>) {
+    fn finalize(&mut self, _workspace: &Workspace, output: &mut Map<String, Value>) {
         let angular = output
             .entry("angular")
             .or_insert(json!({
@@ -89,5 +89,12 @@ impl FileInspector for AngularInspector {
         println!("Services: {}", self.services.len());
         println!("Pipes: {}", self.pipes.len());
         println!("Dialogs: {}", self.dialogs.len());
+
+        // cleanup
+        self.components = Vec::new();
+        self.directives = Vec::new();
+        self.services = Vec::new();
+        self.pipes = Vec::new();
+        self.dialogs = Vec::new();
     }
 }

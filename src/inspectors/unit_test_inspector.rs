@@ -66,7 +66,7 @@ impl FileInspector for UnitTestInspector {
         output["total_unit_test_cases"] = json!(total_cases + test_names.len() as i64);
     }
 
-    fn finalize(&self, _workspace: &Workspace, output: &mut Map<String, Value>) {
+    fn finalize(&mut self, _workspace: &Workspace, output: &mut Map<String, Value>) {
         let total_files = output
             .entry("total_unit_test_files")
             .or_insert(json!(0))

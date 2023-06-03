@@ -96,7 +96,7 @@ impl FileInspector for PackageJsonInspector {
         output["total_package_dev_deps"] = json!(total_package_dev_deps + total_dev_deps);
     }
 
-    fn finalize(&self, _workspace: &Workspace, output: &mut Map<String, Value>) {
+    fn finalize(&mut self, _workspace: &Workspace, output: &mut Map<String, Value>) {
         let total_package_files = output
             .entry("total_package_files")
             .or_insert(json!(0))
