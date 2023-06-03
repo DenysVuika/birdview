@@ -28,7 +28,11 @@ Gives an output similar to the following:
 package.json files: 8 (35 deps, 67 dev deps)
 unit test files (.spec.ts): 109 (906 cases))
 e2e test files (.test.ts, .e2e.ts): 74 (768 cases))
-Saved report to: .tmp/output.json
+Components: 415
+Directives: 58
+Services: 181
+Pipes: 23
+Dialogs: 8
 Inspection complete
 ```
 
@@ -37,6 +41,12 @@ Inspection complete
 ```shell
 birdview inspect --help
 ```
+
+### Available Inspectors
+
+- `package.json` files (`--packages`)
+- unit and e2e tests (`--tests`)
+- angular elements (`--angular`)
 
 ### Examples:
 
@@ -115,6 +125,13 @@ The format of the output is similar to the following example:
         }
       ]
     }
-  ]
+  ],
+  "angular": {
+    "components": [],
+    "directives": [],
+    "services": [],
+    "pipes": [],
+    "dialogs": []
+  }
 }
 ```
