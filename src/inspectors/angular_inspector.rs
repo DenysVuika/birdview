@@ -80,12 +80,13 @@ impl FileInspector for AngularInspector {
             "dialogs": self.dialogs
         }));
 
-        println!("Modules: {}", self.modules.len());
-        println!("Components: {}", self.components.len());
-        println!("Directives: {}", self.directives.len());
-        println!("Services: {}", self.services.len());
-        println!("Pipes: {}", self.pipes.len());
-        println!("Dialogs: {}", self.dialogs.len());
+        println!("Angular");
+        println!("├── Modules: {}", self.modules.len());
+        println!("├── Components: {}", self.components.len());
+        println!("├── Directives: {}", self.directives.len());
+        println!("├── Services: {}", self.services.len());
+        println!("├── Pipes: {}", self.pipes.len());
+        println!("└── Dialogs: {}", self.dialogs.len());
 
         // cleanup
         self.modules = Vec::new();
