@@ -37,10 +37,7 @@ impl FileInspector for UnitTestInspector {
         output: &mut Map<String, Value>,
     ) {
         let contents = std::fs::read_to_string(path).unwrap();
-        let test_names: Vec<String> = utils::extract_test_names(&contents)
-            .into_iter()
-            .map(|s| s.to_string())
-            .collect();
+        let test_names = utils::extract_test_names(&contents);
         let workspace_path = path
             .strip_prefix(&workspace.working_dir)
             .unwrap()
