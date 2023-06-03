@@ -4,21 +4,31 @@ use crate::workspace::Workspace;
 use serde_json::{json, Map, Value};
 use std::path::Path;
 
-#[derive(Default)]
-pub struct EndToEndTestInspector {}
+pub struct EndToEndTestInspector {
+    total_files: i64,
+    total_cases: i64,
+}
 
 impl EndToEndTestInspector {
     /// Creates a new instance of the inspector
     pub fn new() -> Self {
-        Default::default()
+        EndToEndTestInspector {
+            total_files: 0,
+            total_cases: 0,
+        }
+    }
+}
+
+impl Default for EndToEndTestInspector {
+    fn default() -> Self {
+        EndToEndTestInspector::new()
     }
 }
 
 impl FileInspector for EndToEndTestInspector {
     fn supports_file(&self, path: &Path) -> bool {
-        path.is_file()
-            && (path.display().to_string().ends_with(".test.ts")
-                || path.display().to_string().ends_with(".e2e.ts"))
+        let display_path = path.display().to_string();
+        path.is_file() && (display_path.ends_with(".test.ts") || display_path.ends_with(".e2e.ts"))
     }
 
     fn inspect_file(
@@ -51,36 +61,21 @@ impl FileInspector for EndToEndTestInspector {
 
         unit_tests.push(entry);
 
-        let total_files = output
-            .entry("total_e2e_test_files")
-            .or_insert(json!(0))
-            .as_i64()
-            .unwrap();
-        output["total_e2e_test_files"] = json!(total_files + 1);
-
-        let total_cases = output
-            .entry("total_e2e_test_cases")
-            .or_insert(json!(0))
-            .as_i64()
-            .unwrap();
-        output["total_e2e_test_cases"] = json!(total_cases + test_names.len() as i64);
+        self.total_files += 1;
+        self.total_cases += test_names.len() as i64;
     }
 
     fn finalize(&mut self, _workspace: &Workspace, output: &mut Map<String, Value>) {
-        let total_files = output
+        output
             .entry("total_e2e_test_files")
-            .or_insert(json!(0))
-            .as_i64()
-            .unwrap();
-        let total_cases = output
+            .or_insert(json!(self.total_files));
+        output
             .entry("total_e2e_test_cases")
-            .or_insert(json!(0))
-            .as_i64()
-            .unwrap();
+            .or_insert(json!(self.total_cases));
 
         println!(
-            "e2e test files (.test.ts, .e2e.ts): {} ({} cases))",
-            total_files, total_cases
+            "e2e tests: {} ({} files)",
+            self.total_cases, self.total_files
         );
     }
 }
