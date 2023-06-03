@@ -62,8 +62,8 @@ birdview inspect --help
 ### Examples:
 
 ```shell
-# generic inspection
-birdview inspect <project>
+# run all available inspections
+birdview inspect --all <project>
 
 # inspect tests
 birdview inspect --tests <project>
@@ -73,12 +73,6 @@ birdview inspect --packages <project>
 
 # inspect tests and packages
 birdview inspect --tests --packages <project>
-
-# run all available inspections
-birdview inspect --all <project>
-
-# run all available inspections with detailed output
-birdview inspect --all --verbose <project>
 ```
 
 ### Generating Reports
