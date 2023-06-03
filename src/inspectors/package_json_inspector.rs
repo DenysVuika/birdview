@@ -88,19 +88,25 @@ impl FileInspector for PackageJsonInspector {
     }
 
     fn finalize(&mut self, _workspace: &Workspace, output: &mut Map<String, Value>) {
-        output
-            .entry("total_package_files")
+        let stats = output
+            .entry("stats")
+            .or_insert(json!({}))
+            .as_object_mut()
+            .unwrap();
+
+        stats
+            .entry("package")
             .or_insert(json!(self.total_package_files));
-        output
-            .entry("total_package_deps")
+        stats
+            .entry("package_deps")
             .or_insert(json!(self.total_deps));
-        output
-            .entry("total_package_dev_deps")
+        stats
+            .entry("package_dev_deps")
             .or_insert(json!(self.total_dev_deps));
 
-        println!(
-            "package.json files: {} ({} deps, {} dev deps)",
-            self.total_package_files, self.total_deps, self.total_dev_deps
-        );
+        println!("Packages");
+        println!(" ├── Files: {}", self.total_package_files);
+        println!(" ├── Dependencies: {}", self.total_deps);
+        println!(" └── Dev dependencies: {}", self.total_dev_deps);
     }
 }

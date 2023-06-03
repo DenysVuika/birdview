@@ -34,9 +34,13 @@ impl FileInspector for MarkdownInspector {
     }
 
     fn finalize(&mut self, _workspace: &Workspace, output: &mut Map<String, Value>) {
-        output
-            .entry("total_markdown_files")
-            .or_insert(json!(self.total_files));
+        let stats = output
+            .entry("stats")
+            .or_insert(json!({}))
+            .as_object_mut()
+            .unwrap();
+
+        stats.entry("markdown").or_insert(json!(self.total_files));
 
         println!("Markdown files: {}", self.total_files);
     }

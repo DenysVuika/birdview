@@ -81,12 +81,29 @@ impl FileInspector for AngularInspector {
         }));
 
         println!("Angular");
-        println!("├── Modules: {}", self.modules.len());
-        println!("├── Components: {}", self.components.len());
-        println!("├── Directives: {}", self.directives.len());
-        println!("├── Services: {}", self.services.len());
-        println!("├── Pipes: {}", self.pipes.len());
-        println!("└── Dialogs: {}", self.dialogs.len());
+        println!(" ├── Module: {}", self.modules.len());
+        println!(" ├── Component: {}", self.components.len());
+        println!(" ├── Directive: {}", self.directives.len());
+        println!(" ├── Service: {}", self.services.len());
+        println!(" ├── Pipe: {}", self.pipes.len());
+        println!(" └── Dialog: {}", self.dialogs.len());
+
+        let stats = output
+            .entry("stats")
+            .or_insert(json!({}))
+            .as_object_mut()
+            .unwrap();
+
+        stats.entry("module").or_insert(json!(self.modules.len()));
+        stats
+            .entry("component")
+            .or_insert(json!(self.components.len()));
+        stats
+            .entry("directive")
+            .or_insert(json!(self.directives.len()));
+        stats.entry("service").or_insert(json!(self.services.len()));
+        stats.entry("pipe").or_insert(json!(self.pipes.len()));
+        stats.entry("dialog").or_insert(json!(self.dialogs.len()));
 
         // cleanup
         self.modules = Vec::new();

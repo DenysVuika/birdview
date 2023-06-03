@@ -62,16 +62,19 @@ impl FileInspector for UnitTestInspector {
     }
 
     fn finalize(&mut self, _workspace: &Workspace, output: &mut Map<String, Value>) {
-        output
-            .entry("total_unit_test_files")
-            .or_insert(json!(self.total_files));
-        output
-            .entry("total_unit_test_cases")
+        let stats = output
+            .entry("stats")
+            .or_insert(json!({}))
+            .as_object_mut()
+            .unwrap();
+
+        stats.entry("unit_test").or_insert(json!(self.total_files));
+        stats
+            .entry("unit_test_case")
             .or_insert(json!(self.total_cases));
 
-        println!(
-            "unit tests: {} ({} files)",
-            self.total_cases, self.total_files
-        );
+        println!("Unit Tests");
+        println!(" ├── Cases: {}", self.total_cases);
+        println!(" └── Files: {}", self.total_files);
     }
 }

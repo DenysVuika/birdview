@@ -25,16 +25,23 @@ birdview inspect . --all
 Gives an output similar to the following:
 
 ```text
-package.json files: 8 (35 deps, 67 dev deps)
-unit tests: 5635 (452 files)
-e2e tests: 928 (168 files)
+Packages
+ ├── Files: 32
+ ├── Dependencies: 145
+ └── Dev dependencies: 104
+Unit Tests
+ ├── Cases: 5635
+ └── Files: 452
+E2E Tests
+ ├── Cases: 928
+ └── Files: 168
 Angular
-├── Modules: 149
-├── Components: 415
-├── Directives: 58
-├── Services: 181
-├── Pipes: 23
-└── Dialogs: 8
+ ├── Module: 149
+ ├── Component: 415
+ ├── Directive: 58
+ ├── Service: 181
+ ├── Pipe: 23
+ └── Dialog: 8
 Markdown files: 497
 Inspection complete
 ```
@@ -89,14 +96,30 @@ The format of the output is similar to the following example:
   "project_name": "<package.json>/name",
   "project_version": "<package.json>/version",
 
-  "total_package_files": 32,
-  "total_package_deps": 145,
-  "total_package_dev_deps": 104,
-  "total_unit_test_files": 452,
-  "total_unit_test_cases": 5635,
-  "total_e2e_test_files": 168,
-  "total_e2e_test_cases": 928,
-  "total_markdown_files": 497,
+  "stats": {
+    "package": 32,
+    "package_deps": 145,
+    "package_dev_deps": 104,
+    "unit_test": 452,
+    "unit_test_case": 5635,
+    "e2e_test": 168,
+    "e2e_test_case": 928,
+    "module": 149,
+    "component": 415,
+    "directive": 58,
+    "service": 181,
+    "pipe": 23,
+    "dialog": 8,
+    "markdown": 497
+  },
+
+  "angular": {
+    "components": [],
+    "directives": [],
+    "services": [],
+    "pipes": [],
+    "dialogs": []
+  },
   
   "unit_tests": [
     {
@@ -107,6 +130,7 @@ The format of the output is similar to the following example:
       ]
     }
   ],
+  
   "e2e_tests": [
     {
       "path": "<workspace>/<path>.e2e.ts",
@@ -116,6 +140,7 @@ The format of the output is similar to the following example:
       ]
     }
   ],
+  
   "packages": [
     {
       "path": "<workspace>/<path>/package.json",
@@ -132,13 +157,6 @@ The format of the output is similar to the following example:
         }
       ]
     }
-  ],
-  "angular": {
-    "components": [],
-    "directives": [],
-    "services": [],
-    "pipes": [],
-    "dialogs": []
-  }
+  ]
 }
 ```
