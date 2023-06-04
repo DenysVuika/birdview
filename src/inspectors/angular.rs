@@ -86,32 +86,14 @@ impl FileInspector for AngularInspector {
             .as_object_mut()
             .unwrap();
 
-        let angular = stats
-            .entry("angular")
-            .or_insert(json!({}))
-            .as_object_mut()
-            .unwrap();
-
-        angular.entry("module").or_insert(json!(self.modules.len()));
-        angular
-            .entry("component")
-            .or_insert(json!(self.components.len()));
-        angular
-            .entry("directive")
-            .or_insert(json!(self.directives.len()));
-        angular
-            .entry("service")
-            .or_insert(json!(self.services.len()));
-        angular.entry("pipe").or_insert(json!(self.pipes.len()));
-        angular.entry("dialog").or_insert(json!(self.dialogs.len()));
-
-        // cleanup
-        self.modules = Vec::new();
-        self.components = Vec::new();
-        self.directives = Vec::new();
-        self.services = Vec::new();
-        self.pipes = Vec::new();
-        self.dialogs = Vec::new();
+        stats.entry("angular").or_insert(json!({
+            "module": self.modules.len(),
+            "component": self.components.len(),
+            "directive": self.directives.len(),
+            "service": self.services.len(),
+            "pipe": self.pipes.len(),
+            "dialog": self.dialogs.len()
+        }));
 
         println!("Angular");
         println!(" ├── Module: {}", self.modules.len());
@@ -120,5 +102,13 @@ impl FileInspector for AngularInspector {
         println!(" ├── Service: {}", self.services.len());
         println!(" ├── Pipe: {}", self.pipes.len());
         println!(" └── Dialog: {}", self.dialogs.len());
+
+        // cleanup
+        self.modules = Vec::new();
+        self.components = Vec::new();
+        self.directives = Vec::new();
+        self.services = Vec::new();
+        self.pipes = Vec::new();
+        self.dialogs = Vec::new();
     }
 }

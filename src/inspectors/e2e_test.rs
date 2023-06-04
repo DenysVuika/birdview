@@ -51,12 +51,10 @@ impl FileInspector for EndToEndTestInspector {
             .as_array_mut()
             .unwrap();
 
-        let entry = json!({
+        unit_tests.push(json!({
             "path": workspace_path,
             "cases": test_names,
-        });
-
-        unit_tests.push(entry);
+        }));
 
         self.total_files += 1;
         self.total_cases += test_names.len() as i64;
@@ -69,16 +67,10 @@ impl FileInspector for EndToEndTestInspector {
             .as_object_mut()
             .unwrap();
 
-        let tests = stats
-            .entry("tests")
-            .or_insert(json!({}))
-            .as_object_mut()
-            .unwrap();
-
-        tests.entry("e2e_test").or_insert(json!(self.total_files));
-        tests
-            .entry("e2e_test_case")
-            .or_insert(json!(self.total_cases));
+        stats.entry("tests").or_insert(json!({
+            "e2e_test": self.total_files,
+            "e2e_test_case": self.total_cases
+        }));
 
         println!("E2E Tests");
         println!(" ├── Cases: {}", self.total_cases);

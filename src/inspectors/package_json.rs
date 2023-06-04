@@ -39,6 +39,29 @@ impl FileInspector for PackageJsonInspector {
         output: &mut Map<String, Value>,
     ) {
         let value = utils::load_json_file(path);
+        let mut dependencies: Vec<Value> = Vec::new();
+
+        if let Some(data) = value["dependencies"].as_object() {
+            for (key, value) in data {
+                dependencies.push(json!({
+                    "name": key,
+                    "version": value,
+                    "dev": false
+                }));
+            }
+            self.total_deps += data.len() as i64;
+        }
+
+        if let Some(data) = value["devDependencies"].as_object() {
+            for (key, value) in data {
+                dependencies.push(json!({
+                    "name": key,
+                    "version": value,
+                    "dev": true
+                }));
+            }
+            self.total_dev_deps += data.len() as i64;
+        }
 
         let packages = output
             .entry("packages")
@@ -52,38 +75,10 @@ impl FileInspector for PackageJsonInspector {
             .display()
             .to_string();
 
-        let mut dependencies: Vec<Value> = Vec::new();
-
-        if let Some(data) = value["dependencies"].as_object() {
-            for (key, value) in data {
-                let entry = json!({
-                   "name": key,
-                    "version": value,
-                    "dev": false
-                });
-                dependencies.push(entry);
-            }
-            self.total_deps += data.len() as i64;
-        }
-
-        if let Some(data) = value["devDependencies"].as_object() {
-            for (key, value) in data {
-                let entry = json!({
-                   "name": key,
-                    "version": value,
-                    "dev": true
-                });
-                dependencies.push(entry);
-            }
-            self.total_dev_deps += data.len() as i64;
-        }
-
-        let entry = json!({
+        packages.push(json!({
             "path": workspace_path,
             "dependencies": dependencies
-        });
-
-        packages.push(entry);
+        }));
         self.total_package_files += 1;
     }
 
@@ -94,19 +89,11 @@ impl FileInspector for PackageJsonInspector {
             .as_object_mut()
             .unwrap();
 
-        let package = stats
-            .entry("package")
-            .or_insert(json!({}))
-            .as_object_mut()
-            .unwrap();
-
-        package
-            .entry("files")
-            .or_insert(json!(self.total_package_files));
-        package.entry("prod_deps").or_insert(json!(self.total_deps));
-        package
-            .entry("dev_deps")
-            .or_insert(json!(self.total_dev_deps));
+        stats.entry("package").or_insert(json!({
+            "files": self.total_package_files,
+            "prod_deps": self.total_deps,
+            "dev_deps": self.total_dev_deps
+        }));
 
         println!("Packages");
         println!(" ├── Files: {}", self.total_package_files);

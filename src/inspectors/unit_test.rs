@@ -50,12 +50,10 @@ impl FileInspector for UnitTestInspector {
             .as_array_mut()
             .unwrap();
 
-        let entry = json!({
+        unit_tests.push(json!({
             "path": workspace_path,
             "cases": test_names,
-        });
-
-        unit_tests.push(entry);
+        }));
 
         self.total_files += 1;
         self.total_cases += test_names.len() as i64;
@@ -68,16 +66,10 @@ impl FileInspector for UnitTestInspector {
             .as_object_mut()
             .unwrap();
 
-        let tests = stats
-            .entry("tests")
-            .or_insert(json!({}))
-            .as_object_mut()
-            .unwrap();
-
-        tests.entry("unit_test").or_insert(json!(self.total_files));
-        tests
-            .entry("unit_test_case")
-            .or_insert(json!(self.total_cases));
+        stats.entry("tests").or_insert(json!({
+            "unit_test": self.total_files,
+            "unit_test_case": self.total_cases
+        }));
 
         println!("Unit Tests");
         println!(" ├── Cases: {}", self.total_cases);

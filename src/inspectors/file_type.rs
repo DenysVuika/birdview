@@ -74,19 +74,15 @@ impl FileInspector for FileTypeInspector {
             .as_object_mut()
             .unwrap();
 
-        let types = stats
-            .entry("types")
-            .or_insert(json!({}))
-            .as_object_mut()
-            .unwrap();
-
-        types.entry("html").or_insert(json!(self.html));
-        types.entry("scss").or_insert(json!(self.scss));
-        types.entry("css").or_insert(json!(self.css));
-        types.entry("ts").or_insert(json!(self.ts));
-        types.entry("js").or_insert(json!(self.js));
-        types.entry("md").or_insert(json!(self.markdown));
-        types.entry("json").or_insert(json!(self.json));
+        stats.entry("types").or_insert(json!({
+            "html": self.html,
+            "scss": self.scss,
+            "css": self.css,
+            "ts": self.ts,
+            "js": self.js,
+            "md": self.markdown,
+            "json": self.json
+        }));
 
         println!("Project Files");
         println!(" ├── HTML: {}", self.html);
