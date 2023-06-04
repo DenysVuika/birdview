@@ -131,13 +131,15 @@ The format of the output is similar to the following example:
     
     "e2e_test": 168,
     "e2e_test_case": 928,
-    
-    "angular_module": 149,
-    "angular_component": 415,
-    "angular_directive": 58,
-    "angular_service": 181,
-    "angular_pipe": 23,
-    "angular_dialog": 8,
+
+    "angular": {
+      "module": 149,
+      "component": 415,
+      "directive": 58,
+      "service": 181,
+      "pipe": 23,
+      "dialog": 8
+    },
 
     "types": {
       "html": 379,

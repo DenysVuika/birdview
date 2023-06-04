@@ -86,24 +86,24 @@ impl FileInspector for AngularInspector {
             .as_object_mut()
             .unwrap();
 
-        stats
-            .entry("angular_module")
-            .or_insert(json!(self.modules.len()));
-        stats
-            .entry("angular_component")
+        let angular = stats
+            .entry("angular")
+            .or_insert(json!({}))
+            .as_object_mut()
+            .unwrap();
+
+        angular.entry("module").or_insert(json!(self.modules.len()));
+        angular
+            .entry("component")
             .or_insert(json!(self.components.len()));
-        stats
-            .entry("angular_directive")
+        angular
+            .entry("directive")
             .or_insert(json!(self.directives.len()));
-        stats
-            .entry("angular_service")
+        angular
+            .entry("service")
             .or_insert(json!(self.services.len()));
-        stats
-            .entry("angular_pipe")
-            .or_insert(json!(self.pipes.len()));
-        stats
-            .entry("angular_dialog")
-            .or_insert(json!(self.dialogs.len()));
+        angular.entry("pipe").or_insert(json!(self.pipes.len()));
+        angular.entry("dialog").or_insert(json!(self.dialogs.len()));
 
         // cleanup
         self.modules = Vec::new();

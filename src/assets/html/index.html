@@ -142,6 +142,8 @@
 
             render(props, { activeTab }) {
                 const data = props.data;
+                const angular = data.stats.angular;
+
                 return html`
                     <nav class="panel is-link">
                         <p class="panel-heading">Angular</p>
@@ -157,12 +159,12 @@
                         </p>
 
                         ${activeTab === 0 && html`
-                            <${PanelRow} icon="mdi-angular" label="Modules: ${data.stats.angular_module}"/>
-                            <${PanelRow} icon="mdi-angular" label="Components: ${data.stats.angular_component}"/>
-                            <${PanelRow} icon="mdi-angular" label="Directives: ${data.stats.angular_directive}"/>
-                            <${PanelRow} icon="mdi-angular" label="Services: ${data.stats.angular_service}"/>
-                            <${PanelRow} icon="mdi-angular" label="Pipes: ${data.stats.angular_pipe}"/>
-                            <${PanelRow} icon="mdi-angular" label="Dialogs: ${data.stats.angular_dialog}"/>
+                            <${PanelRow} icon="mdi-angular" label="Modules: ${angular.module}"/>
+                            <${PanelRow} icon="mdi-angular" label="Components: ${angular.component}"/>
+                            <${PanelRow} icon="mdi-angular" label="Directives: ${angular.directive}"/>
+                            <${PanelRow} icon="mdi-angular" label="Services: ${angular.service}"/>
+                            <${PanelRow} icon="mdi-angular" label="Pipes: ${angular.pipe}"/>
+                            <${PanelRow} icon="mdi-angular" label="Dialogs: ${angular.dialog}"/>
                         `}
 
                         ${activeTab === 1 && html`
