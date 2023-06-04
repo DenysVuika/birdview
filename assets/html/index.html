@@ -50,6 +50,22 @@
                 this.setState({ activeTab: index });
             }
 
+            getDependencies(dev) {
+                const result = [];
+
+                for (const pkg of data.packages) {
+                    if (pkg.dependencies) {
+                        for (const dep of pkg.dependencies) {
+                            if (dep.dev === dev && !result.includes(dep.name)) {
+                                result.push(dep.name);
+                            }
+                        }
+                    }
+                }
+
+                return result;
+            }
+
             render(props, { checked, activeTab }) {
                 const data = props.data;
 
@@ -78,6 +94,18 @@
                                 <${PanelRow} icon="mdi-code-json" label="${pkg.path}"/>
                             `)}
 `                       }
+
+                        ${activeTab === 2 && html`
+                            ${this.getDependencies(false).map(name => html`
+                                <${PanelRow} icon="mdi-code-json" label="${name}"/>
+                            `)}
+                        `}
+
+                         ${activeTab === 3 && html`
+                            ${this.getDependencies(true).map(name => html`
+                                <${PanelRow} icon="mdi-code-json" label="${name}"/>
+                            `)}
+                        `}
 
 
                     </nav>
