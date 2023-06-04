@@ -39,8 +39,20 @@ pub fn run(config: &Config, working_dir: &PathBuf) -> Result<(), Box<dyn Error>>
     if let Some(output_path) = &config.output {
         let mut output_file = File::create(output_path)?;
         let json_string = serde_json::to_string_pretty(&output)?;
-        write!(output_file, "{}", json_string)?;
-        println!("Saved report to: {}", &output_path.display());
+        let extension = output_path.extension().unwrap();
+
+        if extension == "json" {
+            write!(output_file, "{}", json_string)?;
+            println!("Saved report to: {}", &output_path.display());
+        }
+        if extension == "html" {
+            let template = include_str!("assets/html/index.html");
+            let data = format!("window.data = {};", json_string);
+            let template = template.replace("// <birdview:DATA>", &data);
+
+            write!(output_file, "{}", template)?;
+            println!("Saved report to: {}", &output_path.display());
+        }
     }
 
     println!("Inspection complete");

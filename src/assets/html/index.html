@@ -9,7 +9,9 @@
             href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css"
     />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.2.96/css/materialdesignicons.min.css"/>
-    <script type="module" src="data.js"></script>
+    <script>
+        // <birdview:DATA>
+    </script>
     <script type="module">
         import {h, render, Component} from 'https://esm.sh/preact';
         import htm from 'https://esm.sh/htm';
@@ -223,10 +225,6 @@
 
         function App(props) {
             const data = props.data;
-
-            const onButtonClick = () => {
-                window.alert('test');
-            };
 
             return html`
                 <main>
