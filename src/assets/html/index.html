@@ -69,6 +69,7 @@
 
             render(props, { activeTab }) {
                 const data = props.data;
+                const pkg = data.stats.package;
 
                 return html`
                     <nav class="panel is-link">
@@ -82,19 +83,16 @@
                           </p>
 
                         ${activeTab === 0 && html`
-                            <${PanelRow} icon="mdi-package-variant-closed"
-                                         label="Packages: ${data.stats.package}"/>
-                            <${PanelRow} icon="mdi-package-variant-closed"
-                                         label="Product dependencies: ${data.stats.package_deps}"/>
-                            <${PanelRow} icon="mdi-package-variant-closed"
-                                         label="Development dependencies: ${data.stats.package_dev_deps}"/>
+                            <${PanelRow} icon="mdi-package-variant-closed" label="Packages: ${pkg.files}"/>
+                            <${PanelRow} icon="mdi-package-variant-closed" label="Product dependencies: ${pkg.prod_deps}"/>
+                            <${PanelRow} icon="mdi-package-variant-closed" label="Development dependencies: ${pkg.dev_deps}"/>
                         `}
 
                         ${activeTab === 1 && html`
                             ${data.packages.map(pkg => html`
                                 <${PanelRow} icon="mdi-code-json" label="${pkg.path}"/>
                             `)}
-`                       }
+                        `}
 
                         ${activeTab === 2 && html`
                             ${this.getDependencies(false).map(name => html`
@@ -107,8 +105,6 @@
                                 <${PanelRow} icon="mdi-package-variant-closed" label="${name}"/>
                             `)}
                         `}
-
-
                     </nav>
                 `;
             }
@@ -125,8 +121,6 @@
                                  label="Unit tests: ${data.stats.unit_test_case} (${data.stats.unit_test} files)"/>
                     <${PanelRow} icon="mdi-test-tube"
                                  label="E2E tests: ${data.stats.e2e_test_case} (${data.stats.e2e_test} files)"/>
-
-
                 </nav>
             `;
         }
@@ -171,37 +165,37 @@
                             ${data.angular.modules.map(name => html`
                                 <${PanelRow} icon="mdi-file-code-outline" label="${name}"/>
                             `)}
-    `                   }
+                        `}
 
                         ${activeTab === 2 && html`
                             ${data.angular.components.map(name => html`
                                 <${PanelRow} icon="mdi-file-code-outline" label="${name}"/>
                             `)}
-    `                   }
+                        `}
 
                         ${activeTab === 3 && html`
                             ${data.angular.directives.map(name => html`
                                 <${PanelRow} icon="mdi-file-code-outline" label="${name}"/>
                             `)}
-    `                   }
+                        `}
 
                         ${activeTab === 4 && html`
                             ${data.angular.services.map(name => html`
                                 <${PanelRow} icon="mdi-file-code-outline" label="${name}"/>
                             `)}
-    `                   }
+                        `}
 
                         ${activeTab === 5 && html`
                             ${data.angular.pipes.map(name => html`
                                 <${PanelRow} icon="mdi-file-code-outline" label="${name}"/>
                             `)}
-    `                   }
+                        `}
 
                         ${activeTab === 6 && html`
                             ${data.angular.dialogs.map(name => html`
                                 <${PanelRow} icon="mdi-file-code-outline" label="${name}"/>
                             `)}
-    `                   }
+                        `}
                     </nav>
                 `;
             }

@@ -94,14 +94,18 @@ impl FileInspector for PackageJsonInspector {
             .as_object_mut()
             .unwrap();
 
-        stats
+        let package = stats
             .entry("package")
+            .or_insert(json!({}))
+            .as_object_mut()
+            .unwrap();
+
+        package
+            .entry("files")
             .or_insert(json!(self.total_package_files));
-        stats
-            .entry("package_deps")
-            .or_insert(json!(self.total_deps));
-        stats
-            .entry("package_dev_deps")
+        package.entry("prod_deps").or_insert(json!(self.total_deps));
+        package
+            .entry("dev_deps")
             .or_insert(json!(self.total_dev_deps));
 
         println!("Packages");

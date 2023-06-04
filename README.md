@@ -122,9 +122,11 @@ The format of the output is similar to the following example:
   "report_date": "<date/time UTC>",
 
   "stats": {
-    "package": 32,
-    "package_deps": 145,
-    "package_dev_deps": 104,
+    "package": {
+      "files": 32,
+      "prod_deps": 145,
+      "dev_deps": 104
+    },
     
     "unit_test": 452,
     "unit_test_case": 5635,
