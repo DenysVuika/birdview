@@ -92,7 +92,7 @@ impl Workspace {
             };
 
             for inspector in inspectors.iter_mut() {
-                if inspector.supports_file(entry_path) {
+                if entry_path.is_file() && inspector.supports_file(entry_path) {
                     if self.verbose {
                         println!(
                             "├── ✅  {}",

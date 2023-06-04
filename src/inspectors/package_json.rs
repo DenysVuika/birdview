@@ -92,3 +92,35 @@ impl FileInspector for PackageJsonInspector {
         println!(" └── Dev dependencies: {}", self.total_dev_deps);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn writes_package_stats_on_finalise() {
+        let mut inspector = PackageJsonInspector {
+            total_package_files: 10,
+            total_deps: 20,
+            total_dev_deps: 30,
+        };
+
+        let workspace = Workspace::setup(PathBuf::from("."), false);
+        let mut map: Map<String, Value> = Map::new();
+        inspector.finalize(&workspace, &mut map);
+
+        assert_eq!(
+            Value::Object(map),
+            json!({
+                "stats": {
+                    "package": {
+                        "files": 10,
+                        "prod_deps": 20,
+                        "dev_deps": 30
+                    }
+                }
+            })
+        );
+    }
+}
