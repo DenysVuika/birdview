@@ -138,14 +138,16 @@ The format of the output is similar to the following example:
     "angular_service": 181,
     "angular_pipe": 23,
     "angular_dialog": 8,
-    
-    "types_html": 379,
-    "types_scss": 536,
-    "types_css": 33,
-    "types_ts": 5125,
-    "types_js": 301,
-    "types_md": 497,
-    "types_json": 548
+
+    "types": {
+      "html": 379,
+      "scss": 536,
+      "css": 33,
+      "ts": 5125,
+      "js": 301,
+      "md": 497,
+      "json": 548
+    }
   },
 
   "angular": {
