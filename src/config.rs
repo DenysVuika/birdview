@@ -8,4 +8,5 @@ pub struct Config {
     pub inspect_types: bool,
     pub verbose: bool,
     pub output: Option<PathBuf>,
+    pub open: bool,
 }

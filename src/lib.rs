@@ -52,6 +52,10 @@ pub fn run(config: &Config, working_dir: &PathBuf) -> Result<(), Box<dyn Error>>
 
             write!(output_file, "{}", template)?;
             println!("Saved report to: {}", &output_path.display());
+
+            if config.open {
+                webbrowser::open(&output_path.display().to_string())?
+            }
         }
     }
 

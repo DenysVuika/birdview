@@ -96,7 +96,11 @@ You can generate reports using multiple templates, based on the output extension
 #### HTML Report
 
 ```shell
+# generate report as output.html
 birdview inspect <project> --all --output output.html
+
+# generate report as output.html and open with the default browser
+birdview inspect <project> --all --output output.html --open
 ```
 
 Provides an output that is similar to the following one:

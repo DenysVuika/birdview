@@ -51,6 +51,10 @@ enum Commands {
         /// Output report file
         #[arg(short, long)]
         output: Option<PathBuf>,
+
+        /// Open report in browser where applicable
+        #[arg(long)]
+        open: bool,
     },
 }
 
@@ -71,6 +75,7 @@ fn main() {
             all,
             verbose,
             output,
+            open,
         }) => {
             let config = Config {
                 inspect_tests: *all | *tests,
@@ -79,6 +84,7 @@ fn main() {
                 inspect_types: *all | *types,
                 verbose: *verbose,
                 output: output.to_owned(),
+                open: *open,
             };
 
             if let Err(e) = run(&config, dir) {
