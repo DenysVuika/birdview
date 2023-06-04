@@ -73,6 +73,12 @@
                                          label="Development dependencies: ${data.stats.package_dev_deps}"/>
                         `}
 
+                        ${activeTab === 1 && html`
+                            ${data.packages.map(pkg => html`
+                                <${PanelRow} icon="mdi-code-json" label="${pkg.path}"/>
+                            `)}
+`                       }
+
 
                     </nav>
                 `;
