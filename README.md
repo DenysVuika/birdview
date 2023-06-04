@@ -84,10 +84,29 @@ birdview inspect --tests --packages <project>
 
 ### Generating Reports
 
-For additional processing or visualisation, you can generate full reports in the `JSON` format by using `--output` flag:
+```shell
+birdview inspect <project> --all --output <path>
+```
+
+You can generate reports using multiple templates, based on the output extension:
+
+- `.html`: single-page HTML report
+- `.json`: raw JSON report
+
+#### HTML Report
 
 ```shell
- birdview inspect <project> --all --output output.json
+birdview inspect <project> --all --output output.html
+```
+
+Provides an output that is similar to the following one:
+
+![html report](docs/html-report.png)
+
+#### JSON Report
+
+```shell
+birdview inspect <project> --all --output output.json
 ```
 
 The format of the output is similar to the following example:
