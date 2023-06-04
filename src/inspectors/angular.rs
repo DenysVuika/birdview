@@ -1,4 +1,5 @@
 use super::FileInspector;
+use crate::inspectors::FileInspectorOptions;
 use crate::workspace::Workspace;
 use serde_json::{json, Map, Value};
 use std::path::Path;
@@ -43,17 +44,8 @@ impl FileInspector for AngularInspector {
                 || display_path.ends_with(".dialog.ts"))
     }
 
-    fn inspect_file(
-        &mut self,
-        workspace: &Workspace,
-        path: &Path,
-        _output: &mut Map<String, Value>,
-    ) {
-        let workspace_path = path
-            .strip_prefix(&workspace.working_dir)
-            .unwrap()
-            .display()
-            .to_string();
+    fn inspect_file(&mut self, options: &FileInspectorOptions, _output: &mut Map<String, Value>) {
+        let workspace_path = options.relative_path.display().to_string();
 
         if workspace_path.ends_with(".module.ts") {
             self.modules.push(workspace_path);

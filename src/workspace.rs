@@ -1,4 +1,4 @@
-use crate::inspectors::FileInspector;
+use crate::inspectors::{FileInspector, FileInspectorOptions};
 use chrono::Utc;
 use serde_json::{Map, Value};
 use std::error::Error;
@@ -82,6 +82,15 @@ impl Workspace {
                 );
             }
 
+            let options = FileInspectorOptions {
+                working_dir: self.working_dir.to_path_buf(),
+                path: entry_path.to_path_buf(),
+                relative_path: entry_path
+                    .strip_prefix(&self.working_dir)
+                    .unwrap()
+                    .to_path_buf(),
+            };
+
             for inspector in inspectors.iter_mut() {
                 if inspector.supports_file(entry_path) {
                     if self.verbose {
@@ -94,7 +103,7 @@ impl Workspace {
                         );
                     }
 
-                    inspector.inspect_file(self, entry_path, map);
+                    inspector.inspect_file(&options, map);
                 }
             }
         }

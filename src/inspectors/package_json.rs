@@ -1,5 +1,5 @@
-use super::utils;
 use super::FileInspector;
+use crate::inspectors::FileInspectorOptions;
 use crate::workspace::Workspace;
 use serde_json::{json, Map, Value};
 use std::path::Path;
@@ -32,13 +32,8 @@ impl FileInspector for PackageJsonInspector {
         path.is_file() && path.ends_with("package.json")
     }
 
-    fn inspect_file(
-        &mut self,
-        workspace: &Workspace,
-        path: &Path,
-        output: &mut Map<String, Value>,
-    ) {
-        let value = utils::load_json_file(path);
+    fn inspect_file(&mut self, options: &FileInspectorOptions, output: &mut Map<String, Value>) {
+        let value = options.as_json();
         let mut dependencies: Vec<Value> = Vec::new();
 
         if let Some(data) = value["dependencies"].as_object() {
@@ -69,11 +64,7 @@ impl FileInspector for PackageJsonInspector {
             .as_array_mut()
             .unwrap();
 
-        let workspace_path = path
-            .strip_prefix(&workspace.working_dir)
-            .unwrap()
-            .display()
-            .to_string();
+        let workspace_path = options.relative_path.display().to_string();
 
         packages.push(json!({
             "path": workspace_path,

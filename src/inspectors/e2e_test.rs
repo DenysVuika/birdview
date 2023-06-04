@@ -1,5 +1,6 @@
 use super::utils;
 use super::FileInspector;
+use crate::inspectors::FileInspectorOptions;
 use crate::workspace::Workspace;
 use serde_json::{json, Map, Value};
 use std::path::Path;
@@ -31,19 +32,10 @@ impl FileInspector for EndToEndTestInspector {
         path.is_file() && (display_path.ends_with(".test.ts") || display_path.ends_with(".e2e.ts"))
     }
 
-    fn inspect_file(
-        &mut self,
-        workspace: &Workspace,
-        path: &Path,
-        output: &mut Map<String, Value>,
-    ) {
-        let contents = std::fs::read_to_string(path).unwrap();
+    fn inspect_file(&mut self, options: &FileInspectorOptions, output: &mut Map<String, Value>) {
+        let contents = options.read_content();
         let test_names = utils::extract_test_names(&contents);
-        let workspace_path = path
-            .strip_prefix(&workspace.working_dir)
-            .unwrap()
-            .display()
-            .to_string();
+        let workspace_path = options.relative_path.display().to_string();
 
         let unit_tests = output
             .entry("e2e_tests")
