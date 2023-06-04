@@ -52,17 +52,16 @@
 
             getDependencies(dev) {
                 const result = [];
-
                 for (const pkg of data.packages) {
                     if (pkg.dependencies) {
-                        for (const dep of pkg.dependencies) {
-                            if (dep.dev === dev && !result.includes(dep.name)) {
-                                result.push(dep.name);
+                        for (const dep of pkg.dependencies.filter(dep => dep.dev === dev)) {
+                            const name = `${dep.name}@${dep.version}`;
+                            if (!result.includes(dep.name)) {
+                                result.push(name);
                             }
                         }
                     }
                 }
-
                 return result;
             }
 
@@ -97,13 +96,13 @@
 
                         ${activeTab === 2 && html`
                             ${this.getDependencies(false).map(name => html`
-                                <${PanelRow} icon="mdi-code-json" label="${name}"/>
+                                <${PanelRow} icon="mdi-package-variant-closed" label="${name}"/>
                             `)}
                         `}
 
                          ${activeTab === 3 && html`
                             ${this.getDependencies(true).map(name => html`
-                                <${PanelRow} icon="mdi-code-json" label="${name}"/>
+                                <${PanelRow} icon="mdi-package-variant-closed" label="${name}"/>
                             `)}
                         `}
 
