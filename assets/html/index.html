@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Home</title>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css"
+    />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.2.96/css/materialdesignicons.min.css"/>
+    <script type="module" src="data.js"></script>
+    <script type="module">
+        import {h, render, Component} from 'https://esm.sh/preact';
+        import htm from 'https://esm.sh/htm';
+
+        const html = htm.bind(h);
+
+        function Header(props) {
+            const data = props.data;
+            return html`
+                <section class="hero is-primary">
+                    <div class="hero-body">
+                        <p class="title">
+                            ${data.project_name} ${data.project_version}
+                        </p>
+                        <p class="subtitle">${data.report_date}</p>
+                    </div>
+                </section>
+            `;
+        }
+
+        function PanelRow(props) {
+            return html`
+                <a class="panel-block">
+                    <span class="panel-icon">
+                        <i class="mdi ${props.icon}"></i>
+                    </span>
+                    <span>${props.label}</span>
+                </a>
+            `;
+        }
+
+        class Packages extends Component {
+            state = {
+                activeTab: 0
+            };
+
+            setActiveTab(index) {
+                this.setState({ activeTab: index });
+            }
+
+            render(props, { checked, activeTab }) {
+                const data = props.data;
+
+                return html`
+                    <nav class="panel is-link">
+                        <p class="panel-heading">Packages</p>
+
+                        <p class="panel-tabs">
+                            <a class="${ activeTab === 0 ? 'is-active' : null}" onClick="${() => this.setActiveTab(0)}">Stats</a>
+                            <a class="${ activeTab === 1 ? 'is-active' : null}" onClick="${() => this.setActiveTab(1)}">Packages</a>
+                            <a class="${ activeTab === 2 ? 'is-active' : null}" onClick="${() => this.setActiveTab(2)}">Prod Deps</a>
+                            <a class="${ activeTab === 3 ? 'is-active' : null}" onClick="${() => this.setActiveTab(3)}">Dev Deps</a>
+                          </p>
+
+                        ${activeTab === 0 && html`
+                            <${PanelRow} icon="mdi-package-variant-closed"
+                                         label="Packages: ${data.stats.package}"/>
+                            <${PanelRow} icon="mdi-package-variant-closed"
+                                         label="Product dependencies: ${data.stats.package_deps}"/>
+                            <${PanelRow} icon="mdi-package-variant-closed"
+                                         label="Development dependencies: ${data.stats.package_dev_deps}"/>
+                        `}
+
+
+                    </nav>
+                `;
+            }
+        }
+
+        function Tests(props) {
+            const data = props.data;
+
+            return html`
+                <nav class="panel is-link">
+                    <p class="panel-heading">Tests</p>
+
+                    <${PanelRow} icon="mdi-test-tube"
+                                 label="Unit tests: ${data.stats.unit_test_case} (${data.stats.unit_test} files)"/>
+                    <${PanelRow} icon="mdi-test-tube"
+                                 label="E2E tests: ${data.stats.e2e_test_case} (${data.stats.e2e_test} files)"/>
+
+
+                </nav>
+            `;
+        }
+
+        function Angular(props) {
+            const data = props.data;
+            return html`
+                <nav class="panel is-link">
+                    <p class="panel-heading">Angular</p>
+
+                    <${PanelRow} icon="mdi-angular" label="Modules: ${data.stats.angular_module}"/>
+                    <${PanelRow} icon="mdi-angular" label="Components: ${data.stats.angular_component}"/>
+                    <${PanelRow} icon="mdi-angular" label="Directives: ${data.stats.angular_directive}"/>
+                    <${PanelRow} icon="mdi-angular" label="Services: ${data.stats.angular_service}"/>
+                    <${PanelRow} icon="mdi-angular" label="Pipes: ${data.stats.angular_pipe}"/>
+                    <${PanelRow} icon="mdi-angular" label="Dialogs: ${data.stats.angular_dialog}"/>
+                </nav>
+            `;
+        }
+
+        function FileTypes(props) {
+            const data = props.data;
+
+            return html`
+                <nav class="panel is-link">
+                    <p class="panel-heading">Files</p>
+
+                    <${PanelRow} icon="mdi-angular" label="HTML: ${data.stats.types_html}"/>
+                    <${PanelRow} icon="mdi-angular" label="SCSS: ${data.stats.types_scss}"/>
+                    <${PanelRow} icon="mdi-angular" label="CSS: ${data.stats.types_css}"/>
+                    <${PanelRow} icon="mdi-angular" label="TypeScript: ${data.stats.types_ts}"/>
+                    <${PanelRow} icon="mdi-angular" label="JavaScript: ${data.stats.types_js}"/>
+                    <${PanelRow} icon="mdi-angular" label="Markdown: ${data.stats.types_md}"/>
+                    <${PanelRow} icon="mdi-angular" label="JSON: ${data.stats.types_json}"/>
+                </nav>
+            `;
+        }
+
+        function App(props) {
+            const data = props.data;
+
+            const onButtonClick = () => {
+                window.alert('test');
+            };
+
+            return html`
+                <main>
+                    <${Header} data=${data}></Header>
+                    <section class="section">
+                        <${Packages} data=${data}></Packages>
+                        <${Tests} data=${data}></Tests>
+                        <${Angular} data=${data}></Angular>
+                        <${FileTypes} data=${data}></FileTypes>
+                    </section>
+                </main>
+            `;
+        }
+
+        render(html`
+            <${App} data=${window.data}/>`, document.body);
+    </script>
+</head>
+<body></body>
+</html>
