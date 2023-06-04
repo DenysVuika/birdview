@@ -68,8 +68,14 @@ impl FileInspector for UnitTestInspector {
             .as_object_mut()
             .unwrap();
 
-        stats.entry("unit_test").or_insert(json!(self.total_files));
-        stats
+        let tests = stats
+            .entry("tests")
+            .or_insert(json!({}))
+            .as_object_mut()
+            .unwrap();
+
+        tests.entry("unit_test").or_insert(json!(self.total_files));
+        tests
             .entry("unit_test_case")
             .or_insert(json!(self.total_cases));
 

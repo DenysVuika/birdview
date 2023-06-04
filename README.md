@@ -127,12 +127,13 @@ The format of the output is similar to the following example:
       "prod_deps": 145,
       "dev_deps": 104
     },
-    
-    "unit_test": 452,
-    "unit_test_case": 5635,
-    
-    "e2e_test": 168,
-    "e2e_test_case": 928,
+
+    "tests": {
+      "unit_test": 452,
+      "unit_test_case": 5635,
+      "e2e_test": 168,
+      "e2e_test_case": 928
+    },
 
     "angular": {
       "module": 149,

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Home</title>
+    <title>BirdView</title>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <link
@@ -112,15 +112,14 @@
 
         function Tests(props) {
             const data = props.data;
+            const tests = data.stats.tests;
 
             return html`
                 <nav class="panel is-link">
                     <p class="panel-heading">Tests</p>
 
-                    <${PanelRow} icon="mdi-test-tube"
-                                 label="Unit tests: ${data.stats.unit_test_case} (${data.stats.unit_test} files)"/>
-                    <${PanelRow} icon="mdi-test-tube"
-                                 label="E2E tests: ${data.stats.e2e_test_case} (${data.stats.e2e_test} files)"/>
+                    <${PanelRow} icon="mdi-test-tube" label="Unit tests: ${tests.unit_test_case} (${tests.unit_test} files)"/>
+                    <${PanelRow} icon="mdi-test-tube" label="E2E tests: ${tests.e2e_test_case} (${tests.e2e_test} files)"/>
                 </nav>
             `;
         }
@@ -203,18 +202,19 @@
 
         function FileTypes(props) {
             const data = props.data;
+            const types = data.stats.types;
 
             return html`
                 <nav class="panel is-link">
                     <p class="panel-heading">Files</p>
 
-                    <${PanelRow} icon="mdi-angular" label="HTML: ${data.stats.types.html}"/>
-                    <${PanelRow} icon="mdi-angular" label="SCSS: ${data.stats.types.scss}"/>
-                    <${PanelRow} icon="mdi-angular" label="CSS: ${data.stats.types.css}"/>
-                    <${PanelRow} icon="mdi-angular" label="TypeScript: ${data.stats.types.ts}"/>
-                    <${PanelRow} icon="mdi-angular" label="JavaScript: ${data.stats.types.js}"/>
-                    <${PanelRow} icon="mdi-angular" label="Markdown: ${data.stats.types.md}"/>
-                    <${PanelRow} icon="mdi-angular" label="JSON: ${data.stats.types.json}"/>
+                    <${PanelRow} icon="mdi-angular" label="HTML: ${types.html}"/>
+                    <${PanelRow} icon="mdi-angular" label="SCSS: ${types.scss}"/>
+                    <${PanelRow} icon="mdi-angular" label="CSS: ${types.css}"/>
+                    <${PanelRow} icon="mdi-angular" label="TypeScript: ${types.ts}"/>
+                    <${PanelRow} icon="mdi-angular" label="JavaScript: ${types.js}"/>
+                    <${PanelRow} icon="mdi-angular" label="Markdown: ${types.md}"/>
+                    <${PanelRow} icon="mdi-angular" label="JSON: ${types.json}"/>
                 </nav>
             `;
         }

@@ -69,8 +69,14 @@ impl FileInspector for EndToEndTestInspector {
             .as_object_mut()
             .unwrap();
 
-        stats.entry("e2e_test").or_insert(json!(self.total_files));
-        stats
+        let tests = stats
+            .entry("tests")
+            .or_insert(json!({}))
+            .as_object_mut()
+            .unwrap();
+
+        tests.entry("e2e_test").or_insert(json!(self.total_files));
+        tests
             .entry("e2e_test_case")
             .or_insert(json!(self.total_cases));
 
