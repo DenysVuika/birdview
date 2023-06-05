@@ -27,6 +27,22 @@ pub fn extract_test_names(contents: &str) -> Vec<&str> {
 }
 
 #[cfg(test)]
+pub mod test_utils {
+    use crate::inspectors::FileInspectorOptions;
+    use assert_fs::NamedTempFile;
+
+    pub fn options_from_file(file: &NamedTempFile) -> FileInspectorOptions {
+        let parent = file.parent().unwrap();
+
+        FileInspectorOptions {
+            working_dir: parent.to_path_buf(),
+            path: file.path().to_path_buf(),
+            relative_path: file.path().strip_prefix(parent).unwrap().to_path_buf(),
+        }
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
 

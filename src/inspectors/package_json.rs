@@ -93,6 +93,7 @@ impl FileInspector for PackageJsonInspector {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::inspectors::utils::test_utils::options_from_file;
     use assert_fs::prelude::*;
     use assert_fs::NamedTempFile;
 
@@ -101,7 +102,7 @@ mod tests {
         let file = NamedTempFile::new("package.json")?;
         file.touch()?;
         let inspector = PackageJsonInspector::new();
-        assert_eq!(inspector.supports_file(file.path()), true);
+        assert!(inspector.supports_file(file.path()));
 
         file.close()?;
         Ok(())
@@ -111,7 +112,7 @@ mod tests {
     fn requires_json_file_to_exist() {
         let path = Path::new("missing/package.json");
         let inspector = PackageJsonInspector::new();
-        assert_eq!(inspector.supports_file(path), false);
+        assert!(!inspector.supports_file(path));
     }
 
     #[test]
@@ -160,16 +161,6 @@ mod tests {
                 }
             })
         );
-    }
-
-    fn options_from_file(file: &NamedTempFile) -> FileInspectorOptions {
-        let parent = file.parent().unwrap();
-
-        FileInspectorOptions {
-            working_dir: parent.to_path_buf(),
-            path: file.path().to_path_buf(),
-            relative_path: file.path().strip_prefix(parent).unwrap().to_path_buf(),
-        }
     }
 
     #[test]
