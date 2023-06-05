@@ -123,7 +123,7 @@ fn is_not_hidden(entry: &DirEntry) -> bool {
 }
 
 fn is_excluded(entry: &DirEntry) -> bool {
-    let exclude = vec!["nxcache", "node_modules", "coverage"];
+    let exclude = vec!["nxcache", "node_modules", "coverage", "dist"];
     entry
         .file_name()
         .to_str()

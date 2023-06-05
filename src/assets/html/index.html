@@ -152,12 +152,12 @@
                         </p>
 
                         ${activeTab === 0 && html`
-                            <${PanelRow} icon="mdi-angular" label="Modules: ${angular.module}"/>
-                            <${PanelRow} icon="mdi-angular" label="Components: ${angular.component}"/>
-                            <${PanelRow} icon="mdi-angular" label="Directives: ${angular.directive}"/>
-                            <${PanelRow} icon="mdi-angular" label="Services: ${angular.service}"/>
-                            <${PanelRow} icon="mdi-angular" label="Pipes: ${angular.pipe}"/>
-                            <${PanelRow} icon="mdi-angular" label="Dialogs: ${angular.dialog}"/>
+                            <${PanelRow} icon="mdi-file-code-outline" label="Modules: ${angular.module}"/>
+                            <${PanelRow} icon="mdi-file-code-outline" label="Components: ${angular.component}"/>
+                            <${PanelRow} icon="mdi-file-code-outline" label="Directives: ${angular.directive}"/>
+                            <${PanelRow} icon="mdi-file-code-outline" label="Services: ${angular.service}"/>
+                            <${PanelRow} icon="mdi-file-code-outline" label="Pipes: ${angular.pipe}"/>
+                            <${PanelRow} icon="mdi-file-code-outline" label="Dialogs: ${angular.dialog}"/>
                         `}
 
                         ${activeTab === 1 && html`
@@ -201,20 +201,16 @@
         }
 
         function FileTypes(props) {
-            const data = props.data;
-            const types = data.stats.types;
+            const types = props.data.stats.types;
+            const rows = Object.keys(types).map(key => ({ key, value: types[key] }));
 
             return html`
                 <nav class="panel is-link">
                     <p class="panel-heading">Files</p>
 
-                    <${PanelRow} icon="mdi-angular" label="HTML: ${types.html}"/>
-                    <${PanelRow} icon="mdi-angular" label="SCSS: ${types.scss}"/>
-                    <${PanelRow} icon="mdi-angular" label="CSS: ${types.css}"/>
-                    <${PanelRow} icon="mdi-angular" label="TypeScript: ${types.ts}"/>
-                    <${PanelRow} icon="mdi-angular" label="JavaScript: ${types.js}"/>
-                    <${PanelRow} icon="mdi-angular" label="Markdown: ${types.md}"/>
-                    <${PanelRow} icon="mdi-angular" label="JSON: ${types.json}"/>
+                    ${rows.map(row => html`
+                        <${PanelRow} icon="mdi-file-document" label="${row.key}: ${row.value}"/>
+                    `)}
                 </nav>
             `;
         }
