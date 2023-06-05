@@ -1,6 +1,5 @@
 use super::FileInspector;
 use crate::inspectors::FileInspectorOptions;
-use crate::workspace::Workspace;
 use serde_json::{json, Map, Value};
 use std::path::Path;
 
@@ -59,7 +58,7 @@ impl FileInspector for FileTypeInspector {
         }
     }
 
-    fn finalize(&mut self, _workspace: &Workspace, output: &mut Map<String, Value>) {
+    fn finalize(&mut self, output: &mut Map<String, Value>) {
         let stats = output
             .entry("stats")
             .or_insert(json!({}))

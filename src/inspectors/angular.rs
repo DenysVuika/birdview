@@ -1,6 +1,5 @@
 use super::FileInspector;
 use crate::inspectors::FileInspectorOptions;
-use crate::workspace::Workspace;
 use serde_json::{json, Map, Value};
 use std::path::Path;
 
@@ -62,7 +61,7 @@ impl FileInspector for AngularInspector {
         }
     }
 
-    fn finalize(&mut self, _workspace: &Workspace, output: &mut Map<String, Value>) {
+    fn finalize(&mut self, output: &mut Map<String, Value>) {
         output.entry("angular").or_insert(json!({
             "modules": self.modules,
             "components": self.components,

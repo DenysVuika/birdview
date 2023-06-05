@@ -109,7 +109,7 @@ impl Workspace {
         }
 
         for inspector in inspectors {
-            inspector.finalize(self, map);
+            inspector.finalize(map);
         }
     }
 }

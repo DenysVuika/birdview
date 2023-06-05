@@ -1,7 +1,6 @@
 use super::utils;
 use super::FileInspector;
 use crate::inspectors::FileInspectorOptions;
-use crate::workspace::Workspace;
 use serde_json::{json, Map, Value};
 use std::path::Path;
 
@@ -51,7 +50,7 @@ impl FileInspector for UnitTestInspector {
         self.total_cases += test_names.len() as i64;
     }
 
-    fn finalize(&mut self, _workspace: &Workspace, output: &mut Map<String, Value>) {
+    fn finalize(&mut self, output: &mut Map<String, Value>) {
         let stats = output
             .entry("stats")
             .or_insert(json!({}))

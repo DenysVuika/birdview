@@ -1,6 +1,5 @@
 use super::FileInspector;
 use crate::inspectors::FileInspectorOptions;
-use crate::workspace::Workspace;
 use serde_json::{json, Map, Value};
 use std::path::Path;
 
@@ -66,7 +65,7 @@ impl FileInspector for PackageJsonInspector {
         }));
     }
 
-    fn finalize(&mut self, _workspace: &Workspace, output: &mut Map<String, Value>) {
+    fn finalize(&mut self, output: &mut Map<String, Value>) {
         output.entry("packages").or_insert(json!(self.packages));
 
         let stats = output
@@ -96,11 +95,10 @@ mod tests {
     use super::*;
     use assert_fs::prelude::*;
     use assert_fs::NamedTempFile;
-    use std::path::PathBuf;
 
     #[test]
     fn supports_json_file() -> Result<(), Box<dyn std::error::Error>> {
-        let file = assert_fs::NamedTempFile::new("package.json")?;
+        let file = NamedTempFile::new("package.json")?;
         file.touch()?;
         let inspector = PackageJsonInspector::new();
         assert_eq!(inspector.supports_file(file.path()), true);
@@ -119,10 +117,9 @@ mod tests {
     #[test]
     fn writes_default_values_on_finalise() {
         let mut inspector: PackageJsonInspector = Default::default();
-        let workspace = Workspace::setup(PathBuf::from("."), false);
 
         let mut map: Map<String, Value> = Map::new();
-        inspector.finalize(&workspace, &mut map);
+        inspector.finalize(&mut map);
 
         assert_eq!(
             Value::Object(map),
@@ -147,9 +144,8 @@ mod tests {
             packages: vec![],
         };
 
-        let workspace = Workspace::setup(PathBuf::from("."), false);
         let mut map: Map<String, Value> = Map::new();
-        inspector.finalize(&workspace, &mut map);
+        inspector.finalize(&mut map);
 
         assert_eq!(
             Value::Object(map),
@@ -178,17 +174,16 @@ mod tests {
 
     #[test]
     fn parses_package_dependencies() -> Result<(), Box<dyn std::error::Error>> {
-        let file = assert_fs::NamedTempFile::new("package.json")?;
+        let file = NamedTempFile::new("package.json")?;
         file.write_str("{ \"dependencies\": { \"tslib\": \"^2.5.0\" }, \"devDependencies\": { \"@angular/cli\": \"14.1.3\" } }")?;
 
         let mut inspector = PackageJsonInspector::new();
-        let workspace = Workspace::setup(PathBuf::from("."), false);
 
         let mut map: Map<String, Value> = Map::new();
         let options = options_from_file(&file);
 
         inspector.inspect_file(&options, &mut map);
-        inspector.finalize(&workspace, &mut map);
+        inspector.finalize(&mut map);
 
         assert_eq!(
             Value::Object(map),
