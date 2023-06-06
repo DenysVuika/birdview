@@ -194,6 +194,51 @@ mod tests {
 
     #[test]
     fn parses_unit_tests() -> Result<(), Box<dyn std::error::Error>> {
+        let file = NamedTempFile::new("tests.e2e.ts")?;
+        let content = r#"
+            describe('test suite', () => {
+                it('should have default LTR direction value', () => {});
+                it('should change direction on textOrientation event', () => {});
+            });
+        "#;
+        file.write_str(content)?;
+
+        let mut inspector = TestInspector::new();
+        let mut map: Map<String, Value> = Map::new();
+
+        inspector.inspect_file(&options_from_file(&file), &mut map);
+        inspector.finalize(&mut map);
+
+        assert_eq!(
+            Value::Object(map),
+            json!({
+                "unit_tests": [],
+                "e2e_tests": [
+                    {
+                        "path": "tests.e2e.ts",
+                        "cases": [
+                            "should have default LTR direction value",
+                            "should change direction on textOrientation event"
+                        ]
+                    }
+                ],
+                "stats": {
+                    "tests": {
+                        "unit_test": 0,
+                        "unit_test_case": 0,
+                        "e2e_test": 1,
+                        "e2e_test_case": 2
+                    }
+                }
+            })
+        );
+
+        file.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn parses_e2e_tests() -> Result<(), Box<dyn std::error::Error>> {
         let file = NamedTempFile::new("tests.spec.ts")?;
         let content = r#"
             describe('test suite', () => {
