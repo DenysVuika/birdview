@@ -179,10 +179,13 @@ mod tests {
             Value::Object(map),
             json!({
                 "unit_tests": [],
+                "e2e_tests": [],
                 "stats": {
                     "tests": {
                         "unit_test": 0,
-                        "unit_test_case": 0
+                        "unit_test_case": 0,
+                        "e2e_test": 0,
+                        "e2e_test_case": 0
                     }
                 }
             })
@@ -220,10 +223,13 @@ mod tests {
                         ]
                     }
                 ],
+                "e2e_tests": [],
                 "stats": {
                     "tests": {
                         "unit_test": 1,
-                        "unit_test_case": 2
+                        "unit_test_case": 2,
+                        "e2e_test": 0,
+                        "e2e_test_case": 0
                     }
                 }
             })
