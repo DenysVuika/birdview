@@ -1,6 +1,7 @@
-use super::utils;
 use super::FileInspector;
 use crate::inspectors::FileInspectorOptions;
+use lazy_static::lazy_static;
+use regex::Regex;
 use serde_json::{json, Map, Value};
 use std::path::Path;
 
@@ -21,6 +22,20 @@ impl TestInspector {
             e2e_test_files: vec![],
         }
     }
+
+    pub fn extract_test_names(contents: &str) -> Vec<&str> {
+        // (\b(?:it|test)\b\(['"])(?P<name>.*?)(['"])
+        // https://rustexp.lpil.uk/
+        lazy_static! {
+            static ref NAME_REGEX: Regex =
+                Regex::new(r#"(\b(?:it|test)\b\(['"])(?P<name>.*?)(['"])"#).unwrap();
+        }
+
+        NAME_REGEX
+            .captures_iter(contents)
+            .map(|c| c.name("name").unwrap().as_str())
+            .collect()
+    }
 }
 
 impl Default for TestInspector {
@@ -40,7 +55,7 @@ impl FileInspector for TestInspector {
 
     fn inspect_file(&mut self, options: &FileInspectorOptions, _output: &mut Map<String, Value>) {
         let contents = options.read_content();
-        let test_names = utils::extract_test_names(&contents);
+        let test_names = TestInspector::extract_test_names(&contents);
 
         if !test_names.is_empty() {
             let workspace_path = options.relative_path.display().to_string();
@@ -96,6 +111,39 @@ mod tests {
     use crate::inspectors::utils::test_utils::options_from_file;
     use assert_fs::prelude::*;
     use assert_fs::NamedTempFile;
+
+    #[test]
+    fn extracts_single_test_name() {
+        let input = "it('should reset selected nodes from store', () => {";
+        assert_eq!(
+            vec!["should reset selected nodes from store"],
+            TestInspector::extract_test_names(input)
+        );
+    }
+
+    #[test]
+    fn extracts_multiple_test_names() {
+        let input = "\
+            it('should reset selected nodes from store', () => {\
+            it('should return false when entry is not shared', () => {
+        ";
+        assert_eq!(
+            vec![
+                "should reset selected nodes from store",
+                "should return false when entry is not shared"
+            ],
+            TestInspector::extract_test_names(input)
+        );
+    }
+
+    #[test]
+    fn extracts_playwright_test_names() {
+        let input = "test('Create a rule with condition', async ({ personalFiles, nodesPage })";
+        assert_eq!(
+            vec!["Create a rule with condition"],
+            TestInspector::extract_test_names(input)
+        );
+    }
 
     #[test]
     fn requires_spec_file_to_exist() {
