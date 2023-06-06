@@ -33,14 +33,17 @@ impl FileInspector for UnitTestInspector {
     fn inspect_file(&mut self, options: &FileInspectorOptions, _output: &mut Map<String, Value>) {
         let contents = options.read_content();
         let test_names = utils::extract_test_names(&contents);
-        let workspace_path = options.relative_path.display().to_string();
 
-        self.test_files.push(json!({
-            "path": workspace_path,
-            "cases": test_names,
-        }));
+        if !test_names.is_empty() {
+            let workspace_path = options.relative_path.display().to_string();
 
-        self.total_cases += test_names.len() as i64;
+            self.test_files.push(json!({
+                "path": workspace_path,
+                "cases": test_names,
+            }));
+
+            self.total_cases += test_names.len() as i64;
+        }
     }
 
     fn finalize(&mut self, output: &mut Map<String, Value>) {
