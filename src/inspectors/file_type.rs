@@ -36,6 +36,10 @@ impl FileInspector for FileTypeInspector {
     }
 
     fn finalize(&mut self, output: &mut Map<String, Value>) {
+        if self.types.is_empty() {
+            return;
+        }
+
         let stats = output
             .entry("stats")
             .or_insert(json!({}))
@@ -48,5 +52,54 @@ impl FileInspector for FileTypeInspector {
         for (key, value) in &self.types {
             println!(" ├── {}: {}", key, value);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::inspectors::utils::test_utils::options_from_file;
+    use assert_fs::prelude::*;
+    use assert_fs::NamedTempFile;
+
+    #[test]
+    fn no_output_when_inspections_not_invoked() {
+        let mut map: Map<String, Value> = Map::new();
+        let mut inspector = FileTypeInspector::new();
+        inspector.finalize(&mut map);
+
+        assert_eq!(Value::Object(map), json!({}));
+    }
+
+    #[test]
+    fn should_parse_multiple_types() -> Result<(), Box<dyn std::error::Error>> {
+        let file1 = NamedTempFile::new("test.spec.ts")?;
+        file1.touch()?;
+
+        let file2 = NamedTempFile::new("README.md")?;
+        file2.touch()?;
+
+        let mut map: Map<String, Value> = Map::new();
+        let mut inspector = FileTypeInspector::new();
+
+        inspector.inspect_file(&options_from_file(&file1), &mut map);
+        inspector.inspect_file(&options_from_file(&file2), &mut map);
+        inspector.finalize(&mut map);
+
+        assert_eq!(
+            Value::Object(map),
+            json!({
+                "stats": {
+                    "types": {
+                        "ts": 1,
+                        "md": 1
+                    }
+                }
+            })
+        );
+
+        file1.close()?;
+        file2.close()?;
+        Ok(())
     }
 }
