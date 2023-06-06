@@ -10,20 +10,24 @@ use walkdir::{DirEntry, WalkDir};
 pub struct Workspace {
     pub working_dir: PathBuf,
     verbose: bool,
+    inspectors: Vec<Box<dyn FileInspector>>,
 }
 
 impl Workspace {
-    pub fn new(working_dir: PathBuf, verbose: bool) -> Self {
+    pub fn new(
+        working_dir: PathBuf,
+        inspectors: Vec<Box<dyn FileInspector>>,
+        verbose: bool,
+    ) -> Self {
         Workspace {
             working_dir,
             verbose,
+            inspectors,
         }
     }
 
-    pub fn inspect(
-        &self,
-        mut inspectors: Vec<Box<dyn FileInspector>>,
-    ) -> Result<Value, Box<dyn Error>> {
+    /// Performs the workspace analysis using the registered file inspectors
+    pub fn inspect(&mut self) -> Result<Value, Box<dyn Error>> {
         let mut map = Map::new();
         if self.verbose {
             println!("{}", self.working_dir.display());
@@ -52,15 +56,11 @@ impl Workspace {
             Value::String(Utc::now().to_string()),
         );
 
-        self.run_inspectors(&mut inspectors, &mut map);
+        self.run_inspectors(&mut map);
         Ok(Value::Object(map))
     }
 
-    fn run_inspectors(
-        &self,
-        inspectors: &mut Vec<Box<dyn FileInspector>>,
-        map: &mut Map<String, Value>,
-    ) {
+    fn run_inspectors(&mut self, map: &mut Map<String, Value>) {
         let walker = WalkDir::new(&self.working_dir)
             .follow_links(true)
             .into_iter();
@@ -91,7 +91,7 @@ impl Workspace {
                     .to_path_buf(),
             };
 
-            for inspector in inspectors.iter_mut() {
+            for inspector in self.inspectors.iter_mut() {
                 if entry_path.is_file() && inspector.supports_file(entry_path) {
                     if self.verbose {
                         println!(
@@ -108,7 +108,7 @@ impl Workspace {
             }
         }
 
-        for inspector in inspectors {
+        for inspector in self.inspectors.iter_mut() {
             inspector.finalize(map);
         }
     }
