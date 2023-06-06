@@ -17,7 +17,7 @@ pub fn run(config: &Config, working_dir: &PathBuf) -> Result<(), Box<dyn Error>>
         inspectors.push(Box::new(PackageJsonInspector::new()));
     }
     if config.inspect_tests {
-        inspectors.push(Box::new(UnitTestInspector::new()));
+        inspectors.push(Box::new(TestInspector::new()));
     }
     if config.inspect_angular {
         inspectors.push(Box::new(AngularInspector::new()));
@@ -43,8 +43,7 @@ pub fn run(config: &Config, working_dir: &PathBuf) -> Result<(), Box<dyn Error>>
         if extension == "json" {
             write!(output_file, "{}", json_string)?;
             println!("Saved report to: {}", &output_path.display());
-        }
-        if extension == "html" {
+        } else if extension == "html" {
             let template = include_str!("assets/html/index.html");
             let data = format!("window.data = {};", json_string);
             let template = template.replace("// <birdview:DATA>", &data);

@@ -4,17 +4,17 @@ use crate::inspectors::FileInspectorOptions;
 use serde_json::{json, Map, Value};
 use std::path::Path;
 
-pub struct UnitTestInspector {
+pub struct TestInspector {
     unit_test_cases: i64,
     unit_test_files: Vec<Value>,
     e2e_test_cases: i64,
     e2e_test_files: Vec<Value>,
 }
 
-impl UnitTestInspector {
+impl TestInspector {
     /// Creates a new instance of the inspector
     pub fn new() -> Self {
-        UnitTestInspector {
+        TestInspector {
             unit_test_cases: 0,
             unit_test_files: vec![],
             e2e_test_cases: 0,
@@ -23,13 +23,13 @@ impl UnitTestInspector {
     }
 }
 
-impl Default for UnitTestInspector {
+impl Default for TestInspector {
     fn default() -> Self {
-        UnitTestInspector::new()
+        TestInspector::new()
     }
 }
 
-impl FileInspector for UnitTestInspector {
+impl FileInspector for TestInspector {
     fn supports_file(&self, path: &Path) -> bool {
         let display_path = path.display().to_string();
         path.is_file()
@@ -100,7 +100,7 @@ mod tests {
     #[test]
     fn requires_spec_file_to_exist() {
         let path = Path::new("missing/test.spec.ts");
-        let inspector = UnitTestInspector::new();
+        let inspector = TestInspector::new();
         assert!(!inspector.supports_file(path));
     }
 
@@ -108,7 +108,7 @@ mod tests {
     fn supports_spec_file() -> Result<(), Box<dyn std::error::Error>> {
         let file = NamedTempFile::new("test.spec.ts")?;
         file.touch()?;
-        let inspector: UnitTestInspector = Default::default();
+        let inspector: TestInspector = Default::default();
         assert!(inspector.supports_file(file.path()));
 
         file.close()?;
@@ -117,7 +117,7 @@ mod tests {
 
     #[test]
     fn writes_default_values_on_finalise() {
-        let mut inspector: UnitTestInspector = Default::default();
+        let mut inspector: TestInspector = Default::default();
 
         let mut map: Map<String, Value> = Map::new();
         inspector.finalize(&mut map);
@@ -147,7 +147,7 @@ mod tests {
         "#;
         file.write_str(content)?;
 
-        let mut inspector = UnitTestInspector::new();
+        let mut inspector = TestInspector::new();
 
         let mut map: Map<String, Value> = Map::new();
         let options = options_from_file(&file);
