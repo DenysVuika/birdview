@@ -13,7 +13,7 @@ pub struct Workspace {
 }
 
 impl Workspace {
-    pub fn setup(working_dir: PathBuf, verbose: bool) -> Workspace {
+    pub fn new(working_dir: PathBuf, verbose: bool) -> Self {
         Workspace {
             working_dir,
             verbose,

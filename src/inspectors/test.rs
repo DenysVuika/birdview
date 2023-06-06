@@ -96,12 +96,17 @@ impl FileInspector for TestInspector {
             "e2e_test_case": self.e2e_test_cases
         }));
 
-        println!("Unit Tests");
-        println!(" ├── Cases: {}", self.unit_test_cases);
-        println!(" └── Files: {}", self.unit_test_files.len());
-        println!("E2E Tests");
-        println!(" ├── Cases: {}", self.e2e_test_cases);
-        println!(" └── Files: {}", self.e2e_test_files.len());
+        if !self.unit_test_files.is_empty() {
+            println!("Unit Tests");
+            println!(" ├── Cases: {}", self.unit_test_cases);
+            println!(" └── Files: {}", self.unit_test_files.len());
+        }
+
+        if !self.e2e_test_files.is_empty() {
+            println!("E2E Tests");
+            println!(" ├── Cases: {}", self.e2e_test_cases);
+            println!(" └── Files: {}", self.e2e_test_files.len());
+        }
     }
 }
 
