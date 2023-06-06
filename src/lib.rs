@@ -18,7 +18,6 @@ pub fn run(config: &Config, working_dir: &PathBuf) -> Result<(), Box<dyn Error>>
     }
     if config.inspect_tests {
         inspectors.push(Box::new(UnitTestInspector::new()));
-        inspectors.push(Box::new(EndToEndTestInspector::new()));
     }
     if config.inspect_angular {
         inspectors.push(Box::new(AngularInspector::new()));

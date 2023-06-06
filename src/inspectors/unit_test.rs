@@ -5,16 +5,20 @@ use serde_json::{json, Map, Value};
 use std::path::Path;
 
 pub struct UnitTestInspector {
-    total_cases: i64,
-    test_files: Vec<Value>,
+    unit_test_cases: i64,
+    unit_test_files: Vec<Value>,
+    e2e_test_cases: i64,
+    e2e_test_files: Vec<Value>,
 }
 
 impl UnitTestInspector {
     /// Creates a new instance of the inspector
     pub fn new() -> Self {
         UnitTestInspector {
-            total_cases: 0,
-            test_files: vec![],
+            unit_test_cases: 0,
+            unit_test_files: vec![],
+            e2e_test_cases: 0,
+            e2e_test_files: vec![],
         }
     }
 }
@@ -27,7 +31,11 @@ impl Default for UnitTestInspector {
 
 impl FileInspector for UnitTestInspector {
     fn supports_file(&self, path: &Path) -> bool {
-        path.is_file() && path.display().to_string().ends_with(".spec.ts")
+        let display_path = path.display().to_string();
+        path.is_file()
+            && (display_path.ends_with(".spec.ts")
+                || display_path.ends_with(".test.ts")
+                || display_path.ends_with(".e2e.ts"))
     }
 
     fn inspect_file(&mut self, options: &FileInspectorOptions, _output: &mut Map<String, Value>) {
@@ -36,18 +44,29 @@ impl FileInspector for UnitTestInspector {
 
         if !test_names.is_empty() {
             let workspace_path = options.relative_path.display().to_string();
-
-            self.test_files.push(json!({
+            let entry = json!({
                 "path": workspace_path,
                 "cases": test_names,
-            }));
+            });
 
-            self.total_cases += test_names.len() as i64;
+            if workspace_path.ends_with(".spec.ts") {
+                self.unit_test_files.push(entry);
+                self.unit_test_cases += test_names.len() as i64;
+            } else if workspace_path.ends_with(".test.ts") || workspace_path.ends_with(".e2e.ts") {
+                self.e2e_test_files.push(entry);
+                self.e2e_test_cases += test_names.len() as i64;
+            }
         }
     }
 
     fn finalize(&mut self, output: &mut Map<String, Value>) {
-        output.entry("unit_tests").or_insert(json!(self.test_files));
+        output
+            .entry("unit_tests")
+            .or_insert(json!(self.unit_test_files));
+
+        output
+            .entry("e2e_tests")
+            .or_insert(json!(self.e2e_test_files));
 
         let stats = output
             .entry("stats")
@@ -56,13 +75,18 @@ impl FileInspector for UnitTestInspector {
             .unwrap();
 
         stats.entry("tests").or_insert(json!({
-            "unit_test": self.test_files.len(),
-            "unit_test_case": self.total_cases
+            "unit_test": self.unit_test_files.len(),
+            "unit_test_case": self.unit_test_cases,
+            "e2e_test": self.e2e_test_files.len(),
+            "e2e_test_case": self.e2e_test_cases
         }));
 
         println!("Unit Tests");
-        println!(" ├── Cases: {}", self.total_cases);
-        println!(" └── Files: {}", self.test_files.len());
+        println!(" ├── Cases: {}", self.unit_test_cases);
+        println!(" └── Files: {}", self.unit_test_files.len());
+        println!("E2E Tests");
+        println!(" ├── Cases: {}", self.e2e_test_cases);
+        println!(" └── Files: {}", self.e2e_test_files.len());
     }
 }
 
