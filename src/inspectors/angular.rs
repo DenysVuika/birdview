@@ -1,11 +1,20 @@
 use super::FileInspector;
 use crate::inspectors::FileInspectorOptions;
+use lazy_static::lazy_static;
+use regex::Regex;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use std::path::Path;
 
+#[derive(Serialize, Deserialize)]
+pub struct AngularComponent {
+    path: String,
+    standalone: bool,
+}
+
 pub struct AngularInspector {
     modules: Vec<String>,
-    components: Vec<String>,
+    components: Vec<AngularComponent>,
     directives: Vec<String>,
     services: Vec<String>,
     pipes: Vec<String>,
@@ -22,6 +31,35 @@ impl AngularInspector {
             pipes: vec![],
             dialogs: vec![],
         }
+    }
+
+    pub fn extract_metadata(contents: &str) -> Vec<&str> {
+        // @(?:Component|Directive|Injectable)\((?P<metadata>[^\)]+)\)
+        // https://rustexp.lpil.uk/
+        lazy_static! {
+            static ref NAME_REGEX: Regex =
+                Regex::new(r#"@(?:Component|Directive|Injectable)\((?P<metadata>[^\)]+)\)"#)
+                    .unwrap();
+        }
+
+        NAME_REGEX
+            .captures_iter(contents)
+            .map(|c| c.name("metadata").unwrap().as_str())
+            .collect()
+    }
+
+    pub fn is_standalone(content: &str) -> bool {
+        let mut standalone = false;
+        let metadata = AngularInspector::extract_metadata(content);
+
+        if !metadata.is_empty() {
+            let mut parsed = metadata.first().unwrap().to_string();
+            parsed = parsed.replace('\n', "");
+            parsed = parsed.replace(' ', "");
+            standalone = parsed.contains("standalone:true");
+        }
+
+        standalone
     }
 }
 
@@ -49,7 +87,13 @@ impl FileInspector for AngularInspector {
         if workspace_path.ends_with(".module.ts") {
             self.modules.push(workspace_path);
         } else if workspace_path.ends_with(".component.ts") {
-            self.components.push(workspace_path);
+            let content = options.read_content();
+            let standalone = AngularInspector::is_standalone(&content);
+
+            self.components.push(AngularComponent {
+                path: workspace_path,
+                standalone,
+            });
         } else if workspace_path.ends_with(".directive.ts") {
             self.directives.push(workspace_path);
         } else if workspace_path.ends_with(".service.ts") {
@@ -77,9 +121,16 @@ impl FileInspector for AngularInspector {
             .as_object_mut()
             .unwrap();
 
+        let standalone_components = self
+            .components
+            .iter()
+            .filter(|entry| entry.standalone)
+            .count();
+
         stats.entry("angular").or_insert(json!({
             "module": self.modules.len(),
             "component": self.components.len(),
+            "component_standalone": standalone_components,
             "directive": self.directives.len(),
             "service": self.services.len(),
             "pipe": self.pipes.len(),
@@ -88,7 +139,11 @@ impl FileInspector for AngularInspector {
 
         println!("Angular");
         println!(" ├── Module: {}", self.modules.len());
-        println!(" ├── Component: {}", self.components.len());
+        println!(
+            " ├── Component: {} (standalone: {})",
+            self.components.len(),
+            standalone_components
+        );
         println!(" ├── Directive: {}", self.directives.len());
         println!(" ├── Service: {}", self.services.len());
         println!(" ├── Pipe: {}", self.pipes.len());
@@ -101,5 +156,70 @@ impl FileInspector for AngularInspector {
         self.services = Vec::new();
         self.pipes = Vec::new();
         self.dialogs = Vec::new();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn should_parse_single_metadata() {
+        let content = r#"@Component({ selector: 'my-component' }) export class MyComponent {}"#;
+        let metadata = AngularInspector::extract_metadata(content);
+        assert_eq!(metadata.len(), 1);
+        assert_eq!(
+            metadata.first().unwrap().to_string(),
+            "{ selector: 'my-component' }"
+        );
+    }
+
+    #[test]
+    fn should_parse_single_metadata_multiline() {
+        let content = r#"
+            @Component({ 
+                selector: 'my-component',
+                standalone: true
+            }) 
+            export class MyComponent {}
+        "#;
+        let metadata = AngularInspector::extract_metadata(content);
+        assert_eq!(metadata.len(), 1);
+
+        let mut parsed = metadata.first().unwrap().to_string();
+        parsed = parsed.replace('\n', "");
+        parsed = parsed.replace(' ', "");
+
+        assert_eq!(parsed, "{selector:'my-component',standalone:true}");
+    }
+
+    #[test]
+    fn should_parse_multiple_metadata_entries() {
+        let content = r#"
+            // component
+            @Component({ selector: 'my-component' }) export class MyComponent {}
+            
+            // directive
+            @Directive({ selector: 'my-directive' })
+            export class MyDirective {}
+            
+            // service
+            @Injectable({ provideIn: 'root' })
+            export class MyService {}
+        "#;
+        let metadata = AngularInspector::extract_metadata(content);
+        assert_eq!(metadata.len(), 3);
+        assert_eq!(
+            metadata.first().unwrap().to_string(),
+            "{ selector: 'my-component' }"
+        );
+        assert_eq!(
+            metadata.get(1).unwrap().to_string(),
+            "{ selector: 'my-directive' }"
+        );
+        assert_eq!(
+            metadata.get(2).unwrap().to_string(),
+            "{ provideIn: 'root' }"
+        )
     }
 }

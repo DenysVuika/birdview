@@ -154,6 +154,7 @@
                         ${activeTab === 0 && html`
                             <${PanelRow} icon="mdi-file-code-outline" label="Modules: ${angular.module}"/>
                             <${PanelRow} icon="mdi-file-code-outline" label="Components: ${angular.component}"/>
+                            <${PanelRow} icon="mdi-file-code-outline" label="Components (standalone): ${angular.component_standalone}"/>
                             <${PanelRow} icon="mdi-file-code-outline" label="Directives: ${angular.directive}"/>
                             <${PanelRow} icon="mdi-file-code-outline" label="Services: ${angular.service}"/>
                             <${PanelRow} icon="mdi-file-code-outline" label="Pipes: ${angular.pipe}"/>
@@ -167,8 +168,8 @@
                         `}
 
                         ${activeTab === 2 && html`
-                            ${data.angular.components.map(name => html`
-                                <${PanelRow} icon="mdi-file-code-outline" label="${name}"/>
+                            ${data.angular.components.map(entry => html`
+                                <${PanelRow} icon="mdi-file-code-outline" label="${entry.path} (standalone: ${entry.standalone})"/>
                             `)}
                         `}
 

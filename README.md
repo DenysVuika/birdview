@@ -37,7 +37,7 @@ E2E Tests
  └── Files: 168
 Angular
  ├── Module: 149
- ├── Component: 415
+ ├── Component: 415 (standalone: 0)
  ├── Directive: 58
  ├── Service: 181
  ├── Pipe: 23
@@ -138,6 +138,7 @@ The format of the output is similar to the following example:
     "angular": {
       "module": 149,
       "component": 415,
+      "component_standalone": 23,
       "directive": 58,
       "service": 181,
       "pipe": 23,
@@ -156,7 +157,12 @@ The format of the output is similar to the following example:
   },
 
   "angular": {
-    "components": [],
+    "components": [
+      {
+        "path": "<workspace>/<path>.component.ts",
+        "standalone": false
+      }
+    ],
     "directives": [],
     "services": [],
     "pipes": [],
