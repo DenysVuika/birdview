@@ -43,6 +43,17 @@
             `;
         }
 
+        function LinkRow({ caption, url, icon }) {
+            return html`
+                <a class="panel-block">
+                    <span class="panel-icon">
+                        <i class="mdi ${icon}"></i>
+                    </span>
+                    <a href="${url}" target="_blank">${caption}</a>
+                </a>
+            `;
+        }
+
         class Packages extends Component {
             state = {
                 activeTab: 0
@@ -143,6 +154,57 @@
                 }));
             }
 
+            getComponents(data) {
+                const components = data.angular.components;
+                const git = data.project.git;
+
+                return components.map(entry => ({
+                    path: entry.path,
+                    standalone: entry.standalone,
+                    url: `${git.remote}/blob/${git.target}/${entry.path}`
+                }));
+            }
+
+            getDirectives(data) {
+                const directives = data.angular.directives;
+                const git = data.project.git;
+
+                return directives.map(path => ({
+                    path,
+                    url: `${git.remote}/blob/${git.target}/${path}`
+                }));
+            }
+
+            getServices(data) {
+                const services = data.angular.services;
+                const git = data.project.git;
+
+                return services.map(path => ({
+                    path,
+                    url: `${git.remote}/blob/${git.target}/${path}`
+                }));
+            }
+
+            getPipes(data) {
+                const pipes = data.angular.pipes;
+                const git = data.project.git;
+
+                return pipes.map(path => ({
+                    path,
+                    url: `${git.remote}/blob/${git.target}/${path}`
+                }));
+            }
+
+            getDialogs(data) {
+                const dialogs = data.angular.dialogs;
+                const git = data.project.git;
+
+                return dialogs.map(path => ({
+                    path,
+                    url: `${git.remote}/blob/${git.target}/${path}`
+                }));
+            }
+
             render(props, { activeTab }) {
                 const data = props.data;
                 const angular = data.stats.angular;
@@ -175,42 +237,37 @@
 
                         ${activeTab === 1 && html`
                             ${this.getModules(data).map(entry => html`
-                                <a class="panel-block">
-                                    <span class="panel-icon">
-                                        <i class="mdi mdi-file-code-outline"></i>
-                                    </span>
-                                    <a href="${entry.url}" target="_blank">${entry.path}</a>
-                                </a>
+                                <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"></LinkRow>
                             `)}
                         `}
 
                         ${activeTab === 2 && html`
-                            ${data.angular.components.map(entry => html`
-                                <${PanelRow} icon="mdi-file-code-outline" label="${entry.path} (standalone: ${entry.standalone})"/>
+                            ${this.getComponents(data).map(entry => html`
+                                <${LinkRow} caption="${entry.path} (standalone: ${entry.standalone})" url="${entry.url}" icon="mdi-file-code-outline"></LinkRow>
                             `)}
                         `}
 
                         ${activeTab === 3 && html`
-                            ${data.angular.directives.map(name => html`
-                                <${PanelRow} icon="mdi-file-code-outline" label="${name}"/>
+                            ${this.getDirectives(data).map(entry => html`
+                                <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"></LinkRow>
                             `)}
                         `}
 
                         ${activeTab === 4 && html`
-                            ${data.angular.services.map(name => html`
-                                <${PanelRow} icon="mdi-file-code-outline" label="${name}"/>
+                            ${this.getServices(data).map(entry => html`
+                                <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"></LinkRow>
                             `)}
                         `}
 
                         ${activeTab === 5 && html`
-                            ${data.angular.pipes.map(name => html`
-                                <${PanelRow} icon="mdi-file-code-outline" label="${name}"/>
+                            ${this.getPipes(data).map(entry => html`
+                                <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"></LinkRow>
                             `)}
                         `}
 
                         ${activeTab === 6 && html`
-                            ${data.angular.dialogs.map(name => html`
-                                <${PanelRow} icon="mdi-file-code-outline" label="${name}"/>
+                            ${this.getDialogs(data).map(entry => html`
+                                <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"></LinkRow>
                             `)}
                         `}
                     </nav>
