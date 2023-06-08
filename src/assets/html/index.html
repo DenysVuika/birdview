@@ -24,7 +24,7 @@
                 <section class="hero is-primary">
                     <div class="hero-body">
                         <p class="title">
-                            ${data.project_name} ${data.project_version}
+                            ${data.project.name} ${data.project.version}
                         </p>
                         <p class="subtitle">${data.report_date}</p>
                     </div>
@@ -133,6 +133,16 @@
                 this.setState({ activeTab: index });
             }
 
+            getModules(data) {
+                const modules = data.angular.modules;
+                const git = data.project.git;
+
+                return modules.map(path => ({
+                    path,
+                    url: `${git.remote}/blob/${git.target}/${path}`
+                }));
+            }
+
             render(props, { activeTab }) {
                 const data = props.data;
                 const angular = data.stats.angular;
@@ -164,8 +174,13 @@
                         `}
 
                         ${activeTab === 1 && html`
-                            ${data.angular.modules.map(name => html`
-                                <${PanelRow} icon="mdi-file-code-outline" label="${name}"/>
+                            ${this.getModules(data).map(entry => html`
+                                <a class="panel-block">
+                                    <span class="panel-icon">
+                                        <i class="mdi mdi-file-code-outline"></i>
+                                    </span>
+                                    <a href="${entry.url}" target="_blank">${entry.path}</a>
+                                </a>
                             `)}
                         `}
 

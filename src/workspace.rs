@@ -1,7 +1,8 @@
 use crate::inspectors::{FileInspector, FileInspectorOptions};
 use crate::models::PackageJsonFile;
 use chrono::Utc;
-use serde_json::{Map, Value};
+use git2::Repository;
+use serde_json::{json, Map, Value};
 use std::error::Error;
 use std::path::PathBuf;
 use walkdir::{DirEntry, WalkDir};
@@ -27,10 +28,25 @@ impl Workspace {
 
     /// Performs the workspace analysis using the registered file inspectors
     pub fn inspect(&mut self) -> Result<Value, Box<dyn Error>> {
-        let mut map = Map::new();
         if self.verbose {
             println!("{}", self.working_dir.display());
         }
+
+        let mut map = Map::new();
+
+        map.insert(
+            "report_date".to_owned(),
+            Value::String(Utc::now().to_string()),
+        );
+
+        let project = map
+            .entry("project")
+            .or_insert(json!({
+                "name": "unknown",
+                "version": "unknown"
+            }))
+            .as_object_mut()
+            .unwrap();
 
         let package_json_path = &self.working_dir.join("package.json");
         if package_json_path.exists() {
@@ -41,16 +57,26 @@ impl Workspace {
                 );
             }
             let package = PackageJsonFile::from_file(package_json_path)?;
-            map.insert("project_name".to_owned(), Value::String(package.name));
-            map.insert("project_version".to_owned(), Value::String(package.version));
+
+            project["name"] = Value::String(package.name);
+            project["version"] = Value::String(package.version);
         } else {
             println!("Warning: no package.json file found in the workspace");
         }
 
-        map.insert(
-            "report_date".to_owned(),
-            Value::String(Utc::now().to_string()),
-        );
+        match Repository::open(&self.working_dir) {
+            Err(..) => println!("Git repository not found"),
+            Ok(repo) => {
+                let remote = repo.find_remote("origin")?;
+                let remote_url = remote.url().unwrap().strip_suffix(".git").unwrap();
+
+                project.entry("git").or_insert(json!({
+                    "remote": remote_url,
+                    "branch": repo.head()?.shorthand().unwrap(),
+                    "target": repo.head()?.target().unwrap().to_string(),
+                }));
+            }
+        }
 
         self.run_inspectors(&mut map);
         Ok(Value::Object(map))

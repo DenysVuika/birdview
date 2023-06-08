@@ -117,10 +117,19 @@ The format of the output is similar to the following example:
 
 ```json
 {
-  "project_name": "<package.json>/name",
-  "project_version": "<package.json>/version",
   "report_date": "<date/time UTC>",
-
+  
+  "project": {
+    "name": "<package.json>/name",
+    "version": "<package.json>/version",
+    
+    "git": {
+      "remote": "<URL>",
+      "branch": "<branch>",
+      "target": "<SHA>"
+    }
+  },
+  
   "stats": {
     "package": {
       "files": 32,
