@@ -157,6 +157,7 @@ The format of the output is similar to the following example:
   },
 
   "angular": {
+    "framework": "14.1.3",
     "components": [
       {
         "path": "<workspace>/<path>.component.ts",
