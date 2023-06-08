@@ -1,5 +1,6 @@
 pub mod config;
 pub mod inspectors;
+pub mod models;
 pub mod workspace;
 
 use crate::config::Config;

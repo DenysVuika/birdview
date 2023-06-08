@@ -1,9 +1,8 @@
 use crate::inspectors::{FileInspector, FileInspectorOptions};
+use crate::models::PackageJsonFile;
 use chrono::Utc;
 use serde_json::{Map, Value};
 use std::error::Error;
-use std::fs::File;
-use std::io::BufReader;
 use std::path::PathBuf;
 use walkdir::{DirEntry, WalkDir};
 
@@ -41,12 +40,9 @@ impl Workspace {
                     package_json_path.strip_prefix(&self.working_dir)?.display()
                 );
             }
-            let file = File::open(package_json_path)?;
-            let reader = BufReader::new(file);
-            let value: Value = serde_json::from_reader(reader)?;
-
-            map.insert("project_name".to_owned(), value["name"].to_owned());
-            map.insert("project_version".to_owned(), value["version"].to_owned());
+            let package = PackageJsonFile::from_file(package_json_path)?;
+            map.insert("project_name".to_owned(), Value::String(package.name));
+            map.insert("project_version".to_owned(), Value::String(package.version));
         } else {
             println!("Warning: no package.json file found in the workspace");
         }
@@ -75,16 +71,7 @@ impl Workspace {
         {
             // let f_name = entry.file_name().to_string_lossy();
             let entry_path = entry.path();
-
-            if self.verbose {
-                println!(
-                    "├── 🔎 {}",
-                    entry_path
-                        .strip_prefix(&self.working_dir)
-                        .unwrap()
-                        .display()
-                );
-            }
+            let mut processed = false;
 
             let options = FileInspectorOptions {
                 working_dir: self.working_dir.to_path_buf(),
@@ -97,18 +84,20 @@ impl Workspace {
 
             for inspector in self.inspectors.iter_mut() {
                 if entry_path.is_file() && inspector.supports_file(entry_path) {
-                    if self.verbose {
-                        println!(
-                            "├── ✅  {}",
-                            entry_path
-                                .strip_prefix(&self.working_dir)
-                                .unwrap()
-                                .display()
-                        );
-                    }
-
                     inspector.inspect_file(&options, map);
+                    processed = true;
                 }
+            }
+
+            if self.verbose {
+                println!(
+                    "├── {} {}",
+                    if processed { '✅' } else { '🔎' },
+                    entry_path
+                        .strip_prefix(&self.working_dir)
+                        .unwrap()
+                        .display()
+                );
             }
         }
 

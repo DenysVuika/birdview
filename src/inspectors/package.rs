@@ -1,22 +1,9 @@
 use super::FileInspector;
 use crate::inspectors::FileInspectorOptions;
-use serde::{Deserialize, Serialize};
+use crate::models::PackageJsonFile;
+use serde::Serialize;
 use serde_json::{json, Map, Value};
-use std::collections::HashMap;
-use std::fs::File;
-use std::io::BufReader;
 use std::path::Path;
-
-/// todo: move to separate model file
-#[derive(Serialize, Deserialize, Debug)]
-pub struct PackageJsonFile {
-    name: String,
-    version: String,
-
-    dependencies: Option<HashMap<String, String>>,
-    #[serde(rename = "devDependencies")]
-    dev_dependencies: Option<HashMap<String, String>>,
-}
 
 #[derive(Serialize)]
 pub struct PackageEntry {
@@ -46,12 +33,6 @@ impl PackageJsonInspector {
             packages: vec![],
         }
     }
-
-    fn read_file(&self, path: &Path) -> PackageJsonFile {
-        let file = File::open(path).unwrap();
-        let reader = BufReader::new(file);
-        serde_json::from_reader(reader).unwrap()
-    }
 }
 
 impl Default for PackageJsonInspector {
@@ -68,7 +49,7 @@ impl FileInspector for PackageJsonInspector {
     }
 
     fn inspect_file(&mut self, options: &FileInspectorOptions, _output: &mut Map<String, Value>) {
-        let package = self.read_file(&options.path);
+        let package = PackageJsonFile::from_file(&options.path).unwrap();
         let mut dependencies: Vec<DependencyEntry> = Vec::new();
 
         if let Some(data) = package.dependencies {
@@ -132,9 +113,10 @@ mod tests {
     use crate::inspectors::utils::test_utils::options_from_file;
     use assert_fs::prelude::*;
     use assert_fs::NamedTempFile;
+    use std::error::Error;
 
     #[test]
-    fn supports_json_file() -> Result<(), Box<dyn std::error::Error>> {
+    fn supports_json_file() -> Result<(), Box<dyn Error>> {
         let file = NamedTempFile::new("package.json")?;
         file.touch()?;
         let inspector = PackageJsonInspector::new();
@@ -200,7 +182,7 @@ mod tests {
     }
 
     #[test]
-    fn parses_package_dependencies() -> Result<(), Box<dyn std::error::Error>> {
+    fn parses_package_dependencies() -> Result<(), Box<dyn Error>> {
         let file = NamedTempFile::new("package.json")?;
         file.write_str(
             r#"
