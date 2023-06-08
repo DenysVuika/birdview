@@ -1,12 +1,40 @@
 use super::FileInspector;
 use crate::inspectors::FileInspectorOptions;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
+use std::collections::HashMap;
+use std::fs::File;
+use std::io::BufReader;
 use std::path::Path;
+
+/// todo: move to separate model file
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PackageJsonFile {
+    name: String,
+    version: String,
+
+    dependencies: Option<HashMap<String, String>>,
+    #[serde(rename = "devDependencies")]
+    dev_dependencies: Option<HashMap<String, String>>,
+}
+
+#[derive(Serialize)]
+pub struct PackageEntry {
+    path: String,
+    dependencies: Vec<DependencyEntry>,
+}
+
+#[derive(Serialize)]
+pub struct DependencyEntry {
+    name: String,
+    version: String,
+    dev: bool,
+}
 
 pub struct PackageJsonInspector {
     total_deps: i64,
     total_dev_deps: i64,
-    packages: Vec<Value>,
+    packages: Vec<PackageEntry>,
 }
 
 impl PackageJsonInspector {
@@ -17,6 +45,12 @@ impl PackageJsonInspector {
             total_dev_deps: 0,
             packages: vec![],
         }
+    }
+
+    fn read_file(&self, path: &Path) -> PackageJsonFile {
+        let file = File::open(path).unwrap();
+        let reader = BufReader::new(file);
+        serde_json::from_reader(reader).unwrap()
     }
 }
 
@@ -34,37 +68,37 @@ impl FileInspector for PackageJsonInspector {
     }
 
     fn inspect_file(&mut self, options: &FileInspectorOptions, _output: &mut Map<String, Value>) {
-        let value = options.as_json();
-        let mut dependencies: Vec<Value> = Vec::new();
+        let package = self.read_file(&options.path);
+        let mut dependencies: Vec<DependencyEntry> = Vec::new();
 
-        if let Some(data) = value["dependencies"].as_object() {
-            for (key, value) in data {
-                dependencies.push(json!({
-                    "name": key,
-                    "version": value,
-                    "dev": false
-                }));
+        if let Some(data) = package.dependencies {
+            for (name, version) in data {
+                dependencies.push(DependencyEntry {
+                    name,
+                    version,
+                    dev: false,
+                });
+                self.total_deps += 1;
             }
-            self.total_deps += data.len() as i64;
         }
 
-        if let Some(data) = value["devDependencies"].as_object() {
-            for (key, value) in data {
-                dependencies.push(json!({
-                    "name": key,
-                    "version": value,
-                    "dev": true
-                }));
+        if let Some(data) = package.dev_dependencies {
+            for (name, version) in data {
+                dependencies.push(DependencyEntry {
+                    name,
+                    version,
+                    dev: true,
+                });
+                self.total_dev_deps += 1;
             }
-            self.total_dev_deps += data.len() as i64;
         }
 
         let workspace_path = options.relative_path.display().to_string();
 
-        self.packages.push(json!({
-            "path": workspace_path,
-            "dependencies": dependencies
-        }));
+        self.packages.push(PackageEntry {
+            path: workspace_path,
+            dependencies,
+        })
     }
 
     fn finalize(&mut self, output: &mut Map<String, Value>) {
@@ -168,7 +202,20 @@ mod tests {
     #[test]
     fn parses_package_dependencies() -> Result<(), Box<dyn std::error::Error>> {
         let file = NamedTempFile::new("package.json")?;
-        file.write_str("{ \"dependencies\": { \"tslib\": \"^2.5.0\" }, \"devDependencies\": { \"@angular/cli\": \"14.1.3\" } }")?;
+        file.write_str(
+            r#"
+            {
+                "name": "test",
+                "version": "1.0.0",
+                "dependencies": {
+                    "tslib": "^2.5.0"
+                },
+                "devDependencies": {
+                    "@angular/cli": "14.1.3"
+                }
+            }
+        "#,
+        )?;
 
         let mut inspector = PackageJsonInspector::new();
 
@@ -209,7 +256,6 @@ mod tests {
         );
 
         file.close()?;
-
         Ok(())
     }
 }
