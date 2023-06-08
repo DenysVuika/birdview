@@ -1,4 +1,5 @@
 use super::FileInspector;
+use crate::inspectors::utils::load_json_file;
 use crate::inspectors::FileInspectorOptions;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -13,6 +14,7 @@ pub struct AngularComponent {
 }
 
 pub struct AngularInspector {
+    framework: Option<String>,
     modules: Vec<String>,
     components: Vec<AngularComponent>,
     directives: Vec<String>,
@@ -24,6 +26,7 @@ pub struct AngularInspector {
 impl AngularInspector {
     pub fn new() -> Self {
         AngularInspector {
+            framework: None,
             modules: vec![],
             components: vec![],
             directives: vec![],
@@ -33,7 +36,7 @@ impl AngularInspector {
         }
     }
 
-    pub fn extract_metadata(contents: &str) -> Vec<&str> {
+    fn extract_metadata(contents: &str) -> Vec<&str> {
         // @(?:Component|Directive|Injectable)\((?P<metadata>[^\)]+)\)
         // https://rustexp.lpil.uk/
         lazy_static! {
@@ -48,7 +51,7 @@ impl AngularInspector {
             .collect()
     }
 
-    pub fn is_standalone(content: &str) -> bool {
+    fn is_standalone(content: &str) -> bool {
         let mut standalone = false;
         let metadata = AngularInspector::extract_metadata(content);
 
@@ -61,6 +64,22 @@ impl AngularInspector {
 
         standalone
     }
+
+    fn get_angular_version(working_dir: &Path) -> Option<String> {
+        let package_path = &working_dir.join("package.json");
+
+        if package_path.exists() {
+            let content = load_json_file(package_path);
+            if let Some(data) = content["dependencies"].as_object() {
+                if let Some(version) = data.get("@angular/core") {
+                    let result: String = version.as_str().unwrap().to_string();
+                    return Some(result);
+                }
+            }
+        }
+
+        None
+    }
 }
 
 impl Default for AngularInspector {
@@ -70,6 +89,10 @@ impl Default for AngularInspector {
 }
 
 impl FileInspector for AngularInspector {
+    fn init(&mut self, working_dir: &Path, _output: &mut Map<String, Value>) {
+        self.framework = AngularInspector::get_angular_version(working_dir);
+    }
+
     fn supports_file(&self, path: &Path) -> bool {
         let display_path = path.display().to_string();
         path.is_file()
@@ -106,7 +129,13 @@ impl FileInspector for AngularInspector {
     }
 
     fn finalize(&mut self, output: &mut Map<String, Value>) {
+        let framework = match &self.framework {
+            Some(value) => value,
+            None => "unknown",
+        };
+
         output.entry("angular").or_insert(json!({
+            "framework": framework,
             "modules": self.modules,
             "components": self.components,
             "directives": self.directives,
@@ -138,6 +167,7 @@ impl FileInspector for AngularInspector {
         }));
 
         println!("Angular");
+        println!(" ├── Framework: {}", framework);
         println!(" ├── Module: {}", self.modules.len());
         println!(
             " ├── Component: {} (standalone: {})",

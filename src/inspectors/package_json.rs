@@ -27,6 +27,8 @@ impl Default for PackageJsonInspector {
 }
 
 impl FileInspector for PackageJsonInspector {
+    fn init(&mut self, _working_dir: &Path, _output: &mut Map<String, Value>) {}
+
     fn supports_file(&self, path: &Path) -> bool {
         path.is_file() && path.ends_with("package.json")
     }

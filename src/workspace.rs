@@ -61,6 +61,10 @@ impl Workspace {
     }
 
     fn run_inspectors(&mut self, map: &mut Map<String, Value>) {
+        for inspector in self.inspectors.iter_mut() {
+            inspector.init(&self.working_dir, map);
+        }
+
         let walker = WalkDir::new(&self.working_dir)
             .follow_links(true)
             .into_iter();

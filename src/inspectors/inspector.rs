@@ -3,6 +3,9 @@ use serde_json::{Map, Value};
 use std::path::{Path, PathBuf};
 
 pub trait FileInspector {
+    // Initialise inspector
+    fn init(&mut self, working_dir: &Path, output: &mut Map<String, Value>);
+
     /// Check if the inspector supports the file
     fn supports_file(&self, path: &Path) -> bool;
 

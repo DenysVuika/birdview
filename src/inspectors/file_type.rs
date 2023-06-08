@@ -24,6 +24,8 @@ impl Default for FileTypeInspector {
 }
 
 impl FileInspector for FileTypeInspector {
+    fn init(&mut self, _working_dir: &Path, _output: &mut Map<String, Value>) {}
+
     fn supports_file(&self, path: &Path) -> bool {
         path.is_file()
     }

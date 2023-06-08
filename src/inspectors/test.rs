@@ -45,6 +45,8 @@ impl Default for TestInspector {
 }
 
 impl FileInspector for TestInspector {
+    fn init(&mut self, _working_dir: &Path, _output: &mut Map<String, Value>) {}
+
     fn supports_file(&self, path: &Path) -> bool {
         let display_path = path.display().to_string();
         path.is_file()
