@@ -2,14 +2,21 @@ use super::FileInspector;
 use crate::inspectors::FileInspectorOptions;
 use lazy_static::lazy_static;
 use regex::Regex;
+use serde::Serialize;
 use serde_json::{json, Map, Value};
 use std::path::Path;
 
+#[derive(Serialize)]
+struct TestEntry {
+    path: String,
+    cases: Vec<String>,
+}
+
 pub struct TestInspector {
     unit_test_cases: i64,
-    unit_test_files: Vec<Value>,
+    unit_test_files: Vec<TestEntry>,
     e2e_test_cases: i64,
-    e2e_test_files: Vec<Value>,
+    e2e_test_files: Vec<TestEntry>,
 }
 
 impl TestInspector {
@@ -23,7 +30,7 @@ impl TestInspector {
         }
     }
 
-    pub fn extract_test_names(contents: &str) -> Vec<&str> {
+    pub fn extract_test_names(contents: &str) -> Vec<String> {
         // (\b(?:it|test)\b\(['"])(?P<name>.*?)(['"])
         // https://rustexp.lpil.uk/
         lazy_static! {
@@ -33,7 +40,7 @@ impl TestInspector {
 
         NAME_REGEX
             .captures_iter(contents)
-            .map(|c| c.name("name").unwrap().as_str())
+            .map(|c| c.name("name").unwrap().as_str().to_owned())
             .collect()
     }
 }
@@ -61,17 +68,18 @@ impl FileInspector for TestInspector {
 
         if !test_names.is_empty() {
             let workspace_path = options.relative_path.display().to_string();
-            let entry = json!({
-                "path": workspace_path,
-                "cases": test_names,
-            });
+            let total_cases = test_names.len() as i64;
+            let entry = TestEntry {
+                path: workspace_path.to_owned(),
+                cases: test_names,
+            };
 
             if workspace_path.ends_with(".spec.ts") {
                 self.unit_test_files.push(entry);
-                self.unit_test_cases += test_names.len() as i64;
+                self.unit_test_cases += total_cases
             } else if workspace_path.ends_with(".test.ts") || workspace_path.ends_with(".e2e.ts") {
                 self.e2e_test_files.push(entry);
-                self.e2e_test_cases += test_names.len() as i64;
+                self.e2e_test_cases += total_cases;
             }
         }
     }
