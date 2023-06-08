@@ -136,6 +136,7 @@
             render(props, { activeTab }) {
                 const data = props.data;
                 const angular = data.stats.angular;
+                const ngVersion = data.angular.framework;
 
                 return html`
                     <nav class="panel is-link">
@@ -152,6 +153,7 @@
                         </p>
 
                         ${activeTab === 0 && html`
+                            <${PanelRow} icon="mdi-file-code-outline" label="Angular: ${ngVersion}"/>
                             <${PanelRow} icon="mdi-file-code-outline" label="Modules: ${angular.module}"/>
                             <${PanelRow} icon="mdi-file-code-outline" label="Components: ${angular.component}"/>
                             <${PanelRow} icon="mdi-file-code-outline" label="Components (standalone): ${angular.component_standalone}"/>
