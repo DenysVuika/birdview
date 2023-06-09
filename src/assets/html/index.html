@@ -278,7 +278,9 @@
         }
 
         function FileTypes({ data }) {
-            const rows = Object.keys(data).map(key => ({ key, value: data[key] }));
+            const rows = Object.keys(data)
+                .map(key => ({ key, value: data[key] }))
+                .sort((a, b) => b.value - a.value);
 
             return html`
                 <nav class="panel is-link">
