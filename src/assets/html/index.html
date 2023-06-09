@@ -65,6 +65,16 @@
         }
 
         class Packages extends ReportPanel {
+            getPackages(data) {
+                const packages = data.packages;
+                const git = data.project.git;
+
+                return packages.map(entry => ({
+                    path: entry.path,
+                    url: `${git.remote}/blob/${git.target}/${entry.path}`
+                }));
+            }
+
             getDependencies(dev) {
                 const result = [];
                 for (const pkg of data.packages) {
@@ -104,8 +114,8 @@
                         `}
 
                         ${activeTab === 1 && html`
-                            ${data.packages.map(pkg => html`
-                                <${PanelRow} icon="mdi-code-json" label="${pkg.path}"/>
+                            ${this.getPackages(data).map(entry => html`
+                                <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-code-json"></LinkRow>
                             `)}
                         `}
 
