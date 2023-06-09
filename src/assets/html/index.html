@@ -161,6 +161,28 @@
                 }
             }
 
+            getUnitTestFiles(data) {
+                const tests = data.unit_tests;
+                const git = data.project.git;
+
+                return tests.map(entry => ({
+                    path: entry.path,
+                    cases: entry.cases.length,
+                    url: `${git.remote}/blob/${git.target}/${entry.path}`
+                }));
+            }
+
+            getE2eTestFiles(data) {
+                const tests = data.e2e_tests;
+                const git = data.project.git;
+
+                return tests.map(entry => ({
+                    path: entry.path,
+                    cases: entry.cases.length,
+                    url: `${git.remote}/blob/${git.target}/${entry.path}`
+                }));
+            }
+
             setupChart() {
                 const ctx = document.getElementById('tests-chart');
                 const tests = window.data.stats.tests;
@@ -197,9 +219,7 @@
                         <p class="panel-tabs">
                             <a class="${ activeTab === 0 ? 'is-active' : null}" onClick="${() => this.setActiveTab(0)}">Stats</a>
                             <a class="${ activeTab === 1 ? 'is-active' : null}" onClick="${() => this.setActiveTab(1)}">Unit Tests (${tests.unit_test})</a>
-                            <a class="${ activeTab === 2 ? 'is-active' : null}" onClick="${() => this.setActiveTab(2)}">Unit Cases (${tests.unit_test_case})</a>
-                            <a class="${ activeTab === 3 ? 'is-active' : null}" onClick="${() => this.setActiveTab(3)}">E2E Tests (${tests.e2e_test})</a>
-                            <a class="${ activeTab === 4 ? 'is-active' : null}" onClick="${() => this.setActiveTab(4)}">E2E Cases (${tests.e2e_test_case})</a>
+                            <a class="${ activeTab === 2 ? 'is-active' : null}" onClick="${() => this.setActiveTab(2)}">E2E Tests (${tests.e2e_test})</a>
                         </p>
 
                         <div style="max-height: 500px; overflow-y: scroll">
@@ -207,6 +227,18 @@
                                 <div style="max-height: 400px; padding: 12px">
                                   <canvas id="tests-chart"></canvas>
                                 </div>
+                            `}
+
+                            ${activeTab === 1 && html`
+                                ${this.getUnitTestFiles(data).map(entry => html`
+                                    <${LinkRow} caption="${entry.path} (${entry.cases} cases)" url="${entry.url}" icon="mdi-test-tube"></LinkRow>
+                                `)}
+                            `}
+
+                            ${activeTab === 2 && html`
+                                ${this.getE2eTestFiles(data).map(entry => html`
+                                    <${LinkRow} caption="${entry.path} (${entry.cases} cases)" url="${entry.url}" icon="mdi-test-tube"></LinkRow>
+                                `)}
                             `}
                         </div>
                     </nav>
