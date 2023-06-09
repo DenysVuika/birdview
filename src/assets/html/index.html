@@ -115,9 +115,9 @@
 
                         <p class="panel-tabs">
                             <a class="${ activeTab === 0 ? 'is-active' : null}" onClick="${() => this.setActiveTab(0)}">Stats</a>
-                            <a class="${ activeTab === 1 ? 'is-active' : null}" onClick="${() => this.setActiveTab(1)}">Packages</a>
-                            <a class="${ activeTab === 2 ? 'is-active' : null}" onClick="${() => this.setActiveTab(2)}">Prod Deps</a>
-                            <a class="${ activeTab === 3 ? 'is-active' : null}" onClick="${() => this.setActiveTab(3)}">Dev Deps</a>
+                            <a class="${ activeTab === 1 ? 'is-active' : null}" onClick="${() => this.setActiveTab(1)}">Packages (${pkg.files})</a>
+                            <a class="${ activeTab === 2 ? 'is-active' : null}" onClick="${() => this.setActiveTab(2)}">Prod Deps (${pkg.prod_deps})</a>
+                            <a class="${ activeTab === 3 ? 'is-active' : null}" onClick="${() => this.setActiveTab(3)}">Dev Deps (${pkg.dev_deps})</a>
                           </p>
 
                         ${activeTab === 0 && html`
@@ -296,12 +296,12 @@
 
                         <p class="panel-tabs">
                             <a class="${ activeTab === 0 ? 'is-active' : null}" onClick="${() => this.setActiveTab(0)}">Stats</a>
-                            <a class="${ activeTab === 1 ? 'is-active' : null}" onClick="${() => this.setActiveTab(1)}">Modules</a>
-                            <a class="${ activeTab === 2 ? 'is-active' : null}" onClick="${() => this.setActiveTab(2)}">Components</a>
-                            <a class="${ activeTab === 3 ? 'is-active' : null}" onClick="${() => this.setActiveTab(3)}">Directives</a>
-                            <a class="${ activeTab === 4 ? 'is-active' : null}" onClick="${() => this.setActiveTab(4)}">Services</a>
-                            <a class="${ activeTab === 5 ? 'is-active' : null}" onClick="${() => this.setActiveTab(5)}">Pipes</a>
-                            <a class="${ activeTab === 6 ? 'is-active' : null}" onClick="${() => this.setActiveTab(6)}">Dialogs</a>
+                            <a class="${ activeTab === 1 ? 'is-active' : null}" onClick="${() => this.setActiveTab(1)}">Modules (${angular.module})</a>
+                            <a class="${ activeTab === 2 ? 'is-active' : null}" onClick="${() => this.setActiveTab(2)}">Components (${angular.component})</a>
+                            <a class="${ activeTab === 3 ? 'is-active' : null}" onClick="${() => this.setActiveTab(3)}">Directives (${angular.directive})</a>
+                            <a class="${ activeTab === 4 ? 'is-active' : null}" onClick="${() => this.setActiveTab(4)}">Services (${angular.service})</a>
+                            <a class="${ activeTab === 5 ? 'is-active' : null}" onClick="${() => this.setActiveTab(5)}">Pipes (${angular.pipe})</a>
+                            <a class="${ activeTab === 6 ? 'is-active' : null}" onClick="${() => this.setActiveTab(6)}">Dialogs (${angular.dialog})</a>
                         </p>
 
                         ${activeTab === 0 && html`
