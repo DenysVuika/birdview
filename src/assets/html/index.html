@@ -51,6 +51,20 @@
             `;
         }
 
+        function DependencyRow({ entry, git }) {
+            return html`
+                <div class="panel-block" style="align-items: baseline">
+                    <a class="tags has-addons" href="${entry.npm_url}" target="_blank" style="margin-bottom: 0">
+                      <span class="tag is-dark" style="margin-bottom: 0">${entry.name}</span>
+                      <span class="tag is-info" style="margin-bottom: 0">${entry.version}</span>
+                    </a>
+                    <span style="padding-left: 8px">
+                        <a href="${entry.pkg_url}" target="_blank">${entry.pkg}</a>
+                    </span>
+                </div>
+            `;
+        }
+
         class ReportPanel extends Component {
             state = {
                 activeTab: 0
@@ -72,25 +86,27 @@
                 }));
             }
 
-            getDependencies(dev) {
+            getDependencies(data, dev) {
+                const git = data.project.git;
                 const result = [];
+
                 for (const pkg of data.packages) {
                     if (pkg.dependencies) {
                         for (const dep of pkg.dependencies.filter(dep => dep.dev === dev)) {
-                            const name = `${dep.name}@${dep.version}`;
                             result.push({
-                                name,
+                                name: dep.name,
+                                version: dep.version,
                                 pkg: pkg.path,
+                                pkg_url: `${git.remote}/blob/${git.target}/${pkg.path}`,
                                 npm_url: `https://www.npmjs.com/package/${dep.name}`
                             })
                         }
                     }
                 }
-                return result;
+                return result.sort((a, b) => a.name.localeCompare(b.name));
             }
 
-            render(props, { activeTab }) {
-                const data = props.data;
+            render({ data }, { activeTab }) {
                 const pkg = data.stats.package;
 
                 return html`
@@ -117,14 +133,14 @@
                         `}
 
                         ${activeTab === 2 && html`
-                            ${this.getDependencies(false).map(entry => html`
-                                <${LinkRow} caption="${entry.name} (${entry.pkg})" url="${entry.npm_url}" icon="mdi-package-variant-closed"></LinkRow>
+                            ${this.getDependencies(data, false).map(entry => html`
+                                <${DependencyRow} entry="${entry}" icon="mdi-package-variant-closed" />
                             `)}
                         `}
 
                          ${activeTab === 3 && html`
-                            ${this.getDependencies(true).map(entry => html`
-                                <${LinkRow} caption="${entry.name} (${entry.pkg})" url="${entry.npm_url}" icon="mdi-package-variant-closed"></LinkRow>
+                            ${this.getDependencies(data, true).map(entry => html`
+                                <${DependencyRow} entry="${entry}" icon="mdi-package-variant-closed" />
                             `)}
                         `}
                     </nav>
