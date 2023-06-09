@@ -18,8 +18,7 @@
 
         const html = htm.bind(h);
 
-        function Header(props) {
-            const data = props.data;
+        function Header({ data }) {
             return html`
                 <section class="hero is-primary">
                     <div class="hero-body">
@@ -32,13 +31,13 @@
             `;
         }
 
-        function PanelRow(props) {
+        function PanelRow({ icon, label }) {
             return html`
                 <a class="panel-block">
                     <span class="panel-icon">
-                        <i class="mdi ${props.icon}"></i>
+                        <i class="mdi ${icon}"></i>
                     </span>
-                    <span>${props.label}</span>
+                    <span>${label}</span>
                 </a>
             `;
         }
@@ -135,16 +134,13 @@
             }
         }
 
-        function Tests(props) {
-            const data = props.data;
-            const tests = data.stats.tests;
-
+        function Tests({ data }) {
             return html`
                 <nav class="panel is-link">
                     <p class="panel-heading">Tests</p>
 
-                    <${PanelRow} icon="mdi-test-tube" label="Unit tests: ${tests.unit_test_case} (${tests.unit_test} files)"/>
-                    <${PanelRow} icon="mdi-test-tube" label="E2E tests: ${tests.e2e_test_case} (${tests.e2e_test} files)"/>
+                    <${PanelRow} icon="mdi-test-tube" label="Unit tests: ${data.unit_test_case} (${data.unit_test} files)"/>
+                    <${PanelRow} icon="mdi-test-tube" label="E2E tests: ${data.e2e_test_case} (${data.e2e_test} files)"/>
                 </nav>
             `;
         }
@@ -295,16 +291,14 @@
             `;
         }
 
-        function App(props) {
-            const data = props.data;
-
+        function App({ data }) {
             return html`
                 <main>
                     <${Header} data=${data}></Header>
                     <section class="section">
                         <${Packages} data=${data}></Packages>
                         <${Angular} data=${data}></Angular>
-                        <${Tests} data=${data}></Tests>
+                        <${Tests} data=${data.stats.tests}></Tests>
                         <${FileTypes} data=${data.stats.types}></FileTypes>
                     </section>
                 </main>
