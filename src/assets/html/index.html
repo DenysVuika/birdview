@@ -4,11 +4,9 @@
     <title>BirdView</title>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <link
-            rel="stylesheet"
-            href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css"
-    />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css"/>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.2.96/css/materialdesignicons.min.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         // <birdview:DATA>
     </script>
@@ -146,6 +144,67 @@
         }
 
         class Angular extends ReportPanel {
+
+            setActiveTab(index) {
+                super.setActiveTab(index);
+
+                if (index === 0) {
+                    setTimeout(() => {
+                        this.setupChart();
+                    });
+                }
+            }
+
+            setupChart() {
+                const ctx = document.getElementById('angular-chart');
+                const angular = window.data.stats.angular;
+
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Module', 'Component', 'Component (std)', 'Directive', 'Service', 'Pipe', 'Dialog'],
+                        datasets: [{
+                            label: '# of elements',
+                            data: [
+                                angular.module,
+                                angular.component,
+                                angular.component_standalone,
+                                angular.directive,
+                                angular.service,
+                                angular.pipe,
+                                angular.dialog
+                            ],
+                            backgroundColor: [
+                                'rgba(255, 99, 132, 0.2)',
+                                'rgba(255, 159, 64, 0.2)',
+                                'rgba(255, 205, 86, 0.2)',
+                                'rgba(75, 192, 192, 0.2)',
+                                'rgba(54, 162, 235, 0.2)',
+                                'rgba(153, 102, 255, 0.2)',
+                                'rgba(201, 203, 207, 0.2)'
+                            ],
+                            borderColor: [
+                                'rgb(255, 99, 132)',
+                                'rgb(255, 159, 64)',
+                                'rgb(255, 205, 86)',
+                                'rgb(75, 192, 192)',
+                                'rgb(54, 162, 235)',
+                                'rgb(153, 102, 255)',
+                                'rgb(201, 203, 207)'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }
+
             getModules(data) {
                 const modules = data.angular.modules;
                 const git = data.project.git;
@@ -207,14 +266,17 @@
                 }));
             }
 
-            render(props, { activeTab }) {
-                const data = props.data;
+            render({ data }, { activeTab }) {
                 const angular = data.stats.angular;
                 const ngVersion = data.angular.framework;
 
+                setTimeout(() => {
+                    this.setupChart();
+                });
+
                 return html`
                     <nav class="panel is-link">
-                        <p class="panel-heading">Angular</p>
+                        <p class="panel-heading">Angular (${ngVersion})</p>
 
                         <p class="panel-tabs">
                             <a class="${ activeTab === 0 ? 'is-active' : null}" onClick="${() => this.setActiveTab(0)}">Stats</a>
@@ -227,14 +289,9 @@
                         </p>
 
                         ${activeTab === 0 && html`
-                            <${PanelRow} icon="mdi-file-code-outline" label="Angular: ${ngVersion}"/>
-                            <${PanelRow} icon="mdi-file-code-outline" label="Modules: ${angular.module}"/>
-                            <${PanelRow} icon="mdi-file-code-outline" label="Components: ${angular.component}"/>
-                            <${PanelRow} icon="mdi-file-code-outline" label="Components (standalone): ${angular.component_standalone}"/>
-                            <${PanelRow} icon="mdi-file-code-outline" label="Directives: ${angular.directive}"/>
-                            <${PanelRow} icon="mdi-file-code-outline" label="Services: ${angular.service}"/>
-                            <${PanelRow} icon="mdi-file-code-outline" label="Pipes: ${angular.pipe}"/>
-                            <${PanelRow} icon="mdi-file-code-outline" label="Dialogs: ${angular.dialog}"/>
+                            <div style="max-height: 400px; padding: 12px">
+                              <canvas id="angular-chart"></canvas>
+                            </div>
                         `}
 
                         ${activeTab === 1 && html`
@@ -309,6 +366,11 @@
 
         render(html`
             <${App} data=${window.data}/>`, document.body);
+    </script>
+    <script>
+        window.addEventListener("DOMContentLoaded", (event) => {
+            // on load handlers
+        });
     </script>
 </head>
 <body></body>
