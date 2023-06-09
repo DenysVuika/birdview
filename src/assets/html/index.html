@@ -51,7 +51,7 @@
             `;
         }
 
-        function DependencyRow({ entry, git }) {
+        function DependencyRow({ entry }) {
             return html`
                 <div class="panel-block" style="align-items: baseline">
                     <a class="tags has-addons" href="${entry.npm_url}" target="_blank" style="margin-bottom: 0">
@@ -111,38 +111,40 @@
 
                 return html`
                     <nav class="panel is-link">
-                        <p class="panel-heading">Packages</p>
+                        <p class="panel-heading">Packages (${pkg.files})</p>
 
                         <p class="panel-tabs">
                             <a class="${ activeTab === 0 ? 'is-active' : null}" onClick="${() => this.setActiveTab(0)}">Stats</a>
                             <a class="${ activeTab === 1 ? 'is-active' : null}" onClick="${() => this.setActiveTab(1)}">Packages (${pkg.files})</a>
                             <a class="${ activeTab === 2 ? 'is-active' : null}" onClick="${() => this.setActiveTab(2)}">Prod Deps (${pkg.prod_deps})</a>
                             <a class="${ activeTab === 3 ? 'is-active' : null}" onClick="${() => this.setActiveTab(3)}">Dev Deps (${pkg.dev_deps})</a>
-                          </p>
+                        </p>
 
-                        ${activeTab === 0 && html`
-                            <${PanelRow} icon="mdi-package-variant-closed" label="Packages: ${pkg.files}"/>
-                            <${PanelRow} icon="mdi-package-variant-closed" label="Product dependencies: ${pkg.prod_deps}"/>
-                            <${PanelRow} icon="mdi-package-variant-closed" label="Development dependencies: ${pkg.dev_deps}"/>
-                        `}
+                        <div style="max-height: 500px; overflow-y: scroll">
+                            ${activeTab === 0 && html`
+                                <${PanelRow} icon="mdi-package-variant-closed" label="Packages: ${pkg.files}"/>
+                                <${PanelRow} icon="mdi-package-variant-closed" label="Product dependencies: ${pkg.prod_deps}"/>
+                                <${PanelRow} icon="mdi-package-variant-closed" label="Development dependencies: ${pkg.dev_deps}"/>
+                            `}
 
-                        ${activeTab === 1 && html`
-                            ${this.getPackages(data).map(entry => html`
-                                <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-code-json"></LinkRow>
-                            `)}
-                        `}
+                            ${activeTab === 1 && html`
+                                ${this.getPackages(data).map(entry => html`
+                                    <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-code-json"></LinkRow>
+                                `)}
+                            `}
 
-                        ${activeTab === 2 && html`
-                            ${this.getDependencies(data, false).map(entry => html`
-                                <${DependencyRow} entry="${entry}" icon="mdi-package-variant-closed" />
-                            `)}
-                        `}
+                            ${activeTab === 2 && html`
+                                ${this.getDependencies(data, false).map(entry => html`
+                                    <${DependencyRow} entry="${entry}" icon="mdi-package-variant-closed" />
+                                `)}
+                            `}
 
-                         ${activeTab === 3 && html`
-                            ${this.getDependencies(data, true).map(entry => html`
-                                <${DependencyRow} entry="${entry}" icon="mdi-package-variant-closed" />
-                            `)}
-                        `}
+                             ${activeTab === 3 && html`
+                                ${this.getDependencies(data, true).map(entry => html`
+                                    <${DependencyRow} entry="${entry}" icon="mdi-package-variant-closed" />
+                                `)}
+                            `}
+                         </div>
                     </nav>
                 `;
             }
@@ -153,8 +155,10 @@
                 <nav class="panel is-link">
                     <p class="panel-heading">Tests</p>
 
-                    <${PanelRow} icon="mdi-test-tube" label="Unit tests: ${data.unit_test_case} (${data.unit_test} files)"/>
-                    <${PanelRow} icon="mdi-test-tube" label="E2E tests: ${data.e2e_test_case} (${data.e2e_test} files)"/>
+                    <div style="max-height: 500px; overflow-y: scroll">
+                        <${PanelRow} icon="mdi-test-tube" label="Unit tests: ${data.unit_test_case} (${data.unit_test} files)"/>
+                        <${PanelRow} icon="mdi-test-tube" label="E2E tests: ${data.e2e_test_case} (${data.e2e_test} files)"/>
+                    </div>
                 </nav>
             `;
         }
@@ -304,47 +308,49 @@
                             <a class="${ activeTab === 6 ? 'is-active' : null}" onClick="${() => this.setActiveTab(6)}">Dialogs (${angular.dialog})</a>
                         </p>
 
-                        ${activeTab === 0 && html`
-                            <div style="max-height: 400px; padding: 12px">
-                              <canvas id="angular-chart"></canvas>
-                            </div>
-                        `}
+                        <div style="max-height: 500px; overflow-y: scroll">
+                            ${activeTab === 0 && html`
+                                <div style="max-height: 400px; padding: 12px">
+                                  <canvas id="angular-chart"></canvas>
+                                </div>
+                            `}
 
-                        ${activeTab === 1 && html`
-                            ${this.getModules(data).map(entry => html`
-                                <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"></LinkRow>
-                            `)}
-                        `}
+                            ${activeTab === 1 && html`
+                                ${this.getModules(data).map(entry => html`
+                                    <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"></LinkRow>
+                                `)}
+                            `}
 
-                        ${activeTab === 2 && html`
-                            ${this.getComponents(data).map(entry => html`
-                                <${LinkRow} caption="${entry.path} (standalone: ${entry.standalone})" url="${entry.url}" icon="mdi-file-code-outline"></LinkRow>
-                            `)}
-                        `}
+                            ${activeTab === 2 && html`
+                                ${this.getComponents(data).map(entry => html`
+                                    <${LinkRow} caption="${entry.path} (standalone: ${entry.standalone})" url="${entry.url}" icon="mdi-file-code-outline"></LinkRow>
+                                `)}
+                            `}
 
-                        ${activeTab === 3 && html`
-                            ${this.getDirectives(data).map(entry => html`
-                                <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"></LinkRow>
-                            `)}
-                        `}
+                            ${activeTab === 3 && html`
+                                ${this.getDirectives(data).map(entry => html`
+                                    <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"></LinkRow>
+                                `)}
+                            `}
 
-                        ${activeTab === 4 && html`
-                            ${this.getServices(data).map(entry => html`
-                                <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"></LinkRow>
-                            `)}
-                        `}
+                            ${activeTab === 4 && html`
+                                ${this.getServices(data).map(entry => html`
+                                    <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"></LinkRow>
+                                `)}
+                            `}
 
-                        ${activeTab === 5 && html`
-                            ${this.getPipes(data).map(entry => html`
-                                <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"></LinkRow>
-                            `)}
-                        `}
+                            ${activeTab === 5 && html`
+                                ${this.getPipes(data).map(entry => html`
+                                    <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"></LinkRow>
+                                `)}
+                            `}
 
-                        ${activeTab === 6 && html`
-                            ${this.getDialogs(data).map(entry => html`
-                                <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"></LinkRow>
-                            `)}
-                        `}
+                            ${activeTab === 6 && html`
+                                ${this.getDialogs(data).map(entry => html`
+                                    <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"></LinkRow>
+                                `)}
+                            `}
+                        </div>
                     </nav>
                 `;
             }
@@ -359,9 +365,11 @@
                 <nav class="panel is-link">
                     <p class="panel-heading">Files</p>
 
-                    ${rows.map(row => html`
-                        <${PanelRow} icon="mdi-file-document" label="${row.key}: ${row.value}"/>
-                    `)}
+                    <div style="max-height: 500px; overflow-y: scroll">
+                        ${rows.map(row => html`
+                            <${PanelRow} icon="mdi-file-document" label="${row.key}: ${row.value}"/>
+                        `)}
+                    </div>
                 </nav>
             `;
         }
