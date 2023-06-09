@@ -150,21 +150,7 @@
             }
         }
 
-        function Tests({ data }) {
-            return html`
-                <nav class="panel is-link">
-                    <p class="panel-heading">Tests</p>
-
-                    <div style="max-height: 500px; overflow-y: scroll">
-                        <${PanelRow} icon="mdi-test-tube" label="Unit tests: ${data.unit_test_case} (${data.unit_test} files)"/>
-                        <${PanelRow} icon="mdi-test-tube" label="E2E tests: ${data.e2e_test_case} (${data.e2e_test} files)"/>
-                    </div>
-                </nav>
-            `;
-        }
-
-        class Angular extends ReportPanel {
-
+        class Tests extends ReportPanel {
             setActiveTab(index) {
                 super.setActiveTab(index);
 
@@ -172,6 +158,100 @@
                     setTimeout(() => {
                         this.setupChart();
                     });
+                }
+            }
+
+            getUnitTestFiles(data) {
+                const tests = data.unit_tests;
+                const git = data.project.git;
+
+                return tests.map(entry => ({
+                    path: entry.path,
+                    cases: entry.cases.length,
+                    url: `${git.remote}/blob/${git.target}/${entry.path}`
+                }));
+            }
+
+            getE2eTestFiles(data) {
+                const tests = data.e2e_tests;
+                const git = data.project.git;
+
+                return tests.map(entry => ({
+                    path: entry.path,
+                    cases: entry.cases.length,
+                    url: `${git.remote}/blob/${git.target}/${entry.path}`
+                }));
+            }
+
+            setupChart() {
+                const ctx = document.getElementById('tests-chart');
+                const tests = window.data.stats.tests;
+
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Unit Cases', 'E2E Cases'],
+                        datasets: [{
+                            label: '# of cases',
+                            data: [
+                                tests.unit_test_case,
+                                tests.e2e_test_case,
+                            ],
+                            backgroundColor: [
+                                'rgb(255, 99, 132)',
+                                'rgb(54, 162, 235)'
+                            ],
+                            hoverOffset: 4
+                        }]
+                    }
+                });
+            }
+
+            render({ data }, { activeTab }) {
+                setTimeout(() => { this.setupChart();});
+                const tests = data.stats.tests;
+                const total_cases = tests.unit_test_case + tests.e2e_test_case;
+
+                return html`
+                    <nav class="panel is-link">
+                        <p class="panel-heading">Tests (${total_cases})</p>
+
+                        <p class="panel-tabs">
+                            <a class="${ activeTab === 0 ? 'is-active' : null}" onClick="${() => this.setActiveTab(0)}">Stats</a>
+                            <a class="${ activeTab === 1 ? 'is-active' : null}" onClick="${() => this.setActiveTab(1)}">Unit Tests (${tests.unit_test})</a>
+                            <a class="${ activeTab === 2 ? 'is-active' : null}" onClick="${() => this.setActiveTab(2)}">E2E Tests (${tests.e2e_test})</a>
+                        </p>
+
+                        <div style="max-height: 500px; overflow-y: scroll">
+                            ${activeTab === 0 && html`
+                                <div style="max-height: 400px; padding: 12px">
+                                  <canvas id="tests-chart"></canvas>
+                                </div>
+                            `}
+
+                            ${activeTab === 1 && html`
+                                ${this.getUnitTestFiles(data).map(entry => html`
+                                    <${LinkRow} caption="${entry.path} (${entry.cases} cases)" url="${entry.url}" icon="mdi-test-tube"></LinkRow>
+                                `)}
+                            `}
+
+                            ${activeTab === 2 && html`
+                                ${this.getE2eTestFiles(data).map(entry => html`
+                                    <${LinkRow} caption="${entry.path} (${entry.cases} cases)" url="${entry.url}" icon="mdi-test-tube"></LinkRow>
+                                `)}
+                            `}
+                        </div>
+                    </nav>
+                `;
+            }
+        }
+
+        class Angular extends ReportPanel {
+            setActiveTab(index) {
+                super.setActiveTab(index);
+
+                if (index === 0) {
+                    setTimeout(() => { this.setupChart();});
                 }
             }
 
@@ -287,12 +367,9 @@
             }
 
             render({ data }, { activeTab }) {
+                setTimeout(() => { this.setupChart();});
                 const angular = data.stats.angular;
                 const ngVersion = data.angular.framework;
-
-                setTimeout(() => {
-                    this.setupChart();
-                });
 
                 return html`
                     <nav class="panel is-link">
@@ -381,7 +458,7 @@
                     <section class="section">
                         <${Packages} data=${data}></Packages>
                         <${Angular} data=${data}></Angular>
-                        <${Tests} data=${data.stats.tests}></Tests>
+                        <${Tests} data=${data}></Tests>
                         <${FileTypes} data=${data.stats.types}></FileTypes>
                     </section>
                 </main>
