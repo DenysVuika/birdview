@@ -58,8 +58,8 @@ impl Workspace {
             }
             let package = PackageJsonFile::from_file(package_json_path)?;
 
-            project["name"] = Value::String(package.name);
-            project["version"] = Value::String(package.version);
+            project["name"] = Value::String(package.name.unwrap());
+            project["version"] = Value::String(package.version.unwrap());
         } else {
             println!("Warning: no package.json file found in the workspace");
         }

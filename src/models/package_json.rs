@@ -7,8 +7,8 @@ use std::path::Path;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PackageJsonFile {
-    pub name: String,
-    pub version: String,
+    pub name: Option<String>,
+    pub version: Option<String>,
 
     pub dependencies: Option<HashMap<String, String>>,
     #[serde(rename = "devDependencies")]

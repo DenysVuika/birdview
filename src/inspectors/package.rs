@@ -49,7 +49,9 @@ impl FileInspector for PackageJsonInspector {
     }
 
     fn inspect_file(&mut self, options: &FileInspectorOptions, _output: &mut Map<String, Value>) {
-        let package = PackageJsonFile::from_file(&options.path).unwrap();
+        let package = PackageJsonFile::from_file(&options.path)
+            .unwrap_or_else(|_| panic!("Error reading {}", &options.path.display()));
+
         let mut dependencies: Vec<DependencyEntry> = Vec::new();
 
         if let Some(data) = package.dependencies {
