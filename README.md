@@ -239,17 +239,38 @@ The format of the output is similar to the following example:
   },
 
   "angular": {
-    "framework": "14.1.3",
+    "framework": "<angular version>",
+    "modules": [
+      {
+        "path": "<workspace>/<path>.module.ts"
+      }
+    ],
     "components": [
       {
         "path": "<workspace>/<path>.component.ts",
         "standalone": false
       }
     ],
-    "directives": [],
-    "services": [],
-    "pipes": [],
-    "dialogs": []
+    "directives": [
+      {
+        "path": "<workspace>/<path>.directive.ts"
+      }
+    ],
+    "services": [
+      {
+        "path": "<workspace>/<path>.service.ts"
+      }
+    ],
+    "pipes": [
+      {
+        "path": "<workspace>/<path>.pipe.ts"
+      }
+    ],
+    "dialogs": [
+      {
+        "path": "<workspace>/<path>.dialog.ts"
+      }
+    ]
   },
   
   "unit_tests": [

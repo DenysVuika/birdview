@@ -29,17 +29,6 @@
             `;
         }
 
-        function PanelRow({ icon, label }) {
-            return html`
-                <a class="panel-block">
-                    <span class="panel-icon">
-                        <i class="mdi ${icon}"></i>
-                    </span>
-                    <span>${label}</span>
-                </a>
-            `;
-        }
-
         function LinkRow({ caption, url, icon }) {
             return html`
                 <a class="panel-block">
@@ -59,12 +48,15 @@
         function DependencyRow({ entry }) {
             return html`
                 <div class="panel-block" style="align-items: baseline">
-                    <a class="tags has-addons" href="${entry.npm_url}" target="_blank" style="margin-bottom: 0">
-                      <span class="tag is-dark" style="margin-bottom: 0">${entry.name}</span>
-                      <span class="tag is-info" style="margin-bottom: 0">${entry.version}</span>
+                    <a class="tags has-addons mb-0" href="${entry.npm_url}" target="_blank">
+                      <span class="tag is-dark mb-0">${entry.name}</span>
+                      <span class="tag is-info mb-0">${entry.version}</span>
                     </a>
-                    <span style="padding-left: 8px">
-                        <a href="${entry.pkg_url}" target="_blank">${entry.pkg}</a>
+                    <span class="pl-4">
+                        ${entry.pkg_url
+                            ? html`<a href="${entry.pkg_url}" target="_blank">${entry.pkg}</a>`
+                            : html`<span>${entry.pkg}</span>`
+                        }
                     </span>
                 </div>
             `;
@@ -82,12 +74,12 @@
 
         class Packages extends ReportPanel {
             getPackages(data) {
-                const packages = data.packages;
+                const packages = data.packages || [];
                 const git = data.project.git;
 
                 return packages.map(entry => ({
                     path: entry.path,
-                    url: `${git.remote}/blob/${git.target}/${entry.path}`
+                    url: !!git ? `${git.remote}/blob/${git.target}/${entry.path}`: ''
                 }));
             }
 
@@ -102,7 +94,7 @@
                                 name: dep.name,
                                 version: dep.version,
                                 pkg: pkg.path,
-                                pkg_url: `${git.remote}/blob/${git.target}/${pkg.path}`,
+                                pkg_url: !!git ? `${git.remote}/blob/${git.target}/${pkg.path}`: '',
                                 npm_url: `https://www.npmjs.com/package/${dep.name}`
                             })
                         }
@@ -127,9 +119,9 @@
 
                         <div style="max-height: 500px; overflow-y: scroll">
                             ${activeTab === 0 && html`
-                                <${PanelRow} icon="mdi-package-variant-closed" label="Packages: ${pkg.files}"/>
-                                <${PanelRow} icon="mdi-package-variant-closed" label="Product dependencies: ${pkg.prod_deps}"/>
-                                <${PanelRow} icon="mdi-package-variant-closed" label="Development dependencies: ${pkg.dev_deps}"/>
+                                <${LinkRow} icon="mdi-package-variant-closed" caption="Packages: ${pkg.files}"/>
+                                <${LinkRow} icon="mdi-package-variant-closed" caption="Product dependencies: ${pkg.prod_deps}"/>
+                                <${LinkRow} icon="mdi-package-variant-closed" caption="Development dependencies: ${pkg.dev_deps}"/>
                             `}
 
                             ${activeTab === 1 && html`
@@ -166,25 +158,14 @@
                 }
             }
 
-            getUnitTestFiles(data) {
-                const tests = data.unit_tests;
+            getEntries(data, key) {
+                const tests = data[key] || [];
                 const git = data.project.git;
 
                 return tests.map(entry => ({
                     path: entry.path,
                     cases: entry.cases.length,
-                    url: `${git.remote}/blob/${git.target}/${entry.path}`
-                }));
-            }
-
-            getE2eTestFiles(data) {
-                const tests = data.e2e_tests;
-                const git = data.project.git;
-
-                return tests.map(entry => ({
-                    path: entry.path,
-                    cases: entry.cases.length,
-                    url: `${git.remote}/blob/${git.target}/${entry.path}`
+                    url: !!git ? `${git.remote}/blob/${git.target}/${entry.path}`: ''
                 }));
             }
 
@@ -235,13 +216,13 @@
                             `}
 
                             ${activeTab === 1 && html`
-                                ${this.getUnitTestFiles(data).map(entry => html`
+                                ${this.getEntries(data, 'unit_tests').map(entry => html`
                                     <${LinkRow} caption="${entry.path} (${entry.cases} cases)" url="${entry.url}" icon="mdi-test-tube"></LinkRow>
                                 `)}
                             `}
 
                             ${activeTab === 2 && html`
-                                ${this.getE2eTestFiles(data).map(entry => html`
+                                ${this.getEntries(data, 'e2e_tests').map(entry => html`
                                     <${LinkRow} caption="${entry.path} (${entry.cases} cases)" url="${entry.url}" icon="mdi-test-tube"></LinkRow>
                                 `)}
                             `}
@@ -314,20 +295,9 @@
                 const entities = data.angular[key] || [];
                 const git = data.project.git;
 
-                return entities.map(path => ({
-                    path,
-                    url: !!git ? `${git.remote}/blob/${git.target}/${path}` : ''
-                }));
-            }
-
-            getComponents(data) {
-                const components = data.angular.components;
-                const git = data.project.git;
-
-                return components.map(entry => ({
-                    path: entry.path,
-                    standalone: entry.standalone,
-                    url: !!git ? `${git.remote}/blob/${git.target}/${entry.path}`: ''
+                return entities.map(entry => ({
+                    ...entry,
+                    url: !!git ? `${git.remote}/blob/${git.target}/${entry.path}` : ''
                 }));
             }
 
@@ -364,7 +334,7 @@
                             `}
 
                             ${activeTab === 2 && html`
-                                ${this.getComponents(data).map(entry => html`
+                                ${this.getEntities(data, 'components').map(entry => html`
                                     <a class="panel-block">
                                         <span class="panel-icon">
                                             <i class="mdi mdi-file-code-outline"></i>
@@ -418,7 +388,7 @@
 
                     <div style="max-height: 500px; overflow-y: scroll">
                         ${rows.map(row => html`
-                            <${PanelRow} icon="mdi-file-document" label="${row.key}: ${row.value}"/>
+                            <${LinkRow} icon="mdi-file-document" caption="${row.key}: ${row.value}"/>
                         `)}
                     </div>
                 </nav>

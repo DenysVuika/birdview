@@ -13,14 +13,19 @@ pub struct AngularComponent {
     standalone: bool,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct AngularEntity {
+    path: String,
+}
+
 pub struct AngularInspector {
     framework: Option<String>,
-    modules: Vec<String>,
+    modules: Vec<AngularEntity>,
     components: Vec<AngularComponent>,
-    directives: Vec<String>,
-    services: Vec<String>,
-    pipes: Vec<String>,
-    dialogs: Vec<String>,
+    directives: Vec<AngularEntity>,
+    services: Vec<AngularEntity>,
+    pipes: Vec<AngularEntity>,
+    dialogs: Vec<AngularEntity>,
 }
 
 impl AngularInspector {
@@ -112,7 +117,9 @@ impl FileInspector for AngularInspector {
         let workspace_path = options.relative_path.display().to_string();
 
         if workspace_path.ends_with(".module.ts") {
-            self.modules.push(workspace_path);
+            self.modules.push(AngularEntity {
+                path: workspace_path,
+            });
         } else if workspace_path.ends_with(".component.ts") {
             let content = options.read_content();
             if content.contains("@Component(") {
@@ -123,13 +130,21 @@ impl FileInspector for AngularInspector {
                 });
             }
         } else if workspace_path.ends_with(".directive.ts") {
-            self.directives.push(workspace_path);
+            self.directives.push(AngularEntity {
+                path: workspace_path,
+            });
         } else if workspace_path.ends_with(".service.ts") {
-            self.services.push(workspace_path);
+            self.services.push(AngularEntity {
+                path: workspace_path,
+            });
         } else if workspace_path.ends_with(".pipe.ts") {
-            self.pipes.push(workspace_path);
+            self.pipes.push(AngularEntity {
+                path: workspace_path,
+            });
         } else if workspace_path.ends_with(".dialog.ts") {
-            self.dialogs.push(workspace_path);
+            self.dialogs.push(AngularEntity {
+                path: workspace_path,
+            });
         }
     }
 
