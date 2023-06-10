@@ -133,7 +133,13 @@ Provides insights on the Angular elements.
 - Dialogs (`*.dialog.ts`)
 - quick navigation to the corresponding files on GitHub
 
+Overall statistics:
+
 ![angular report](docs/angular-report.png)
+
+Standalone component detection:
+
+![angular standalone](docs/angular-standalone.png)
 
 #### Tests
 
