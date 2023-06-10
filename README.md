@@ -17,12 +17,14 @@ birdview --help
 
 ## Basic Usage
 
+The commands generate an HTML report and opens in the system default browser:
+
 ```shell
 cd <path-to-project>
-birdview inspect . --all
+birdview inspect . --all --open
 ```
 
-Gives an output similar to the following:
+In addition, you should get the console output similar to the one below:
 
 ```text
 Packages
@@ -70,47 +72,105 @@ birdview inspect --help
 
 ```shell
 # run all available inspections
-birdview inspect --all <project>
+birdview inspect --all <dir>
 
 # inspect tests
-birdview inspect --tests <project>
+birdview inspect --tests <dir>
 
 # inspect packages
-birdview inspect --packages <project>
+birdview inspect --packages <dir>
 
 # inspect tests and packages
-birdview inspect --tests --packages <project>
+birdview inspect --tests --packages <dir>
 ```
 
-### Generating Reports
+## Generating Reports
 
 ```shell
-birdview inspect <project> --all --output <path>
+birdview inspect <dir> --all --format=<html|json>
 ```
 
-You can generate reports using multiple templates, based on the output extension:
+You can generate reports using multiple templates:
 
-- `.html`: single-page HTML report
-- `.json`: raw JSON report
+- `html`: single-page HTML report (default)
+- `json`: raw JSON report
 
-#### HTML Report
+### Custom output folder
+
+By default, the reports are placed in the working directory.
+You can change the report output folder using the `-o` or `--output-dir` parameter.
 
 ```shell
-# generate report as output.html
-birdview inspect <project> --all --output output.html
-
-# generate report as output.html and open with the default browser
-birdview inspect <project> --all --output output.html --open
+birdview inspect . --all --output-dir=reports --open
 ```
 
-Provides an output that is similar to the following one:
+> The output directory should exist prior to running the command
 
-![html report](docs/html-report.png)
+### HTML Report
 
-#### JSON Report
+The HTML format is the default one. 
 
 ```shell
-birdview inspect <project> --all --output output.json
+# generate HTML report and place to the working dir
+birdview inspect <dir> --all
+
+# generate HTML report and place it to the "reports" folder
+birdview inspect <dir> --all --output-dir=reports
+
+# generate HTML report and open with the default browser
+birdview inspect <dir> --all --open
+```
+
+#### Angular
+
+Provides insights on the Angular elements.
+
+- Modules (`*.module.ts`)
+- Components / Standalone Components (`*.component.ts`)
+- Directives (`*.directive.ts`)
+- Services (`*.service.ts`)
+- Pipes (`*.pipe.ts`)
+- Dialogs (`*.dialog.ts`)
+- quick navigation to the corresponding files on GitHub
+
+![angular report](docs/angular-report.png)
+
+#### Tests
+
+Provides insights on the Unit and End-to-End testing.
+
+- stats on the unit tests and test cases (`*.spec.ts`)
+- stats on teh e2e tests and test cases (`*.e2e.ts`, `*.test.ts`)
+- quick navigation to the corresponding files on GitHub
+
+![tests report](docs/tests-report.png)
+
+#### Packages
+
+Provides insights on the packages and project dependencies.
+
+- all `package.json` files within the workspace
+- all product dependencies
+- all development dependencies
+- quick navigation to the NPM for a given dependency
+- quick navigation for the corresponding files on GitHub
+
+![packages report](docs/packages-report.png)
+
+#### File Types
+
+Provides insights on the file types used in the project
+
+![file types report](docs/types-report.png)
+
+### JSON Report
+
+```shell
+# run all inspections and generate JSON report
+birdview inspect <dir> --all --format=json
+
+# generate JSON report and place it to the "reports" folder
+birdview inspect <dir> --all --format=json --output-dir=reports
 ```
 
 The format of the output is similar to the following example:

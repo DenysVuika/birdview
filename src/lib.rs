@@ -3,15 +3,15 @@ pub mod inspectors;
 pub mod models;
 pub mod workspace;
 
-use crate::config::Config;
+use crate::config::{Config, OutputFormat};
 use crate::inspectors::*;
 use crate::workspace::Workspace;
 use std::error::Error;
 use std::fs::File;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-pub fn run(config: &Config, working_dir: &PathBuf) -> Result<(), Box<dyn Error>> {
+pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
     let mut inspectors: Vec<Box<dyn FileInspector>> = Vec::new();
 
     if config.inspect_packages {
@@ -32,31 +32,49 @@ pub fn run(config: &Config, working_dir: &PathBuf) -> Result<(), Box<dyn Error>>
         return Ok(());
     }
 
-    let mut workspace = Workspace::new(working_dir.to_owned(), inspectors, config.verbose);
+    let mut workspace = Workspace::new(config.working_dir.to_owned(), inspectors, config.verbose);
     let output = workspace.inspect()?;
 
-    if let Some(output_path) = &config.output {
-        let mut output_file = File::create(output_path)?;
-        let json_string = serde_json::to_string_pretty(&output)?;
-        let extension = output_path.extension().unwrap();
+    let output_file_path = get_output_file(&config.output_dir, config.format).unwrap();
+    let mut output_file = File::create(&output_file_path)?;
+    let json_string = serde_json::to_string_pretty(&output)?;
 
-        if extension == "json" {
-            write!(output_file, "{}", json_string)?;
-            println!("Saved report to: {}", &output_path.display());
-        } else if extension == "html" {
+    match &config.format {
+        OutputFormat::Html => {
             let template = include_str!("assets/html/index.html");
             let data = format!("window.data = {};", json_string);
             let template = template.replace("// <birdview:DATA>", &data);
 
             write!(output_file, "{}", template)?;
-            println!("Saved report to: {}", &output_path.display());
+            println!("Saved report to: {}", &output_file_path.display());
 
             if config.open {
-                webbrowser::open(&output_path.display().to_string())?
+                webbrowser::open(&output_file_path.display().to_string())?
             }
+        }
+        OutputFormat::Json => {
+            write!(output_file, "{}", json_string)?;
+            println!("Saved report to: {}", &output_file_path.display());
         }
     }
 
     println!("Inspection complete");
     Ok(())
+}
+
+fn get_output_file(output_dir: &Path, format: OutputFormat) -> Option<PathBuf> {
+    let is_dir = output_dir.exists() && output_dir.is_dir();
+
+    if is_dir {
+        let extension = match format {
+            OutputFormat::Html => "html",
+            OutputFormat::Json => "json",
+        };
+        let now = chrono::offset::Local::now();
+        let output_file =
+            output_dir.join(format!("{}.{extension}", now.format("%Y-%m-%d_%H-%M-%S")));
+        return Some(output_file);
+    }
+
+    None
 }

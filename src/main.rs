@@ -1,4 +1,4 @@
-use birdview::config::Config;
+use birdview::config::{Config, OutputFormat};
 use birdview::run;
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
@@ -22,7 +22,7 @@ enum Commands {
     /// Inspect the workspace
     Inspect {
         /// Workspace directory
-        dir: PathBuf,
+        working_dir: PathBuf,
 
         /// Run all inspections
         #[arg(long)]
@@ -48,13 +48,19 @@ enum Commands {
         #[arg(long)]
         verbose: bool,
 
-        /// Output report file
+        /// Output dir to store reports.
+        /// By default takes the workspace directory value.
         #[arg(short, long)]
-        output: Option<PathBuf>,
+        output_dir: Option<PathBuf>,
 
-        /// Open report in browser where applicable
+        /// Open report in browser where applicable.
+        /// Supported for the output formats: html
         #[arg(long)]
         open: bool,
+
+        /// The output format for the report
+        #[arg(value_enum, long, default_value_t=OutputFormat::Html)]
+        format: OutputFormat,
     },
 }
 
@@ -67,27 +73,33 @@ fn main() {
 
     match &cli.command {
         Some(Commands::Inspect {
-            dir,
+            working_dir,
             tests,
             packages,
             angular,
             types,
             all,
             verbose,
-            output,
+            output_dir,
             open,
+            format,
         }) => {
             let config = Config {
+                working_dir: working_dir.to_owned(),
+                output_dir: match output_dir {
+                    Some(path) => path.to_owned(),
+                    None => working_dir.to_owned(),
+                },
                 inspect_tests: *all | *tests,
                 inspect_packages: *all | *packages,
                 inspect_angular: *all | *angular,
                 inspect_types: *all | *types,
                 verbose: *verbose,
-                output: output.to_owned(),
                 open: *open,
+                format: *format,
             };
 
-            if let Err(e) = run(&config, dir) {
+            if let Err(e) = run(&config) {
                 eprintln!("Application error {e}");
                 process::exit(1);
             }
