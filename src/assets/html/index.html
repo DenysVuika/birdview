@@ -213,8 +213,12 @@
 
                         <p class="panel-tabs">
                             <a class="${ activeTab === 0 ? 'is-active' : null}" onClick="${() => this.setActiveTab(0)}">Stats</a>
-                            <a class="${ activeTab === 1 ? 'is-active' : null}" onClick="${() => this.setActiveTab(1)}">Unit Tests (${tests.unit_test})</a>
-                            <a class="${ activeTab === 2 ? 'is-active' : null}" onClick="${() => this.setActiveTab(2)}">E2E Tests (${tests.e2e_test})</a>
+                            ${tests.unit_test > 0 && html`
+                                <a class="${ activeTab === 1 ? 'is-active' : null}" onClick="${() => this.setActiveTab(1)}">Unit Tests (${tests.unit_test})</a>
+                            `}
+                            ${tests.e2e_test > 0 && html`
+                                <a class="${ activeTab === 2 ? 'is-active' : null}" onClick="${() => this.setActiveTab(2)}">E2E Tests (${tests.e2e_test})</a>
+                            `}
                         </p>
 
                         <div style="max-height: 500px; overflow-y: scroll">
@@ -330,12 +334,24 @@
 
                         <p class="panel-tabs">
                             <a class="${ activeTab === 0 ? 'is-active' : null}" onClick="${() => this.setActiveTab(0)}">Stats</a>
-                            <a class="${ activeTab === 1 ? 'is-active' : null}" onClick="${() => this.setActiveTab(1)}">Modules (${angular.module})</a>
-                            <a class="${ activeTab === 2 ? 'is-active' : null}" onClick="${() => this.setActiveTab(2)}">Components (${angular.component})</a>
-                            <a class="${ activeTab === 3 ? 'is-active' : null}" onClick="${() => this.setActiveTab(3)}">Directives (${angular.directive})</a>
-                            <a class="${ activeTab === 4 ? 'is-active' : null}" onClick="${() => this.setActiveTab(4)}">Services (${angular.service})</a>
-                            <a class="${ activeTab === 5 ? 'is-active' : null}" onClick="${() => this.setActiveTab(5)}">Pipes (${angular.pipe})</a>
-                            <a class="${ activeTab === 6 ? 'is-active' : null}" onClick="${() => this.setActiveTab(6)}">Dialogs (${angular.dialog})</a>
+                            ${angular.module > 0 && html`
+                                <a class="${ activeTab === 1 ? 'is-active' : null}" onClick="${() => this.setActiveTab(1)}">Modules (${angular.module})</a>
+                            `}
+                            ${angular.component > 0 && html`
+                                <a class="${ activeTab === 2 ? 'is-active' : null}" onClick="${() => this.setActiveTab(2)}">Components (${angular.component})</a>
+                            `}
+                            ${angular.directive > 0 && html`
+                                <a class="${ activeTab === 3 ? 'is-active' : null}" onClick="${() => this.setActiveTab(3)}">Directives (${angular.directive})</a>
+                            `}
+                            ${angular.service > 0 && html`
+                                <a class="${ activeTab === 4 ? 'is-active' : null}" onClick="${() => this.setActiveTab(4)}">Services (${angular.service})</a>
+                            `}
+                            ${angular.pipe > 0 && html`
+                                <a class="${ activeTab === 5 ? 'is-active' : null}" onClick="${() => this.setActiveTab(5)}">Pipes (${angular.pipe})</a>
+                            `}
+                            ${angular.dialog > 0 && html`
+                                <a class="${ activeTab === 6 ? 'is-active' : null}" onClick="${() => this.setActiveTab(6)}">Dialogs (${angular.dialog})</a>
+                            `}
                         </p>
 
                         <div style="max-height: 500px; overflow-y: scroll">
