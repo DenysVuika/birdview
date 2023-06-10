@@ -111,12 +111,13 @@ impl FileInspector for AngularInspector {
             self.modules.push(workspace_path);
         } else if workspace_path.ends_with(".component.ts") {
             let content = options.read_content();
-            let standalone = AngularInspector::is_standalone(&content);
-
-            self.components.push(AngularComponent {
-                path: workspace_path,
-                standalone,
-            });
+            if content.contains("@Component(") {
+                let standalone = AngularInspector::is_standalone(&content);
+                self.components.push(AngularComponent {
+                    path: workspace_path,
+                    standalone,
+                });
+            }
         } else if workspace_path.ends_with(".directive.ts") {
             self.directives.push(workspace_path);
         } else if workspace_path.ends_with(".service.ts") {
