@@ -173,6 +173,11 @@
                 const ctx = document.getElementById('tests-chart');
                 const tests = window.data.stats.tests;
 
+                const existing = Chart.getChart('tests-chart');
+                if (existing) {
+                    existing.destroy();
+                }
+
                 new Chart(ctx, {
                     type: 'doughnut',
                     data: {
@@ -194,7 +199,11 @@
             }
 
             render({ data }, { activeTab }) {
-                setTimeout(() => { this.setupChart();});
+                setTimeout(() => {
+                    if (activeTab === 0) {
+                        this.setupChart();
+                    }
+                });
                 const tests = data.stats.tests;
                 const total_cases = tests.unit_test_case + tests.e2e_test_case;
 
@@ -244,6 +253,11 @@
             setupChart() {
                 const ctx = document.getElementById('angular-chart');
                 const angular = window.data.stats.angular;
+
+                const existing = Chart.getChart('angular-chart');
+                if (existing) {
+                    existing.destroy();
+                }
 
                 new Chart(ctx, {
                     type: 'bar',
@@ -302,7 +316,11 @@
             }
 
             render({ data }, { activeTab }) {
-                setTimeout(() => { this.setupChart();});
+                setTimeout(() => {
+                    if (activeTab === 0) {
+                        this.setupChart();
+                    }
+                });
                 const angular = data.stats.angular;
                 const ngVersion = data.angular.framework;
 
