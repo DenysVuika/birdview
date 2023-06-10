@@ -24,6 +24,12 @@ cd <path-to-project>
 birdview inspect . --all --open
 ```
 
+You can also use GitHub repository URLs:
+
+```shell
+birdview inspect https://github.com/<account>/<repository> --all --open
+```
+
 In addition, you should get the console output similar to the one below:
 
 ```text

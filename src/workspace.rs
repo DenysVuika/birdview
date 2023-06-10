@@ -76,12 +76,17 @@ impl Workspace {
             Ok(repo) => match repo.find_remote("origin") {
                 Err(..) => println!("Warning: origin remote not found"),
                 Ok(remote) => {
-                    let remote_url = remote.url().unwrap().strip_suffix(".git").unwrap();
-                    project.entry("git").or_insert(json!({
-                        "remote": remote_url,
-                        "branch": repo.head()?.shorthand().unwrap(),
-                        "target": repo.head()?.target().unwrap().to_string(),
-                    }));
+                    if let Some(url) = remote.url() {
+                        let remote_url = match url.strip_suffix(".git") {
+                            Some(value) => value,
+                            None => url,
+                        };
+                        project.entry("git").or_insert(json!({
+                            "remote": remote_url,
+                            "branch": repo.head()?.shorthand().unwrap(),
+                            "target": repo.head()?.target().unwrap().to_string(),
+                        }));
+                    }
                 }
             },
         }

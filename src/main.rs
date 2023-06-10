@@ -1,8 +1,10 @@
 use birdview::config::{Config, OutputFormat};
 use birdview::run;
 use clap::{Parser, Subcommand};
+use git2::Repository;
 use std::path::PathBuf;
 use std::process;
+use tempfile::tempdir;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -22,7 +24,7 @@ enum Commands {
     /// Inspect the workspace
     Inspect {
         /// Workspace directory
-        working_dir: PathBuf,
+        working_dir: String,
 
         /// Run all inspections
         #[arg(long)]
@@ -84,24 +86,66 @@ fn main() {
             open,
             format,
         }) => {
-            let config = Config {
-                working_dir: working_dir.to_owned(),
-                output_dir: match output_dir {
-                    Some(path) => path.to_owned(),
-                    None => working_dir.to_owned(),
-                },
-                inspect_tests: *all | *tests,
-                inspect_packages: *all | *packages,
-                inspect_angular: *all | *angular,
-                inspect_types: *all | *types,
-                verbose: *verbose,
-                open: *open,
-                format: *format,
-            };
+            if working_dir.starts_with("https://") {
+                let repo_dir = tempdir().expect("Failed creating temporary dir");
 
-            if let Err(e) = run(&config) {
-                eprintln!("Application error {e}");
-                process::exit(1);
+                let url = match working_dir.strip_suffix(".git") {
+                    Some(value) => value,
+                    None => working_dir,
+                };
+
+                println!("Cloning {} => {}", url, repo_dir.path().display());
+                let repo = match Repository::clone(url, &repo_dir) {
+                    Ok(repo) => repo,
+                    Err(e) => {
+                        repo_dir.close().unwrap();
+                        panic!("failed to clone: {}", e)
+                    }
+                };
+                println!("Branch: {}", repo.head().unwrap().shorthand().unwrap());
+
+                let config = Config {
+                    working_dir: repo_dir.path().to_owned(),
+                    output_dir: match output_dir {
+                        Some(value) => value.to_owned(),
+                        None => std::env::current_dir().unwrap(),
+                    },
+                    inspect_tests: *all | *tests,
+                    inspect_packages: *all | *packages,
+                    inspect_angular: *all | *angular,
+                    inspect_types: *all | *types,
+                    verbose: *verbose,
+                    open: *open,
+                    format: *format,
+                };
+
+                if let Err(e) = run(&config) {
+                    eprintln!("Application error {e}");
+                    repo_dir.close().unwrap();
+                    process::exit(1);
+                } else {
+                    repo_dir.close().unwrap();
+                }
+            } else {
+                let config = Config {
+                    working_dir: PathBuf::from(working_dir),
+                    output_dir: match output_dir {
+                        Some(dir) => dir.to_owned(),
+                        None => PathBuf::from(working_dir),
+                    },
+                    inspect_tests: *all | *tests,
+                    inspect_packages: *all | *packages,
+                    inspect_angular: *all | *angular,
+                    inspect_types: *all | *types,
+                    verbose: *verbose,
+                    open: *open,
+                    format: *format,
+                };
+
+                if let Err(e) = run(&config) {
+                    eprintln!("Application error {e}");
+                    process::exit(1);
+                }
             }
         }
         None => {}
