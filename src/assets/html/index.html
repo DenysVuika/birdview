@@ -394,37 +394,43 @@
 
                             ${activeTab === 1 && html`
                                 ${this.getModules(data).map(entry => html`
-                                    <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"></LinkRow>
+                                    <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"/>
                                 `)}
                             `}
 
                             ${activeTab === 2 && html`
                                 ${this.getComponents(data).map(entry => html`
-                                    <${LinkRow} caption="${entry.path} (standalone: ${entry.standalone})" url="${entry.url}" icon="mdi-file-code-outline"></LinkRow>
+                                    <a class="panel-block">
+                                        <span class="panel-icon">
+                                            <i class="mdi mdi-file-code-outline"></i>
+                                        </span>
+                                        <a href="${entry.url}" target="_blank">${entry.path}</a>
+                                        ${entry.standalone && html`<span class="tag is-success ml-2">standalone</span>`}
+                                    </a>
                                 `)}
                             `}
 
                             ${activeTab === 3 && html`
                                 ${this.getDirectives(data).map(entry => html`
-                                    <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"></LinkRow>
+                                    <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"/>
                                 `)}
                             `}
 
                             ${activeTab === 4 && html`
                                 ${this.getServices(data).map(entry => html`
-                                    <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"></LinkRow>
+                                    <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"/>
                                 `)}
                             `}
 
                             ${activeTab === 5 && html`
                                 ${this.getPipes(data).map(entry => html`
-                                    <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"></LinkRow>
+                                    <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"/>
                                 `)}
                             `}
 
                             ${activeTab === 6 && html`
                                 ${this.getDialogs(data).map(entry => html`
-                                    <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"></LinkRow>
+                                    <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"/>
                                 `)}
                             `}
                         </div>
