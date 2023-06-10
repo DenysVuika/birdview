@@ -73,16 +73,17 @@ impl Workspace {
 
         match Repository::open(&self.working_dir) {
             Err(..) => println!("Git repository not found"),
-            Ok(repo) => {
-                let remote = repo.find_remote("origin")?;
-                let remote_url = remote.url().unwrap().strip_suffix(".git").unwrap();
-
-                project.entry("git").or_insert(json!({
-                    "remote": remote_url,
-                    "branch": repo.head()?.shorthand().unwrap(),
-                    "target": repo.head()?.target().unwrap().to_string(),
-                }));
-            }
+            Ok(repo) => match repo.find_remote("origin") {
+                Err(..) => println!("Warning: origin remote not found"),
+                Ok(remote) => {
+                    let remote_url = remote.url().unwrap().strip_suffix(".git").unwrap();
+                    project.entry("git").or_insert(json!({
+                        "remote": remote_url,
+                        "branch": repo.head()?.shorthand().unwrap(),
+                        "target": repo.head()?.target().unwrap().to_string(),
+                    }));
+                }
+            },
         }
 
         self.run_inspectors(&mut map);
