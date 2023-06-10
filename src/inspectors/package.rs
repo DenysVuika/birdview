@@ -42,6 +42,10 @@ impl Default for PackageJsonInspector {
 }
 
 impl FileInspector for PackageJsonInspector {
+    fn get_module_name(&self) -> &str {
+        "packages"
+    }
+
     fn init(&mut self, _working_dir: &Path, _output: &mut Map<String, Value>) {}
 
     fn supports_file(&self, path: &Path) -> bool {

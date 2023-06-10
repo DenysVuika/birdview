@@ -39,11 +39,18 @@ impl Workspace {
             Value::String(Utc::now().to_string()),
         );
 
+        let modules: Vec<&str> = self
+            .inspectors
+            .iter()
+            .map(|inspector| inspector.get_module_name())
+            .collect();
+
         let project = map
             .entry("project")
             .or_insert(json!({
                 "name": "unknown",
-                "version": "unknown"
+                "version": "unknown",
+                "modules": modules,
             }))
             .as_object_mut()
             .unwrap();

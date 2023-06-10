@@ -188,6 +188,13 @@ The format of the output is similar to the following example:
   "project": {
     "name": "<package.json>/name",
     "version": "<package.json>/version",
+
+    "modules": [
+      "packages",
+      "angular-tests",
+      "angular-entities",
+      "file-types"
+    ],
     
     "git": {
       "remote": "<URL>",

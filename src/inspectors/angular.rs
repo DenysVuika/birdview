@@ -89,6 +89,10 @@ impl Default for AngularInspector {
 }
 
 impl FileInspector for AngularInspector {
+    fn get_module_name(&self) -> &str {
+        "angular-entities"
+    }
+
     fn init(&mut self, working_dir: &Path, _output: &mut Map<String, Value>) {
         self.framework = AngularInspector::get_angular_version(working_dir);
     }

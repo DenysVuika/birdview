@@ -43,10 +43,15 @@
         function LinkRow({ caption, url, icon }) {
             return html`
                 <a class="panel-block">
-                    <span class="panel-icon">
-                        <i class="mdi ${icon}"></i>
-                    </span>
-                    <a href="${url}" target="_blank">${caption}</a>
+                    ${icon && html`
+                        <span class="panel-icon">
+                            <i class="mdi ${icon}"></i>
+                        </span>
+                    `}
+                    ${url
+                        ? html`<a href="${url}" target="_blank">${caption}</a>`
+                        : html`<span>${caption}</span>`
+                    }
                 </a>
             `;
         }
@@ -305,13 +310,13 @@
                 });
             }
 
-            getModules(data) {
-                const modules = data.angular.modules;
+            getEntities(data, key) {
+                const entities = data.angular[key] || [];
                 const git = data.project.git;
 
-                return modules.map(path => ({
+                return entities.map(path => ({
                     path,
-                    url: `${git.remote}/blob/${git.target}/${path}`
+                    url: !!git ? `${git.remote}/blob/${git.target}/${path}` : ''
                 }));
             }
 
@@ -322,47 +327,7 @@
                 return components.map(entry => ({
                     path: entry.path,
                     standalone: entry.standalone,
-                    url: `${git.remote}/blob/${git.target}/${entry.path}`
-                }));
-            }
-
-            getDirectives(data) {
-                const directives = data.angular.directives;
-                const git = data.project.git;
-
-                return directives.map(path => ({
-                    path,
-                    url: `${git.remote}/blob/${git.target}/${path}`
-                }));
-            }
-
-            getServices(data) {
-                const services = data.angular.services;
-                const git = data.project.git;
-
-                return services.map(path => ({
-                    path,
-                    url: `${git.remote}/blob/${git.target}/${path}`
-                }));
-            }
-
-            getPipes(data) {
-                const pipes = data.angular.pipes;
-                const git = data.project.git;
-
-                return pipes.map(path => ({
-                    path,
-                    url: `${git.remote}/blob/${git.target}/${path}`
-                }));
-            }
-
-            getDialogs(data) {
-                const dialogs = data.angular.dialogs;
-                const git = data.project.git;
-
-                return dialogs.map(path => ({
-                    path,
-                    url: `${git.remote}/blob/${git.target}/${path}`
+                    url: !!git ? `${git.remote}/blob/${git.target}/${entry.path}`: ''
                 }));
             }
 
@@ -393,7 +358,7 @@
                             `}
 
                             ${activeTab === 1 && html`
-                                ${this.getModules(data).map(entry => html`
+                                ${this.getEntities(data, 'modules').map(entry => html`
                                     <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"/>
                                 `)}
                             `}
@@ -404,32 +369,35 @@
                                         <span class="panel-icon">
                                             <i class="mdi mdi-file-code-outline"></i>
                                         </span>
-                                        <a href="${entry.url}" target="_blank">${entry.path}</a>
+                                        ${entry.url
+                                            ? html`<a href="${entry.url}" target="_blank">${entry.path}</a>`
+                                            : html`<span>${entry.path}</span>`
+                                        }
                                         ${entry.standalone && html`<span class="tag is-success ml-2">standalone</span>`}
                                     </a>
                                 `)}
                             `}
 
                             ${activeTab === 3 && html`
-                                ${this.getDirectives(data).map(entry => html`
+                                ${this.getEntities(data, 'directives').map(entry => html`
                                     <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"/>
                                 `)}
                             `}
 
                             ${activeTab === 4 && html`
-                                ${this.getServices(data).map(entry => html`
+                                ${this.getEntities(data, 'services').map(entry => html`
                                     <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"/>
                                 `)}
                             `}
 
                             ${activeTab === 5 && html`
-                                ${this.getPipes(data).map(entry => html`
+                                ${this.getEntities(data, 'pipes').map(entry => html`
                                     <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"/>
                                 `)}
                             `}
 
                             ${activeTab === 6 && html`
-                                ${this.getDialogs(data).map(entry => html`
+                                ${this.getEntities(data, 'dialogs').map(entry => html`
                                     <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"/>
                                 `)}
                             `}
@@ -458,14 +426,15 @@
         }
 
         function App({ data }) {
+            const hasModule = (moduleName) => data.project.modules.includes(moduleName);
             return html`
                 <main>
                     <${Header} data=${data}></Header>
                     <section class="section">
-                        <${Packages} data=${data}></Packages>
-                        <${Angular} data=${data}></Angular>
-                        <${Tests} data=${data}></Tests>
-                        <${FileTypes} data=${data.stats.types}></FileTypes>
+                        ${hasModule('packages') && html`<${Packages} data=${data}></Packages>`}
+                        ${hasModule('angular-entities') && html`<${Angular} data=${data}></Angular>`}
+                        ${hasModule('angular-tests') && html`<${Tests} data=${data}></Tests>`}
+                        ${hasModule('file-types') && html`<${FileTypes} data=${data.stats.types}></FileTypes>`}
                     </section>
                 </main>
             `;
