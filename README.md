@@ -209,6 +209,14 @@ The format of the output is similar to the following example:
     }
   },
   
+  "warnings": [
+    {
+      "module": "<module>",
+      "path": "<relative/path>",
+      "message": "<message>"
+    }
+  ],
+  
   "stats": {
     "package": {
       "files": 32,

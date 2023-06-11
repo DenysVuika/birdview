@@ -52,9 +52,32 @@ impl FileInspector for PackageJsonInspector {
         path.is_file() && path.ends_with("package.json")
     }
 
-    fn inspect_file(&mut self, options: &FileInspectorOptions, _output: &mut Map<String, Value>) {
+    fn inspect_file(&mut self, options: &FileInspectorOptions, output: &mut Map<String, Value>) {
         let package = PackageJsonFile::from_file(&options.path)
             .unwrap_or_else(|_| panic!("Error reading {}", &options.path.display()));
+
+        let workspace_path = options.relative_path.display().to_string();
+        let warnings = output
+            .entry("warnings")
+            .or_insert(json!([]))
+            .as_array_mut()
+            .unwrap();
+
+        if package.name.is_none() {
+            warnings.push(json!({
+                "module": self.get_module_name(),
+                "path": workspace_path,
+                "message": "Missing name attribute",
+            }));
+        }
+
+        if package.version.is_none() {
+            warnings.push(json!({
+                "module": self.get_module_name(),
+                "path": workspace_path,
+                "message": "Missing version attribute",
+            }));
+        }
 
         let mut dependencies: Vec<DependencyEntry> = Vec::new();
 
@@ -79,8 +102,6 @@ impl FileInspector for PackageJsonInspector {
                 self.total_dev_deps += 1;
             }
         }
-
-        let workspace_path = options.relative_path.display().to_string();
 
         self.packages.push(PackageEntry {
             path: workspace_path,

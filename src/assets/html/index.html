@@ -5,14 +5,14 @@
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css"/>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.2.96/css/materialdesignicons.min.css"/>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         // <birdview:DATA>
     </script>
     <script type="module">
-        import {h, render, Component} from 'https://esm.sh/preact';
+        import { h, render, Component } from 'https://esm.sh/preact';
         import htm from 'https://esm.sh/htm';
+        // import { useState, useCallback } from 'https://esm.sh/preact/hooks';
 
         const html = htm.bind(h);
 
@@ -29,14 +29,9 @@
             `;
         }
 
-        function LinkRow({ caption, url, icon }) {
+        function LinkRow({ caption, url }) {
             return html`
                 <a class="panel-block">
-                    ${icon && html`
-                        <span class="panel-icon">
-                            <i class="mdi ${icon}"></i>
-                        </span>
-                    `}
                     ${url
                         ? html`<a href="${url}" target="_blank">${caption}</a>`
                         : html`<span>${caption}</span>`
@@ -73,6 +68,30 @@
         }
 
         class Packages extends ReportPanel {
+            state = {
+                activeTab: 0,
+                warnings: [],
+                packages: [],
+                dependencies: [],
+                devDependencies: []
+            };
+
+            componentDidMount() {
+                const data = this.props.data;
+                const git = data.project.git;
+                const warnings = (data.warnings || [])
+                    .filter(warning => warning.module === 'packages')
+                    .map(entry => ({
+                        ...entry,
+                        url: !!git ? `${git.remote}/blob/${git.target}/${entry.path}`: ''
+                    }));
+                const packages = this.getPackages(data);
+                const dependencies = this.getDependencies(data, false);
+                const devDependencies = this.getDependencies(data, true);
+
+                this.setState({ warnings, packages, dependencies, devDependencies });
+            }
+
             getPackages(data) {
                 const packages = data.packages || [];
                 const git = data.project.git;
@@ -103,7 +122,7 @@
                 return result.sort((a, b) => a.name.localeCompare(b.name));
             }
 
-            render({ data }, { activeTab }) {
+            render({ data }, { activeTab, warnings, packages, dependencies, devDependencies }) {
                 const pkg = data.stats.package;
 
                 return html`
@@ -112,6 +131,9 @@
 
                         <p class="panel-tabs">
                             <a class="${ activeTab === 0 ? 'is-active' : null}" onClick="${() => this.setActiveTab(0)}">Stats</a>
+                            ${warnings.length > 0 && html`
+                                <a class="${ activeTab === 4 ? 'is-active' : null}" onClick="${() => this.setActiveTab(4)}">Warnings (${warnings.length})</a>
+                            `}
                             <a class="${ activeTab === 1 ? 'is-active' : null}" onClick="${() => this.setActiveTab(1)}">Packages (${pkg.files})</a>
                             <a class="${ activeTab === 2 ? 'is-active' : null}" onClick="${() => this.setActiveTab(2)}">Prod Deps (${pkg.prod_deps})</a>
                             <a class="${ activeTab === 3 ? 'is-active' : null}" onClick="${() => this.setActiveTab(3)}">Dev Deps (${pkg.dev_deps})</a>
@@ -119,26 +141,46 @@
 
                         <div style="max-height: 500px; overflow-y: scroll">
                             ${activeTab === 0 && html`
-                                <${LinkRow} icon="mdi-package-variant-closed" caption="Packages: ${pkg.files}"/>
-                                <${LinkRow} icon="mdi-package-variant-closed" caption="Product dependencies: ${pkg.prod_deps}"/>
-                                <${LinkRow} icon="mdi-package-variant-closed" caption="Development dependencies: ${pkg.dev_deps}"/>
+                                <${LinkRow} caption="Packages: ${pkg.files}"/>
+                                <${LinkRow} caption="Product dependencies: ${pkg.prod_deps}"/>
+                                <${LinkRow} caption="Development dependencies: ${pkg.dev_deps}"/>
                             `}
 
                             ${activeTab === 1 && html`
-                                ${this.getPackages(data).map(entry => html`
-                                    <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-code-json"></LinkRow>
+                                ${packages.map(entry => html`
+                                    <${LinkRow} caption="${entry.path}" url="${entry.url}"></LinkRow>
                                 `)}
                             `}
 
                             ${activeTab === 2 && html`
-                                ${this.getDependencies(data, false).map(entry => html`
-                                    <${DependencyRow} entry="${entry}" icon="mdi-package-variant-closed" />
+                                ${dependencies.map(entry => html`
+                                    <${DependencyRow} entry="${entry}" />
                                 `)}
                             `}
 
                              ${activeTab === 3 && html`
-                                ${this.getDependencies(data, true).map(entry => html`
-                                    <${DependencyRow} entry="${entry}" icon="mdi-package-variant-closed" />
+                                ${devDependencies.map(entry => html`
+                                    <${DependencyRow} entry="${entry}" />
+                                `)}
+                            `}
+
+                             ${activeTab === 4 && html`
+                                ${warnings.map(entry => html`
+                                    <a class="panel-block">
+                                        <nav class="breadcrumb">
+                                            <ul>
+                                                <li>
+                                                    ${entry.url
+                                                        ? html`<a href="${entry.url}" target="_blank">${entry.path}</a>`
+                                                        : html`<span>${entry.path}</span>`
+                                                    }
+                                                </li>
+                                                <li class="is-active">
+                                                    <a class="has-text-danger" href="#">${entry.message}</a>
+                                                </li>
+                                            </ul>
+                                        </nav>
+                                    </a>
                                 `)}
                             `}
                          </div>
@@ -148,6 +190,13 @@
         }
 
         class Tests extends ReportPanel {
+            state = {
+                activeTab: 0,
+                unitTests: [],
+                e2eTests: [],
+                totalCases: 0
+            };
+
             setActiveTab(index) {
                 super.setActiveTab(index);
 
@@ -156,6 +205,21 @@
                         this.setupChart();
                     });
                 }
+            }
+
+            componentDidMount() {
+                const data = this.props.data;
+                const unitTests = this.getEntries(data, 'unit_tests');
+                const e2eTests = this.getEntries(data, 'e2e_tests');
+
+                const tests = data.stats.tests;
+                const totalCases = tests.unit_test_case + tests.e2e_test_case;
+
+                this.setState({
+                    unitTests,
+                    e2eTests,
+                    totalCases
+                });
             }
 
             getEntries(data, key) {
@@ -198,26 +262,24 @@
                 });
             }
 
-            render({ data }, { activeTab }) {
+            render({ data }, { activeTab, totalCases, unitTests, e2eTests }) {
                 setTimeout(() => {
                     if (activeTab === 0) {
                         this.setupChart();
                     }
                 });
-                const tests = data.stats.tests;
-                const total_cases = tests.unit_test_case + tests.e2e_test_case;
 
                 return html`
                     <nav class="panel is-link">
-                        <p class="panel-heading">Tests (${total_cases})</p>
+                        <p class="panel-heading">Tests (${totalCases})</p>
 
                         <p class="panel-tabs">
                             <a class="${ activeTab === 0 ? 'is-active' : null}" onClick="${() => this.setActiveTab(0)}">Stats</a>
-                            ${tests.unit_test > 0 && html`
-                                <a class="${ activeTab === 1 ? 'is-active' : null}" onClick="${() => this.setActiveTab(1)}">Unit Tests (${tests.unit_test})</a>
+                            ${unitTests.length && html`
+                                <a class="${ activeTab === 1 ? 'is-active' : null}" onClick="${() => this.setActiveTab(1)}">Unit Tests (${unitTests.length})</a>
                             `}
-                            ${tests.e2e_test > 0 && html`
-                                <a class="${ activeTab === 2 ? 'is-active' : null}" onClick="${() => this.setActiveTab(2)}">E2E Tests (${tests.e2e_test})</a>
+                            ${e2eTests.length && html`
+                                <a class="${ activeTab === 2 ? 'is-active' : null}" onClick="${() => this.setActiveTab(2)}">E2E Tests (${e2eTests.length})</a>
                             `}
                         </p>
 
@@ -229,14 +291,14 @@
                             `}
 
                             ${activeTab === 1 && html`
-                                ${this.getEntries(data, 'unit_tests').map(entry => html`
-                                    <${LinkRow} caption="${entry.path} (${entry.cases} cases)" url="${entry.url}" icon="mdi-test-tube"></LinkRow>
+                                ${unitTests.map(entry => html`
+                                    <${LinkRow} caption="${entry.path} (${entry.cases} cases)" url="${entry.url}"></LinkRow>
                                 `)}
                             `}
 
                             ${activeTab === 2 && html`
-                                ${this.getEntries(data, 'e2e_tests').map(entry => html`
-                                    <${LinkRow} caption="${entry.path} (${entry.cases} cases)" url="${entry.url}" icon="mdi-test-tube"></LinkRow>
+                                ${e2eTests.map(entry => html`
+                                    <${LinkRow} caption="${entry.path} (${entry.cases} cases)" url="${entry.url}"></LinkRow>
                                 `)}
                             `}
                         </div>
@@ -246,12 +308,32 @@
         }
 
         class Angular extends ReportPanel {
+            state = {
+                activeTab: 0,
+                modules: [],
+                components: [],
+                directives: [],
+                services: [],
+                pipes: [],
+                dialogs: []
+            };
             setActiveTab(index) {
                 super.setActiveTab(index);
 
                 if (index === 0) {
                     setTimeout(() => { this.setupChart();});
                 }
+            }
+
+            componentDidMount() {
+                const data = this.props.data;
+                const modules = this.getEntities(data, 'modules');
+                const components = this.getEntities(data, 'components');
+                const directives = this.getEntities(data, 'directives');
+                const services = this.getEntities(data, 'services');
+                const pipes = this.getEntities(data, 'pipes');
+                const dialogs = this.getEntities(data, 'dialogs');
+                this.setState({ modules, components, directives, services, pipes, dialogs });
             }
 
             setupChart() {
@@ -310,6 +392,7 @@
             }
 
             getEntities(data, key) {
+                console.log('getEntities', key);
                 const entities = data.angular[key] || [];
                 const git = data.project.git;
 
@@ -319,13 +402,12 @@
                 }));
             }
 
-            render({ data }, { activeTab }) {
+            render({ data }, { activeTab, modules, components, directives, services, pipes, dialogs }) {
                 setTimeout(() => {
                     if (activeTab === 0) {
                         this.setupChart();
                     }
                 });
-                const angular = data.stats.angular;
                 const ngVersion = data.angular.framework;
 
                 return html`
@@ -334,23 +416,23 @@
 
                         <p class="panel-tabs">
                             <a class="${ activeTab === 0 ? 'is-active' : null}" onClick="${() => this.setActiveTab(0)}">Stats</a>
-                            ${angular.module > 0 && html`
-                                <a class="${ activeTab === 1 ? 'is-active' : null}" onClick="${() => this.setActiveTab(1)}">Modules (${angular.module})</a>
+                            ${modules.length && html`
+                                <a class="${ activeTab === 1 ? 'is-active' : null}" onClick="${() => this.setActiveTab(1)}">Modules (${modules.length})</a>
                             `}
-                            ${angular.component > 0 && html`
-                                <a class="${ activeTab === 2 ? 'is-active' : null}" onClick="${() => this.setActiveTab(2)}">Components (${angular.component})</a>
+                            ${components.length && html`
+                                <a class="${ activeTab === 2 ? 'is-active' : null}" onClick="${() => this.setActiveTab(2)}">Components (${components.length})</a>
                             `}
-                            ${angular.directive > 0 && html`
-                                <a class="${ activeTab === 3 ? 'is-active' : null}" onClick="${() => this.setActiveTab(3)}">Directives (${angular.directive})</a>
+                            ${directives.length && html`
+                                <a class="${ activeTab === 3 ? 'is-active' : null}" onClick="${() => this.setActiveTab(3)}">Directives (${directives.length})</a>
                             `}
-                            ${angular.service > 0 && html`
-                                <a class="${ activeTab === 4 ? 'is-active' : null}" onClick="${() => this.setActiveTab(4)}">Services (${angular.service})</a>
+                            ${services.length && html`
+                                <a class="${ activeTab === 4 ? 'is-active' : null}" onClick="${() => this.setActiveTab(4)}">Services (${services.length})</a>
                             `}
-                            ${angular.pipe > 0 && html`
-                                <a class="${ activeTab === 5 ? 'is-active' : null}" onClick="${() => this.setActiveTab(5)}">Pipes (${angular.pipe})</a>
+                            ${pipes.length && html`
+                                <a class="${ activeTab === 5 ? 'is-active' : null}" onClick="${() => this.setActiveTab(5)}">Pipes (${pipes.length})</a>
                             `}
-                            ${angular.dialog > 0 && html`
-                                <a class="${ activeTab === 6 ? 'is-active' : null}" onClick="${() => this.setActiveTab(6)}">Dialogs (${angular.dialog})</a>
+                            ${dialogs.length && html`
+                                <a class="${ activeTab === 6 ? 'is-active' : null}" onClick="${() => this.setActiveTab(6)}">Dialogs (${dialogs.length})</a>
                             `}
                         </p>
 
@@ -362,17 +444,14 @@
                             `}
 
                             ${activeTab === 1 && html`
-                                ${this.getEntities(data, 'modules').map(entry => html`
-                                    <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"/>
+                                ${modules.map(entry => html`
+                                    <${LinkRow} caption="${entry.path}" url="${entry.url}"/>
                                 `)}
                             `}
 
                             ${activeTab === 2 && html`
-                                ${this.getEntities(data, 'components').map(entry => html`
+                                ${components.map(entry => html`
                                     <a class="panel-block">
-                                        <span class="panel-icon">
-                                            <i class="mdi mdi-file-code-outline"></i>
-                                        </span>
                                         ${entry.url
                                             ? html`<a href="${entry.url}" target="_blank">${entry.path}</a>`
                                             : html`<span>${entry.path}</span>`
@@ -383,26 +462,26 @@
                             `}
 
                             ${activeTab === 3 && html`
-                                ${this.getEntities(data, 'directives').map(entry => html`
-                                    <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"/>
+                                ${directives.map(entry => html`
+                                    <${LinkRow} caption="${entry.path}" url="${entry.url}"/>
                                 `)}
                             `}
 
                             ${activeTab === 4 && html`
-                                ${this.getEntities(data, 'services').map(entry => html`
-                                    <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"/>
+                                ${services.map(entry => html`
+                                    <${LinkRow} caption="${entry.path}" url="${entry.url}"/>
                                 `)}
                             `}
 
                             ${activeTab === 5 && html`
-                                ${this.getEntities(data, 'pipes').map(entry => html`
-                                    <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"/>
+                                ${pipes.map(entry => html`
+                                    <${LinkRow} caption="${entry.path}" url="${entry.url}"/>
                                 `)}
                             `}
 
                             ${activeTab === 6 && html`
-                                ${this.getEntities(data, 'dialogs').map(entry => html`
-                                    <${LinkRow} caption="${entry.path}" url="${entry.url}" icon="mdi-file-code-outline"/>
+                                ${dialogs.map(entry => html`
+                                    <${LinkRow} caption="${entry.path}" url="${entry.url}"/>
                                 `)}
                             `}
                         </div>
@@ -422,7 +501,7 @@
 
                     <div style="max-height: 500px; overflow-y: scroll">
                         ${rows.map(row => html`
-                            <${LinkRow} icon="mdi-file-document" caption="${row.key}: ${row.value}"/>
+                            <${LinkRow} caption="${row.key}: ${row.value}"/>
                         `)}
                     </div>
                 </nav>
