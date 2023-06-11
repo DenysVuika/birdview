@@ -237,6 +237,7 @@ mod tests {
         assert_eq!(
             Value::Object(map),
             json!({
+                "warnings": [],
                 "packages": [
                     {
                         "path": "package.json",
