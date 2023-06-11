@@ -284,8 +284,8 @@
 
                         <p class="panel-tabs">
                             <${TabHeader} index=${0} title="Stats" />
-                            ${unitTests.length && html`<${TabHeader} index=${1} title="Unit Tests (${unitTests.length})" />`}
-                            ${e2eTests.length && html`<${TabHeader} index=${2} title="E2E Tests (${e2eTests.length})" />`}
+                            ${unitTests.length > 0 && html`<${TabHeader} index=${1} title="Unit Tests (${unitTests.length})" />`}
+                            ${e2eTests.length > 0 && html`<${TabHeader} index=${2} title="E2E Tests (${e2eTests.length})" />`}
                         </p>
 
                         <div style="max-height: 500px; overflow-y: scroll">
@@ -425,12 +425,12 @@
                         <p class="panel-tabs">
                             <${TabHeader} index=${0} title="Stats" />
 
-                            ${modules.length && html`<${TabHeader} index=${1} title="Modules (${modules.length})" />`}
-                            ${components.length && html`<${TabHeader} index=${2} title="Components (${components.length})" />`}
-                            ${directives.length && html`<${TabHeader} index=${3} title="Directives (${directives.length})" />`}
-                            ${services.length && html`<${TabHeader} index=${4} title="Services (${services.length})" />`}
-                            ${pipes.length && html`<${TabHeader} index=${5} title="Pipes (${pipes.length})" />`}
-                            ${dialogs.length && html`<${TabHeader} index=${6} title="Dialogs (${dialogs.length})" />`}
+                            ${modules.length > 0 && html`<${TabHeader} index=${1} title="Modules (${modules.length})" />`}
+                            ${components.length > 0 && html`<${TabHeader} index=${2} title="Components (${components.length})" />`}
+                            ${directives.length > 0 && html`<${TabHeader} index=${3} title="Directives (${directives.length})" />`}
+                            ${services.length > 0 && html`<${TabHeader} index=${4} title="Services (${services.length})" />`}
+                            ${pipes.length > 0 && html`<${TabHeader} index=${5} title="Pipes (${pipes.length})" />`}
+                            ${dialogs.length > 0 && html`<${TabHeader} index=${6} title="Dialogs (${dialogs.length})" />`}
                         </p>
 
                         <div style="max-height: 500px; overflow-y: scroll">
