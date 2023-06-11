@@ -122,21 +122,26 @@
                 return result.sort((a, b) => a.name.localeCompare(b.name));
             }
 
+
+
             render({ data }, { activeTab, warnings, packages, dependencies, devDependencies }) {
                 const pkg = data.stats.package;
+                const TabHeader = ({ index, title }) => html`
+                    <a class="${ activeTab === index ? 'is-active' : null}" onClick="${() => this.setActiveTab(index)}">${title}</a>
+                `;
 
                 return html`
                     <nav class="panel is-link">
                         <p class="panel-heading">Packages (${pkg.files})</p>
 
                         <p class="panel-tabs">
-                            <a class="${ activeTab === 0 ? 'is-active' : null}" onClick="${() => this.setActiveTab(0)}">Stats</a>
+                            <${TabHeader} index=${0} title="Stats"/>
                             ${warnings.length > 0 && html`
-                                <a class="${ activeTab === 4 ? 'is-active' : null}" onClick="${() => this.setActiveTab(4)}">Warnings (${warnings.length})</a>
+                                <${TabHeader} index=${4} title="Warnings (${warnings.length})"/>
                             `}
-                            <a class="${ activeTab === 1 ? 'is-active' : null}" onClick="${() => this.setActiveTab(1)}">Packages (${pkg.files})</a>
-                            <a class="${ activeTab === 2 ? 'is-active' : null}" onClick="${() => this.setActiveTab(2)}">Prod Deps (${pkg.prod_deps})</a>
-                            <a class="${ activeTab === 3 ? 'is-active' : null}" onClick="${() => this.setActiveTab(3)}">Dev Deps (${pkg.dev_deps})</a>
+                            <${TabHeader} index=${1} title="Packages (${pkg.files})" />
+                            <${TabHeader} index=${2} title="Prod Deps (${pkg.prod_deps})" />
+                            <${TabHeader} index=${3} title="Dev Deps (${pkg.dev_deps})" />
                         </p>
 
                         <div style="max-height: 500px; overflow-y: scroll">
@@ -269,18 +274,18 @@
                     }
                 });
 
+                const TabHeader = ({ index, title }) => html`
+                    <a class="${ activeTab === index ? 'is-active' : null}" onClick="${() => this.setActiveTab(index)}">${title}</a>
+                `;
+
                 return html`
                     <nav class="panel is-link">
                         <p class="panel-heading">Tests (${totalCases})</p>
 
                         <p class="panel-tabs">
-                            <a class="${ activeTab === 0 ? 'is-active' : null}" onClick="${() => this.setActiveTab(0)}">Stats</a>
-                            ${unitTests.length && html`
-                                <a class="${ activeTab === 1 ? 'is-active' : null}" onClick="${() => this.setActiveTab(1)}">Unit Tests (${unitTests.length})</a>
-                            `}
-                            ${e2eTests.length && html`
-                                <a class="${ activeTab === 2 ? 'is-active' : null}" onClick="${() => this.setActiveTab(2)}">E2E Tests (${e2eTests.length})</a>
-                            `}
+                            <${TabHeader} index=${0} title="Stats" />
+                            ${unitTests.length && html`<${TabHeader} index=${1} title="Unit Tests (${unitTests.length})" />`}
+                            ${e2eTests.length && html`<${TabHeader} index=${2} title="E2E Tests (${e2eTests.length})" />`}
                         </p>
 
                         <div style="max-height: 500px; overflow-y: scroll">
@@ -392,7 +397,6 @@
             }
 
             getEntities(data, key) {
-                console.log('getEntities', key);
                 const entities = data.angular[key] || [];
                 const git = data.project.git;
 
@@ -408,6 +412,10 @@
                         this.setupChart();
                     }
                 });
+                const TabHeader = ({ index, title }) => html`
+                    <a class="${ activeTab === index ? 'is-active' : null}" onClick="${() => this.setActiveTab(index)}">${title}</a>
+                `;
+
                 const ngVersion = data.angular.framework;
 
                 return html`
@@ -415,25 +423,14 @@
                         <p class="panel-heading">Angular (${ngVersion})</p>
 
                         <p class="panel-tabs">
-                            <a class="${ activeTab === 0 ? 'is-active' : null}" onClick="${() => this.setActiveTab(0)}">Stats</a>
-                            ${modules.length && html`
-                                <a class="${ activeTab === 1 ? 'is-active' : null}" onClick="${() => this.setActiveTab(1)}">Modules (${modules.length})</a>
-                            `}
-                            ${components.length && html`
-                                <a class="${ activeTab === 2 ? 'is-active' : null}" onClick="${() => this.setActiveTab(2)}">Components (${components.length})</a>
-                            `}
-                            ${directives.length && html`
-                                <a class="${ activeTab === 3 ? 'is-active' : null}" onClick="${() => this.setActiveTab(3)}">Directives (${directives.length})</a>
-                            `}
-                            ${services.length && html`
-                                <a class="${ activeTab === 4 ? 'is-active' : null}" onClick="${() => this.setActiveTab(4)}">Services (${services.length})</a>
-                            `}
-                            ${pipes.length && html`
-                                <a class="${ activeTab === 5 ? 'is-active' : null}" onClick="${() => this.setActiveTab(5)}">Pipes (${pipes.length})</a>
-                            `}
-                            ${dialogs.length && html`
-                                <a class="${ activeTab === 6 ? 'is-active' : null}" onClick="${() => this.setActiveTab(6)}">Dialogs (${dialogs.length})</a>
-                            `}
+                            <${TabHeader} index=${0} title="Stats" />
+
+                            ${modules.length && html`<${TabHeader} index=${1} title="Modules (${modules.length})" />`}
+                            ${components.length && html`<${TabHeader} index=${2} title="Components (${components.length})" />`}
+                            ${directives.length && html`<${TabHeader} index=${3} title="Directives (${directives.length})" />`}
+                            ${services.length && html`<${TabHeader} index=${4} title="Services (${services.length})" />`}
+                            ${pipes.length && html`<${TabHeader} index=${5} title="Pipes (${pipes.length})" />`}
+                            ${dialogs.length && html`<${TabHeader} index=${6} title="Dialogs (${dialogs.length})" />`}
                         </p>
 
                         <div style="max-height: 500px; overflow-y: scroll">
