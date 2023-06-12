@@ -2,10 +2,10 @@ use crate::inspectors::{FileInspector, FileInspectorOptions};
 use crate::models::PackageJsonFile;
 use chrono::Utc;
 use git2::Repository;
+use ignore::WalkBuilder;
 use serde_json::{json, Map, Value};
 use std::error::Error;
 use std::path::PathBuf;
-use walkdir::{DirEntry, WalkDir};
 
 pub struct Workspace {
     pub working_dir: PathBuf,
@@ -100,13 +100,9 @@ impl Workspace {
             inspector.init(&self.working_dir, map);
         }
 
-        let walker = WalkDir::new(&self.working_dir)
-            .follow_links(true)
-            .into_iter();
-
-        for entry in walker
-            .filter_entry(|e| is_not_hidden(e) && !is_excluded(e))
-            .filter_map(|e| e.ok())
+        for entry in WalkBuilder::new(&self.working_dir)
+            .build()
+            .filter_map(|entry| entry.ok())
         {
             // let f_name = entry.file_name().to_string_lossy();
             let entry_path = entry.path();
@@ -144,21 +140,4 @@ impl Workspace {
             inspector.finalize(map);
         }
     }
-}
-
-fn is_not_hidden(entry: &DirEntry) -> bool {
-    entry
-        .file_name()
-        .to_str()
-        .map(|s| entry.depth() == 0 || !s.starts_with('.'))
-        .unwrap_or(false)
-}
-
-fn is_excluded(entry: &DirEntry) -> bool {
-    let exclude = vec!["nxcache", "node_modules", "coverage", "dist"];
-    entry
-        .file_name()
-        .to_str()
-        .map(|s| exclude.contains(&s))
-        .unwrap_or(false)
 }

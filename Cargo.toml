@@ -12,7 +12,6 @@ repository = "https://github.com/DenysVuika/birdview.git"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-walkdir = "2"
 regex = "1.8.3"
 lazy_static = "1.4.0"
 serde_json = { version = "1.0", features = ["preserve_order"] }
@@ -23,6 +22,7 @@ webbrowser = "0.8.10"
 git2 = "0.17.2"
 openssl = { version = "0.10", features = ["vendored"] }
 tempfile = "3.5.0"
+ignore = "0.4.20"
 
 [dev-dependencies]
 assert_fs = "1.0.13"
