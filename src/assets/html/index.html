@@ -481,6 +481,38 @@
             }
         }
 
+        class GitReport extends ReportPanel {
+            render({ data }, { activeTab }) {
+                const TabHeader = ({ index, title }) => html`
+                    <a class="${ activeTab === index ? 'is-active' : null}" onClick="${() => this.setActiveTab(index)}">${title}</a>
+                `;
+
+                return html`
+                    <nav class="panel is-link">
+                        <p class="panel-heading">Git</p>
+
+                        <p class="panel-tabs">
+                            <${TabHeader} index=${0} title="Stats" />
+                            <${TabHeader} index=${1} title="Authors" />
+                        </p>
+
+                        <div style="max-height: 500px; overflow-y: scroll">
+                            ${activeTab === 0 && html`
+                                <${LinkRow} caption="Remote: ${data.remote}" url="${data.remote}"/>
+                                <${LinkRow} caption="Branch: ${data.branch}"/>
+                                <${LinkRow} caption="Head: ${data.target}"/>
+                            `}
+                            ${activeTab === 1 && html`
+                                ${data.authors.map(author => html`
+                                    <${LinkRow} caption="${author.name} (${author.commits} commits)"/>
+                                `)}
+                            `}
+                        </div>
+                    </nav>
+                `;
+            }
+        }
+
         function FileTypes({ data }) {
             const rows = Object.keys(data)
                 .map(key => ({ key, value: data[key] }))
@@ -501,13 +533,16 @@
 
         function App({ data }) {
             const hasModule = (moduleName) => data.project.modules.includes(moduleName);
+            const hasGit = !!data.project.git;
+
             return html`
                 <main>
                     <${Header} data=${data}></Header>
                     <section class="section">
-                        ${hasModule('packages') && html`<${Packages} data=${data}></Packages>`}
-                        ${hasModule('angular-entities') && html`<${Angular} data=${data}></Angular>`}
-                        ${hasModule('angular-tests') && html`<${Tests} data=${data}></Tests>`}
+                        ${hasGit && html`<${GitReport} data=${data.project.git}/>`}
+                        ${hasModule('packages') && html`<${Packages} data=${data}/>`}
+                        ${hasModule('angular-entities') && html`<${Angular} data=${data}/>`}
+                        ${hasModule('angular-tests') && html`<${Tests} data=${data}/>`}
                         ${hasModule('file-types') && html`<${FileTypes} data=${data.stats.types}></FileTypes>`}
                     </section>
                 </main>
