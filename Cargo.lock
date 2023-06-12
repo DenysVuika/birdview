@@ -113,13 +113,13 @@ dependencies = [
  "chrono",
  "clap",
  "git2",
+ "ignore",
  "lazy_static",
  "openssl",
  "regex",
  "serde",
  "serde_json",
  "tempfile",
- "walkdir",
  "webbrowser",
 ]
 
