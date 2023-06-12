@@ -234,7 +234,6 @@ The format of the output is similar to the following example:
     "angular": {
       "module": 149,
       "component": 415,
-      "component_standalone": 23,
       "directive": 58,
       "service": 181,
       "pipe": 23,

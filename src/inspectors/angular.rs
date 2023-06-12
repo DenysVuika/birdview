@@ -14,6 +14,18 @@ pub struct AngularComponent {
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct AngularPipe {
+    path: String,
+    standalone: bool,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct AngularDirective {
+    path: String,
+    standalone: bool,
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct AngularEntity {
     path: String,
 }
@@ -22,10 +34,10 @@ pub struct AngularInspector {
     framework: Option<String>,
     modules: Vec<AngularEntity>,
     components: Vec<AngularComponent>,
-    directives: Vec<AngularEntity>,
+    directives: Vec<AngularDirective>,
     services: Vec<AngularEntity>,
-    pipes: Vec<AngularEntity>,
-    dialogs: Vec<AngularEntity>,
+    pipes: Vec<AngularPipe>,
+    dialogs: Vec<AngularComponent>,
 }
 
 impl AngularInspector {
@@ -46,7 +58,7 @@ impl AngularInspector {
         // https://rustexp.lpil.uk/
         lazy_static! {
             static ref NAME_REGEX: Regex =
-                Regex::new(r#"@(?:Component|Directive|Injectable)\((?P<metadata>[^\)]+)\)"#)
+                Regex::new(r#"@(?:Component|Directive|Pipe|Injectable)\((?P<metadata>[^\)]+)\)"#)
                     .unwrap();
         }
 
@@ -115,13 +127,13 @@ impl FileInspector for AngularInspector {
 
     fn inspect_file(&mut self, options: &FileInspectorOptions, _output: &mut Map<String, Value>) {
         let workspace_path = options.relative_path.display().to_string();
+        let content = options.read_content();
 
         if workspace_path.ends_with(".module.ts") {
             self.modules.push(AngularEntity {
                 path: workspace_path,
             });
         } else if workspace_path.ends_with(".component.ts") {
-            let content = options.read_content();
             if content.contains("@Component(") {
                 let standalone = AngularInspector::is_standalone(&content);
                 self.components.push(AngularComponent {
@@ -130,20 +142,30 @@ impl FileInspector for AngularInspector {
                 });
             }
         } else if workspace_path.ends_with(".directive.ts") {
-            self.directives.push(AngularEntity {
-                path: workspace_path,
-            });
+            if content.contains("@Directive(") {
+                let standalone = AngularInspector::is_standalone(&content);
+                self.directives.push(AngularDirective {
+                    path: workspace_path,
+                    standalone,
+                });
+            }
         } else if workspace_path.ends_with(".service.ts") {
             self.services.push(AngularEntity {
                 path: workspace_path,
             });
         } else if workspace_path.ends_with(".pipe.ts") {
-            self.pipes.push(AngularEntity {
+            if content.contains("@Pipe(") {
+                let standalone = AngularInspector::is_standalone(&content);
+                self.pipes.push(AngularPipe {
+                    path: workspace_path,
+                    standalone,
+                });
+            }
+        } else if workspace_path.ends_with(".dialog.ts") && content.contains("@Component(") {
+            let standalone = AngularInspector::is_standalone(&content);
+            self.dialogs.push(AngularComponent {
                 path: workspace_path,
-            });
-        } else if workspace_path.ends_with(".dialog.ts") {
-            self.dialogs.push(AngularEntity {
-                path: workspace_path,
+                standalone,
             });
         }
     }
@@ -170,16 +192,9 @@ impl FileInspector for AngularInspector {
             .as_object_mut()
             .unwrap();
 
-        let standalone_components = self
-            .components
-            .iter()
-            .filter(|entry| entry.standalone)
-            .count();
-
         stats.entry("angular").or_insert(json!({
             "module": self.modules.len(),
             "component": self.components.len(),
-            "component_standalone": standalone_components,
             "directive": self.directives.len(),
             "service": self.services.len(),
             "pipe": self.pipes.len(),
@@ -189,11 +204,7 @@ impl FileInspector for AngularInspector {
         println!("Angular");
         println!(" ├── Framework: {}", framework);
         println!(" ├── Module: {}", self.modules.len());
-        println!(
-            " ├── Component: {} (standalone: {})",
-            self.components.len(),
-            standalone_components
-        );
+        println!(" ├── Component: {}", self.components.len());
         println!(" ├── Directive: {}", self.directives.len());
         println!(" ├── Service: {}", self.services.len());
         println!(" ├── Pipe: {}", self.pipes.len());

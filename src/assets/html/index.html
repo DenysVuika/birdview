@@ -29,13 +29,14 @@
             `;
         }
 
-        function LinkRow({ caption, url }) {
+        function LinkRow({ caption, url, standalone }) {
             return html`
                 <a class="panel-block">
                     ${url
                         ? html`<a href="${url}" target="_blank">${caption}</a>`
                         : html`<span>${caption}</span>`
                     }
+                    ${standalone && html`<span class="tag is-success ml-2">standalone</span>`}
                 </a>
             `;
         }
@@ -353,13 +354,12 @@
                 new Chart(ctx, {
                     type: 'bar',
                     data: {
-                        labels: ['Module', 'Component', 'Component (std)', 'Directive', 'Service', 'Pipe', 'Dialog'],
+                        labels: ['Module', 'Component', 'Directive', 'Service', 'Pipe', 'Dialog'],
                         datasets: [{
                             label: '# of elements',
                             data: [
                                 angular.module,
                                 angular.component,
-                                angular.component_standalone,
                                 angular.directive,
                                 angular.service,
                                 angular.pipe,
@@ -368,7 +368,7 @@
                             backgroundColor: [
                                 'rgba(255, 99, 132, 0.2)',
                                 'rgba(255, 159, 64, 0.2)',
-                                'rgba(255, 205, 86, 0.2)',
+                                // 'rgba(255, 205, 86, 0.2)',
                                 'rgba(75, 192, 192, 0.2)',
                                 'rgba(54, 162, 235, 0.2)',
                                 'rgba(153, 102, 255, 0.2)',
@@ -377,7 +377,7 @@
                             borderColor: [
                                 'rgb(255, 99, 132)',
                                 'rgb(255, 159, 64)',
-                                'rgb(255, 205, 86)',
+                                // 'rgb(255, 205, 86)',
                                 'rgb(75, 192, 192)',
                                 'rgb(54, 162, 235)',
                                 'rgb(153, 102, 255)',
@@ -448,19 +448,13 @@
 
                             ${activeTab === 2 && html`
                                 ${components.map(entry => html`
-                                    <a class="panel-block">
-                                        ${entry.url
-                                            ? html`<a href="${entry.url}" target="_blank">${entry.path}</a>`
-                                            : html`<span>${entry.path}</span>`
-                                        }
-                                        ${entry.standalone && html`<span class="tag is-success ml-2">standalone</span>`}
-                                    </a>
+                                    <${LinkRow} caption="${entry.path}" url="${entry.url}" standalone="${entry.standalone}"/>
                                 `)}
                             `}
 
                             ${activeTab === 3 && html`
                                 ${directives.map(entry => html`
-                                    <${LinkRow} caption="${entry.path}" url="${entry.url}"/>
+                                    <${LinkRow} caption="${entry.path}" url="${entry.url}" standalone="${entry.standalone}"/>
                                 `)}
                             `}
 
@@ -472,13 +466,13 @@
 
                             ${activeTab === 5 && html`
                                 ${pipes.map(entry => html`
-                                    <${LinkRow} caption="${entry.path}" url="${entry.url}"/>
+                                    <${LinkRow} caption="${entry.path}" url="${entry.url}" standalone="${entry.standalone}"/>
                                 `)}
                             `}
 
                             ${activeTab === 6 && html`
                                 ${dialogs.map(entry => html`
-                                    <${LinkRow} caption="${entry.path}" url="${entry.url}"/>
+                                    <${LinkRow} caption="${entry.path}" url="${entry.url}" standalone="${entry.standalone}"/>
                                 `)}
                             `}
                         </div>
