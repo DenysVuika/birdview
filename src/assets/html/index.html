@@ -79,7 +79,7 @@
 
             componentDidMount() {
                 const data = this.props.data;
-                const git = data.project.git;
+                const git = data.git;
                 const warnings = (data.warnings || [])
                     .filter(warning => warning.module === 'packages')
                     .map(entry => ({
@@ -95,7 +95,7 @@
 
             getPackages(data) {
                 const packages = data.packages || [];
-                const git = data.project.git;
+                const git = data.git;
 
                 return packages.map(entry => ({
                     path: entry.path,
@@ -104,7 +104,7 @@
             }
 
             getDependencies(data, dev) {
-                const git = data.project.git;
+                const git = data.git;
                 const result = [];
 
                 for (const pkg of data.packages) {
@@ -230,7 +230,7 @@
 
             getEntries(data, key) {
                 const tests = data[key] || [];
-                const git = data.project.git;
+                const git = data.git;
 
                 return tests.map(entry => ({
                     path: entry.path,
@@ -398,7 +398,7 @@
 
             getEntities(data, key) {
                 const entities = data.angular[key] || [];
-                const git = data.project.git;
+                const git = data.git;
 
                 return entities.map(entry => ({
                     ...entry,
@@ -588,13 +588,13 @@
 
         function App({ data }) {
             const hasModule = (moduleName) => data.project.modules.includes(moduleName);
-            const hasGit = !!data.project.git;
+            const hasGit = !!data.git;
 
             return html`
                 <main>
                     <${Header} data=${data}></Header>
                     <section class="section">
-                        ${hasGit && html`<${GitReport} data=${data.project.git}/>`}
+                        ${hasGit && html`<${GitReport} data=${data.git}/>`}
                         ${hasModule('packages') && html`<${Packages} data=${data}/>`}
                         ${hasModule('angular-entities') && html`<${Angular} data=${data}/>`}
                         ${hasModule('angular-tests') && html`<${Tests} data=${data}/>`}

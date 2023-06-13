@@ -200,19 +200,19 @@ The format of the output is similar to the following example:
       "angular-tests",
       "angular-entities",
       "file-types"
-    ],
-    
-    "git": {
-      "remote": "<URL>",
-      "branch": "<branch>",
-      "target": "<SHA>",
-      "authors": [
-        {
-          "name": "<name>",
-          "commits": 1
-        }
-      ]
-    }
+    ]
+  },
+
+  "git": {
+    "remote": "<URL>",
+    "branch": "<branch>",
+    "target": "<SHA>",
+    "authors": [
+      {
+        "name": "<name>",
+        "commits": 1
+      }
+    ]
   },
   
   "warnings": [

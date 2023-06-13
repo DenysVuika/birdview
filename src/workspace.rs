@@ -1,11 +1,9 @@
+use crate::git::get_repository_info;
 use crate::inspectors::{FileInspector, FileInspectorOptions};
 use crate::models::PackageJsonFile;
 use chrono::Utc;
-use git2::Repository;
 use ignore::WalkBuilder;
-use serde::Serialize;
 use serde_json::{json, Map, Value};
-use std::collections::HashMap;
 use std::error::Error;
 use std::path::PathBuf;
 
@@ -73,28 +71,8 @@ impl Workspace {
             println!("Warning: no package.json file found in the workspace");
         }
 
-        match Repository::open(&self.working_dir) {
-            Err(..) => println!("Git repository not found"),
-            Ok(repo) => match repo.find_remote("origin") {
-                Err(..) => println!("Warning: origin remote not found"),
-                Ok(remote) => {
-                    if let Some(url) = remote.url() {
-                        let remote_url = match url.strip_suffix(".git") {
-                            Some(value) => value,
-                            None => url,
-                        };
-
-                        let authors = get_commit_authors(&repo).unwrap();
-
-                        project.entry("git").or_insert(json!({
-                            "remote": remote_url,
-                            "branch": repo.head()?.shorthand().unwrap(),
-                            "target": repo.head()?.target().unwrap().to_string(),
-                            "authors": authors
-                        }));
-                    }
-                }
-            },
+        if let Some(repo) = get_repository_info(&self.working_dir) {
+            map.entry("git").or_insert(json!(repo));
         }
 
         self.run_inspectors(&mut map);
@@ -146,47 +124,4 @@ impl Workspace {
             inspector.finalize(map);
         }
     }
-}
-
-#[derive(Debug, Serialize)]
-struct AuthorInfo {
-    name: String,
-    commits: i64,
-}
-
-fn get_commit_authors(repo: &Repository) -> Result<Vec<AuthorInfo>, Box<dyn Error>> {
-    let mut rev_walker = repo.revwalk()?;
-    rev_walker.push_head()?;
-
-    let mut authors: Vec<AuthorInfo> = rev_walker
-        .map(|r| {
-            let oid = r?;
-            repo.find_commit(oid)
-        })
-        .filter_map(|c| match c {
-            Ok(commit) => Some(commit),
-            Err(e) => {
-                println!("Error walking the revisions {}, skipping", e);
-                None
-            }
-        })
-        .fold(
-            HashMap::new(),
-            |mut result: HashMap<String, AuthorInfo>, cur| {
-                if let Some(name) = cur.author().name() {
-                    let author_name = name.to_string();
-                    let mut author = result.entry(author_name).or_insert(AuthorInfo {
-                        name: name.to_string(),
-                        commits: 0,
-                    });
-                    author.commits += 1;
-                }
-                result
-            },
-        )
-        .into_values()
-        .collect();
-
-    authors.sort_by(|a, b| b.commits.cmp(&a.commits));
-    Ok(authors)
 }

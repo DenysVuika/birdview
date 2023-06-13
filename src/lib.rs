@@ -1,4 +1,5 @@
 pub mod config;
+pub mod git;
 pub mod inspectors;
 pub mod models;
 pub mod workspace;
