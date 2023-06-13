@@ -5,7 +5,7 @@ use chrono::Utc;
 use ignore::WalkBuilder;
 use serde_json::{json, Map, Value};
 use std::error::Error;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub struct Workspace {
     pub working_dir: PathBuf,
@@ -45,34 +45,12 @@ impl Workspace {
             .map(|inspector| inspector.get_module_name())
             .collect();
 
-        let project = map
-            .entry("project")
-            .or_insert(json!({
-                "name": "unknown",
-                "version": "unknown",
-                "modules": modules,
-            }))
-            .as_object_mut()
-            .unwrap();
-
-        let package_json_path = &self.working_dir.join("package.json");
-        if package_json_path.exists() {
-            if self.verbose {
-                println!(
-                    "├── {}",
-                    package_json_path.strip_prefix(&self.working_dir)?.display()
-                );
-            }
-            let package = PackageJsonFile::from_file(package_json_path)?;
-
-            project["name"] = Value::String(package.name.unwrap());
-            project["version"] = Value::String(package.version.unwrap());
-        } else {
-            println!("Warning: no package.json file found in the workspace");
+        if let Some(project) = get_project_info(&self.working_dir, modules) {
+            map.insert("project".to_owned(), project);
         }
 
         if let Some(repo) = get_repository_info(&self.working_dir) {
-            map.entry("git").or_insert(json!(repo));
+            map.insert("git".to_owned(), json!(repo));
         }
 
         self.run_inspectors(&mut map);
@@ -124,4 +102,21 @@ impl Workspace {
             inspector.finalize(map);
         }
     }
+}
+
+fn get_project_info(working_dir: &Path, modules: Vec<&str>) -> Option<Value> {
+    let package_json_path = working_dir.join("package.json");
+    if package_json_path.exists() {
+        let package = PackageJsonFile::from_file(&package_json_path).unwrap();
+
+        return Some(json!({
+            "name": package.name,
+            "version": package.version,
+            "modules": modules
+        }));
+    } else {
+        println!("Warning: no package.json file found in the workspace");
+    }
+
+    None
 }
