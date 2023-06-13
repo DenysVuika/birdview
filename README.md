@@ -205,7 +205,13 @@ The format of the output is similar to the following example:
     "git": {
       "remote": "<URL>",
       "branch": "<branch>",
-      "target": "<SHA>"
+      "target": "<SHA>",
+      "authors": [
+        {
+          "name": "<name>",
+          "commits": 1
+        }
+      ]
     }
   },
   
