@@ -482,7 +482,56 @@
         }
 
         class GitReport extends ReportPanel {
+            setActiveTab(index) {
+                super.setActiveTab(index);
+
+                if (index === 1) {
+                    setTimeout(() => {
+                        this.setupChart();
+                    });
+                }
+            }
+
+            setupChart() {
+                const ctx = document.getElementById('git-top-contributors');
+                const git = this.props.data;
+
+                const existing = Chart.getChart('git-top-contributors');
+                if (existing) {
+                    existing.destroy();
+                }
+
+                const authors = git.authors.slice(0, 20);
+                const chart_labels = authors.map(entry => entry.name);
+                const chart_data = authors.map(entry => entry.commits);
+
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: chart_labels,
+                        datasets: [{
+                            label: '# of commits',
+                            data: chart_data,
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }
+
             render({ data }, { activeTab }) {
+                setTimeout(() => {
+                    if (activeTab === 1) {
+                        this.setupChart();
+                    }
+                });
+
                 const TabHeader = ({ index, title }) => html`
                     <a class="${ activeTab === index ? 'is-active' : null}" onClick="${() => this.setActiveTab(index)}">${title}</a>
                 `;
@@ -493,7 +542,8 @@
 
                         <p class="panel-tabs">
                             <${TabHeader} index=${0} title="Stats" />
-                            <${TabHeader} index=${1} title="Authors" />
+                            <${TabHeader} index=${1} title="Top Contributors" />
+                            <${TabHeader} index=${2} title="All Authors" />
                         </p>
 
                         <div style="max-height: 500px; overflow-y: scroll">
@@ -503,6 +553,11 @@
                                 <${LinkRow} caption="Head: ${data.target}"/>
                             `}
                             ${activeTab === 1 && html`
+                                <div style="max-height: 400px; padding: 12px">
+                                  <canvas id="git-top-contributors"></canvas>
+                                </div>
+                            `}
+                            ${activeTab === 2 && html`
                                 ${data.authors.map(author => html`
                                     <${LinkRow} caption="${author.name} (${author.commits} commits)"/>
                                 `)}
