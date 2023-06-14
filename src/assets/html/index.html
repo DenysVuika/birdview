@@ -104,22 +104,15 @@
 
             getDependencies(data, dev) {
                 const git = data.git;
-                const result = [];
-
-                for (const pkg of data.packages) {
-                    if (pkg.dependencies) {
-                        for (const dep of pkg.dependencies.filter(dep => dep.dev === dev)) {
-                            result.push({
-                                name: dep.name,
-                                version: dep.version,
-                                pkg: pkg.path,
-                                pkg_url: !!git ? `${git.remote}/blob/${git.target}/${pkg.path}`: '',
-                                npm_url: `https://www.npmjs.com/package/${dep.name}`
-                            })
-                        }
-                    }
-                }
-                return result.sort((a, b) => a.name.localeCompare(b.name));
+                return (data.dependencies || [])
+                    .filter(dep => dep.dev === dev)
+                    .map(dep => ({
+                        name: dep.name,
+                        version: dep.version,
+                        pkg: dep.package,
+                        pkg_url: !!git ? `${git.remote}/blob/${git.target}/${dep.package}`: '',
+                        npm_url: `https://www.npmjs.com/package/${dep.name}`
+                    }));
             }
 
             render({ data }, { activeTab, warnings, packages, dependencies, devDependencies }) {

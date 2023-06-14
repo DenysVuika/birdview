@@ -2,33 +2,17 @@ use super::FileInspector;
 use crate::inspectors::FileInspectorOptions;
 use crate::models::PackageJsonFile;
 use rusqlite::{params, Connection};
-use serde::Serialize;
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value};
 use std::error::Error;
 use std::path::Path;
 use uuid::Uuid;
 
-#[derive(Serialize)]
-pub struct PackageEntry {
-    path: String,
-    dependencies: Vec<DependencyEntry>,
-}
-
-#[derive(Serialize)]
-pub struct DependencyEntry {
-    name: String,
-    version: String,
-    dev: bool,
-}
-
-pub struct PackageJsonInspector {
-    packages: Vec<PackageEntry>,
-}
+pub struct PackageJsonInspector {}
 
 impl PackageJsonInspector {
     /// Creates a new instance of the inspector
     pub fn new() -> Self {
-        PackageJsonInspector { packages: vec![] }
+        PackageJsonInspector {}
     }
 }
 
@@ -51,6 +35,7 @@ impl FileInspector for PackageJsonInspector {
         output: &mut Map<String, Value>,
     ) -> Result<(), Box<dyn Error>> {
         let package = PackageJsonFile::from_file(&options.path)
+            // todo: convert to db warning instead
             .unwrap_or_else(|_| panic!("Error reading {}", &options.path.display()));
 
         let workspace_path = options.relative_path.display().to_string();
@@ -79,32 +64,41 @@ impl FileInspector for PackageJsonInspector {
             )?;
         }
 
-        let mut dependencies: Vec<DependencyEntry> = Vec::new();
+        let package_id = Uuid::new_v4();
+        connection.execute(
+            "INSERT INTO packages (id, project_id, path) VALUES (?1, ?2, ?3)",
+            params![package_id, project_id, workspace_path],
+        )?;
+
+        let mut stmt = connection.prepare(
+            "INSERT INTO dependencies (id, project_id, package_id, name, version, dev) VALUES (?1, ?2, ?3, ?4, ?5, ?6)"
+        )?;
 
         if let Some(data) = package.dependencies {
             for (name, version) in data {
-                dependencies.push(DependencyEntry {
+                stmt.execute(params![
+                    Uuid::new_v4(),
+                    project_id,
+                    package_id,
                     name,
                     version,
-                    dev: false,
-                });
+                    false
+                ])?;
             }
         }
 
         if let Some(data) = package.dev_dependencies {
             for (name, version) in data {
-                dependencies.push(DependencyEntry {
+                stmt.execute(params![
+                    Uuid::new_v4(),
+                    project_id,
+                    package_id,
                     name,
                     version,
-                    dev: true,
-                });
+                    true
+                ])?;
             }
         }
-
-        self.packages.push(PackageEntry {
-            path: workspace_path,
-            dependencies,
-        });
 
         Ok(())
     }
@@ -115,7 +109,6 @@ impl FileInspector for PackageJsonInspector {
         project_id: &Uuid,
         output: &mut Map<String, Value>,
     ) -> Result<(), Box<dyn Error>> {
-        output.entry("packages").or_insert(json!(self.packages));
         Ok(())
     }
 }

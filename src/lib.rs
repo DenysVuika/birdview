@@ -100,6 +100,20 @@ pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
         output.insert("warnings".to_owned(), json!(warnings));
     }
 
+    match get_dependencies(&connection, &project_id) {
+        Ok(dependencies) => {
+            output.insert("dependencies".to_owned(), json!(dependencies));
+        }
+        Err(err) => println!("{}", err),
+    }
+
+    match get_packages(&connection, &project_id) {
+        Ok(packages) => {
+            output.insert("packages".to_owned(), json!(packages));
+        }
+        Err(err) => println!("{}", err),
+    }
+
     let output_file_path = get_output_file(&config.output_dir, config.format).unwrap();
     let mut output_file = File::create(&output_file_path)?;
     let json_string = serde_json::to_string_pretty(&output)?;
@@ -238,4 +252,56 @@ fn get_warnings(
     })?;
     let warnings: Vec<CodeWarning> = rows.filter_map(|entry| entry.ok()).collect();
     Ok(warnings)
+}
+
+#[derive(Serialize)]
+struct PackageFile {
+    path: String,
+}
+
+#[derive(Serialize)]
+struct PackageDependency {
+    name: String,
+    version: String,
+    dev: bool,
+    package: String,
+}
+
+fn get_packages(
+    connection: &Connection,
+    project_id: &Uuid,
+) -> Result<Vec<PackageFile>, Box<dyn Error>> {
+    let mut stmt = connection.prepare("SELECT path FROM packages WHERE project_id=:project_id")?;
+    let rows = stmt.query_map(named_params! {":project_id": project_id}, |row| {
+        Ok(PackageFile { path: row.get(0)? })
+    })?;
+
+    let entries: Vec<PackageFile> = rows.filter_map(|entry| entry.ok()).collect();
+    Ok(entries)
+}
+
+fn get_dependencies(
+    connection: &Connection,
+    project_id: &Uuid,
+) -> Result<Vec<PackageDependency>, Box<dyn Error>> {
+    let mut stmt = connection.prepare(
+        r#"
+        SELECT d.name, d.version, d.dev, p.path as package from dependencies d
+        LEFT JOIN packages p on d.package_id = p.id
+        WHERE d.project_id=:project_id
+        ORDER BY d.name
+        "#,
+    )?;
+
+    let rows = stmt.query_map(named_params! {":project_id": project_id}, |row| {
+        Ok(PackageDependency {
+            name: row.get(0)?,
+            version: row.get(1)?,
+            dev: row.get(2)?,
+            package: row.get(3)?,
+        })
+    })?;
+
+    let entries: Vec<PackageDependency> = rows.filter_map(|entry| entry.ok()).collect();
+    Ok(entries)
 }
