@@ -57,12 +57,6 @@ impl FileInspector for FileTypeInspector {
         }
 
         output.entry("types").or_insert(json!(self.types));
-
-        // println!("Project Files");
-        // for (key, value) in &self.types {
-        //     println!(" ├── {}: {}", key, value);
-        // }
-
         Ok(())
     }
 }

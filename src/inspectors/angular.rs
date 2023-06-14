@@ -214,16 +214,6 @@ impl FileInspector for AngularInspector {
     ) -> Result<(), Box<dyn Error>> {
         let angular = AngularInspector::get_angular_report(connection, project_id)?;
         output.entry("angular").or_insert(angular);
-
-        // println!("Angular");
-        // println!(" ├── Framework: {}", framework);
-        // println!(" ├── Module: {}", self.modules.len());
-        // println!(" ├── Component: {}", self.components.len());
-        // println!(" ├── Directive: {}", self.directives.len());
-        // println!(" ├── Service: {}", self.services.len());
-        // println!(" ├── Pipe: {}", self.pipes.len());
-        // println!(" └── Dialog: {}", self.dialogs.len());
-
         Ok(())
     }
 }

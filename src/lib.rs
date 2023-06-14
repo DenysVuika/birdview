@@ -60,6 +60,10 @@ pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
         }),
     );
 
+    if let Some(repo) = get_repository_info(&config.working_dir) {
+        output.insert("git".to_owned(), json!(repo));
+    }
+
     connection
         .execute(
             "INSERT INTO projects (id, name, version, created_on) VALUES (?1, ?2, ?3, ?4)",
@@ -87,14 +91,14 @@ pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
         return Ok(());
     }
 
-    inspect(
+    run_inspectors(
         &config.working_dir,
         &connection,
         &project_id,
         inspectors,
         &mut output,
         config.verbose,
-    )?;
+    );
 
     if let Ok(warnings) = get_warnings(&connection, &project_id) {
         output.insert("warnings".to_owned(), json!(warnings));
@@ -156,35 +160,6 @@ fn get_output_file(output_dir: &Path, format: OutputFormat) -> Option<PathBuf> {
     }
 
     None
-}
-
-/// Performs the workspace analysis using the registered file inspectors
-fn inspect(
-    working_dir: &PathBuf,
-    connection: &Connection,
-    project_id: &Uuid,
-    inspectors: Vec<Box<dyn FileInspector>>,
-    output: &mut Map<String, Value>,
-    verbose: bool,
-) -> Result<(), Box<dyn Error>> {
-    if verbose {
-        println!("{}", working_dir.display());
-    }
-
-    if let Some(repo) = get_repository_info(working_dir) {
-        output.insert("git".to_owned(), json!(repo));
-    }
-
-    run_inspectors(
-        working_dir,
-        connection,
-        project_id,
-        inspectors,
-        output,
-        verbose,
-    );
-
-    Ok(())
 }
 
 fn run_inspectors(
