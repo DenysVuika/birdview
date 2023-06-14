@@ -9,13 +9,31 @@ use crate::inspectors::*;
 use crate::models::PackageJsonFile;
 use chrono::Utc;
 use ignore::WalkBuilder;
+use rusqlite::Connection;
 use serde_json::{json, Map, Value};
 use std::error::Error;
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+fn create_connection(working_dir: &Path) -> Result<Connection, Box<dyn Error>> {
+    let db_path = working_dir.join("birdview.db");
+    let conn = Connection::open(db_path)?;
+
+    conn.execute_batch(
+        r#"
+        BEGIN;
+        CREATE TABLE IF NOT EXISTS ng_modules (id TEXT PRIMARY KEY, path TEXT NOT NULL);
+        COMMIT;
+    "#,
+    )?;
+
+    Ok(conn)
+}
+
 pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
+    let conn = create_connection(&config.output_dir)?;
+
     let mut inspectors: Vec<Box<dyn FileInspector>> = Vec::new();
 
     if config.inspect_packages {
@@ -36,7 +54,7 @@ pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
         return Ok(());
     }
 
-    let output = inspect(&config.working_dir, inspectors, config.verbose)?;
+    let output = inspect(&config.working_dir, &conn, inspectors, config.verbose)?;
 
     let output_file_path = get_output_file(&config.output_dir, config.format).unwrap();
     let mut output_file = File::create(&output_file_path)?;
@@ -85,6 +103,7 @@ fn get_output_file(output_dir: &Path, format: OutputFormat) -> Option<PathBuf> {
 /// Performs the workspace analysis using the registered file inspectors
 fn inspect(
     working_dir: &PathBuf,
+    connection: &Connection,
     inspectors: Vec<Box<dyn FileInspector>>,
     verbose: bool,
 ) -> Result<Value, Box<dyn Error>> {
@@ -112,12 +131,13 @@ fn inspect(
         map.insert("git".to_owned(), json!(repo));
     }
 
-    run_inspectors(working_dir, inspectors, &mut map, verbose);
+    run_inspectors(working_dir, connection, inspectors, &mut map, verbose);
     Ok(Value::Object(map))
 }
 
 fn run_inspectors(
     working_dir: &PathBuf,
+    connection: &Connection,
     mut inspectors: Vec<Box<dyn FileInspector>>,
     map: &mut Map<String, Value>,
     verbose: bool,
@@ -135,9 +155,9 @@ fn run_inspectors(
         let mut processed = false;
 
         let options = FileInspectorOptions {
-            working_dir: working_dir.to_path_buf(),
+            working_dir: working_dir.to_owned(),
             path: entry_path.to_path_buf(),
-            relative_path: entry_path.strip_prefix(working_dir).unwrap().to_path_buf(),
+            relative_path: entry_path.strip_prefix(working_dir).unwrap().to_owned(),
         };
 
         for inspector in inspectors.iter_mut() {
@@ -157,7 +177,7 @@ fn run_inspectors(
     }
 
     for inspector in inspectors.iter_mut() {
-        inspector.finalize(map);
+        inspector.finalize(connection, map);
     }
 }
 

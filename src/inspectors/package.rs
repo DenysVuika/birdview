@@ -1,6 +1,7 @@
 use super::FileInspector;
 use crate::inspectors::FileInspectorOptions;
 use crate::models::PackageJsonFile;
+use rusqlite::Connection;
 use serde::Serialize;
 use serde_json::{json, Map, Value};
 use std::path::Path;
@@ -109,7 +110,7 @@ impl FileInspector for PackageJsonInspector {
         })
     }
 
-    fn finalize(&mut self, output: &mut Map<String, Value>) {
+    fn finalize(&mut self, connection: &Connection, output: &mut Map<String, Value>) {
         output.entry("packages").or_insert(json!(self.packages));
 
         let stats = output
@@ -161,11 +162,12 @@ mod tests {
     }
 
     #[test]
-    fn writes_default_values_on_finalise() {
+    fn writes_default_values_on_finalise() -> Result<(), Box<dyn Error>> {
+        let conn = Connection::open_in_memory()?;
         let mut inspector: PackageJsonInspector = Default::default();
 
         let mut map: Map<String, Value> = Map::new();
-        inspector.finalize(&mut map);
+        inspector.finalize(&conn, &mut map);
 
         assert_eq!(
             Value::Object(map),
@@ -180,10 +182,13 @@ mod tests {
                 }
             })
         );
+
+        Ok(())
     }
 
     #[test]
-    fn writes_package_stats_on_finalise() {
+    fn writes_package_stats_on_finalise() -> Result<(), Box<dyn Error>> {
+        let conn = Connection::open_in_memory()?;
         let mut inspector = PackageJsonInspector {
             total_deps: 20,
             total_dev_deps: 30,
@@ -191,7 +196,7 @@ mod tests {
         };
 
         let mut map: Map<String, Value> = Map::new();
-        inspector.finalize(&mut map);
+        inspector.finalize(&conn, &mut map);
 
         assert_eq!(
             Value::Object(map),
@@ -206,10 +211,13 @@ mod tests {
                 }
             })
         );
+
+        Ok(())
     }
 
     #[test]
     fn parses_package_dependencies() -> Result<(), Box<dyn Error>> {
+        let conn = Connection::open_in_memory()?;
         let file = NamedTempFile::new("package.json")?;
         file.write_str(
             r#"
@@ -232,7 +240,7 @@ mod tests {
         let options = options_from_file(&file);
 
         inspector.inspect_file(&options, &mut map);
-        inspector.finalize(&mut map);
+        inspector.finalize(&conn, &mut map);
 
         assert_eq!(
             Value::Object(map),

@@ -1,4 +1,5 @@
 use super::utils;
+use rusqlite::Connection;
 use serde_json::{Map, Value};
 use std::path::{Path, PathBuf};
 
@@ -15,7 +16,7 @@ pub trait FileInspector {
     fn inspect_file(&mut self, options: &FileInspectorOptions, output: &mut Map<String, Value>);
 
     /// Perform final tasks after all inspectors finished
-    fn finalize(&mut self, output: &mut Map<String, Value>);
+    fn finalize(&mut self, connection: &Connection, output: &mut Map<String, Value>);
 }
 
 pub struct FileInspectorOptions {

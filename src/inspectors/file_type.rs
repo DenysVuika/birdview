@@ -1,5 +1,6 @@
 use super::FileInspector;
 use crate::inspectors::FileInspectorOptions;
+use rusqlite::Connection;
 use serde_json::{json, Map, Value};
 use std::collections::HashMap;
 use std::ffi::OsStr;
@@ -41,7 +42,7 @@ impl FileInspector for FileTypeInspector {
         }
     }
 
-    fn finalize(&mut self, output: &mut Map<String, Value>) {
+    fn finalize(&mut self, connection: &Connection, output: &mut Map<String, Value>) {
         if self.types.is_empty() {
             return;
         }
@@ -67,18 +68,22 @@ mod tests {
     use crate::inspectors::utils::test_utils::options_from_file;
     use assert_fs::prelude::*;
     use assert_fs::NamedTempFile;
+    use std::error::Error;
 
     #[test]
-    fn no_output_when_inspections_not_invoked() {
+    fn no_output_when_inspections_not_invoked() -> Result<(), Box<dyn Error>> {
+        let conn = Connection::open_in_memory()?;
         let mut map: Map<String, Value> = Map::new();
         let mut inspector = FileTypeInspector::new();
-        inspector.finalize(&mut map);
+        inspector.finalize(&conn, &mut map);
 
         assert_eq!(Value::Object(map), json!({}));
+        Ok(())
     }
 
     #[test]
-    fn should_parse_multiple_types() -> Result<(), Box<dyn std::error::Error>> {
+    fn should_parse_multiple_types() -> Result<(), Box<dyn Error>> {
+        let conn = Connection::open_in_memory()?;
         let file1 = NamedTempFile::new("test.spec.ts")?;
         file1.touch()?;
 
@@ -90,7 +95,7 @@ mod tests {
 
         inspector.inspect_file(&options_from_file(&file1), &mut map);
         inspector.inspect_file(&options_from_file(&file2), &mut map);
-        inspector.finalize(&mut map);
+        inspector.finalize(&conn, &mut map);
 
         assert_eq!(
             Value::Object(map),

@@ -2,6 +2,7 @@ use birdview::config::{Config, OutputFormat};
 use birdview::run;
 use clap::{Parser, Subcommand};
 use git2::Repository;
+use std::error::Error;
 use std::path::PathBuf;
 use std::process;
 use tempfile::tempdir;
@@ -66,7 +67,7 @@ enum Commands {
     },
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
 
     if let Some(config_path) = cli.config.as_deref() {
@@ -102,7 +103,7 @@ fn main() {
                         panic!("failed to clone: {}", e)
                     }
                 };
-                println!("Branch: {}", repo.head().unwrap().shorthand().unwrap());
+                println!("Branch: {}", repo.head()?.shorthand().unwrap());
 
                 let config = Config {
                     working_dir: repo_dir.path().to_owned(),
@@ -150,4 +151,6 @@ fn main() {
         }
         None => {}
     }
+
+    Ok(())
 }

@@ -3,9 +3,11 @@ use crate::inspectors::utils::load_json_file;
 use crate::inspectors::FileInspectorOptions;
 use lazy_static::lazy_static;
 use regex::Regex;
+use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use std::path::Path;
+use uuid::Uuid;
 
 #[derive(Serialize, Deserialize)]
 pub struct AngularComponent {
@@ -170,11 +172,20 @@ impl FileInspector for AngularInspector {
         }
     }
 
-    fn finalize(&mut self, output: &mut Map<String, Value>) {
+    fn finalize(&mut self, connection: &Connection, output: &mut Map<String, Value>) {
         let framework = match &self.framework {
             Some(value) => value,
             None => "unknown",
         };
+
+        for module in &self.modules {
+            connection
+                .execute(
+                    "INSERT INTO ng_modules (id, path) VALUES (?1, ?2)",
+                    (Uuid::new_v4(), module.path.to_string()),
+                )
+                .unwrap();
+        }
 
         output.entry("angular").or_insert(json!({
             "framework": framework,
