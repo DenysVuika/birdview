@@ -5,7 +5,9 @@ use regex::Regex;
 use rusqlite::Connection;
 use serde::Serialize;
 use serde_json::{json, Map, Value};
+use std::error::Error;
 use std::path::Path;
+use uuid::Uuid;
 
 #[derive(Serialize)]
 struct TestEntry {
@@ -57,8 +59,6 @@ impl FileInspector for TestInspector {
         "angular-tests"
     }
 
-    fn init(&mut self, _working_dir: &Path, _output: &mut Map<String, Value>) {}
-
     fn supports_file(&self, path: &Path) -> bool {
         let display_path = path.display().to_string();
         path.is_file()
@@ -67,7 +67,13 @@ impl FileInspector for TestInspector {
                 || display_path.ends_with(".e2e.ts"))
     }
 
-    fn inspect_file(&mut self, options: &FileInspectorOptions, _output: &mut Map<String, Value>) {
+    fn inspect_file(
+        &mut self,
+        connection: &Connection,
+        project_id: &Uuid,
+        options: &FileInspectorOptions,
+        _output: &mut Map<String, Value>,
+    ) -> Result<(), Box<dyn Error>> {
         let contents = options.read_content();
         let test_names = TestInspector::extract_test_names(&contents);
 
@@ -87,9 +93,16 @@ impl FileInspector for TestInspector {
                 self.e2e_test_cases += total_cases;
             }
         }
+
+        Ok(())
     }
 
-    fn finalize(&mut self, connection: &Connection, output: &mut Map<String, Value>) {
+    fn finalize(
+        &mut self,
+        connection: &Connection,
+        project_id: &Uuid,
+        output: &mut Map<String, Value>,
+    ) -> Result<(), Box<dyn Error>> {
         output
             .entry("unit_tests")
             .or_insert(json!(self.unit_test_files));
@@ -122,6 +135,8 @@ impl FileInspector for TestInspector {
             println!(" ├── Cases: {}", self.e2e_test_cases);
             println!(" └── Files: {}", self.e2e_test_files.len());
         }
+
+        Ok(())
     }
 }
 
@@ -191,7 +206,7 @@ mod tests {
         let conn = Connection::open_in_memory()?;
 
         let mut map: Map<String, Value> = Map::new();
-        inspector.finalize(&conn, &mut map);
+        inspector.finalize(&conn, &Uuid::new_v4(), &mut map);
 
         assert_eq!(
             Value::Object(map),
@@ -215,6 +230,7 @@ mod tests {
     #[test]
     fn parses_unit_tests() -> Result<(), Box<dyn Error>> {
         let conn = Connection::open_in_memory()?;
+        let project_id = Uuid::new_v4();
         let file = NamedTempFile::new("tests.e2e.ts")?;
         let content = r#"
             describe('test suite', () => {
@@ -227,8 +243,8 @@ mod tests {
         let mut inspector = TestInspector::new();
         let mut map: Map<String, Value> = Map::new();
 
-        inspector.inspect_file(&options_from_file(&file), &mut map);
-        inspector.finalize(&conn, &mut map);
+        inspector.inspect_file(&conn, &project_id, &options_from_file(&file), &mut map);
+        inspector.finalize(&conn, &project_id, &mut map);
 
         assert_eq!(
             Value::Object(map),
@@ -261,6 +277,8 @@ mod tests {
     #[test]
     fn parses_e2e_tests() -> Result<(), Box<dyn Error>> {
         let conn = Connection::open_in_memory()?;
+        let project_id = Uuid::new_v4();
+
         let file = NamedTempFile::new("tests.spec.ts")?;
         let content = r#"
             describe('test suite', () => {
@@ -275,8 +293,8 @@ mod tests {
         let mut map: Map<String, Value> = Map::new();
         let options = options_from_file(&file);
 
-        inspector.inspect_file(&options, &mut map);
-        inspector.finalize(&conn, &mut map);
+        inspector.inspect_file(&conn, &project_id, &options, &mut map);
+        inspector.finalize(&conn, &Uuid::new_v4(), &mut map);
 
         assert_eq!(
             Value::Object(map),

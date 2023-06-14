@@ -1,25 +1,13 @@
 use super::FileInspector;
-use crate::inspectors::utils::load_json_file;
 use crate::inspectors::FileInspectorOptions;
 use lazy_static::lazy_static;
 use regex::Regex;
-use rusqlite::Connection;
+use rusqlite::{named_params, params, Connection};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
+use std::error::Error;
 use std::path::Path;
 use uuid::Uuid;
-
-#[derive(Serialize, Deserialize)]
-pub struct AngularComponent {
-    path: String,
-    standalone: bool,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct AngularPipe {
-    path: String,
-    standalone: bool,
-}
 
 #[derive(Serialize, Deserialize)]
 pub struct AngularDirective {
@@ -28,30 +16,24 @@ pub struct AngularDirective {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct AngularEntity {
+pub struct AngularFile {
     path: String,
 }
 
 pub struct AngularInspector {
-    framework: Option<String>,
-    modules: Vec<AngularEntity>,
-    components: Vec<AngularComponent>,
-    directives: Vec<AngularDirective>,
-    services: Vec<AngularEntity>,
-    pipes: Vec<AngularPipe>,
-    dialogs: Vec<AngularComponent>,
+    // framework: Option<String>,
 }
 
 impl AngularInspector {
     pub fn new() -> Self {
         AngularInspector {
-            framework: None,
-            modules: vec![],
-            components: vec![],
-            directives: vec![],
-            services: vec![],
-            pipes: vec![],
-            dialogs: vec![],
+            // framework: None,
+            // modules: vec![],
+            // components: vec![],
+            // directives: vec![],
+            // services: vec![],
+            // pipes: vec![],
+            // dialogs: vec![],
         }
     }
 
@@ -84,20 +66,76 @@ impl AngularInspector {
         standalone
     }
 
-    fn get_angular_version(working_dir: &Path) -> Option<String> {
-        let package_path = &working_dir.join("package.json");
+    fn get_angular_report(
+        connection: &Connection,
+        project_id: &Uuid,
+    ) -> Result<Value, Box<dyn Error>> {
+        let mut stmt =
+            connection.prepare("SELECT path FROM ng_modules WHERE project_id=:project_id;")?;
+        let rows = stmt.query_map(named_params! { ":project_id": project_id }, |row| {
+            Ok(AngularFile {
+                path: row.get(0).unwrap(),
+            })
+        })?;
+        let modules: Vec<AngularFile> = rows.filter_map(|entry| entry.ok()).collect();
 
-        if package_path.exists() {
-            let content = load_json_file(package_path);
-            if let Some(data) = content["dependencies"].as_object() {
-                if let Some(version) = data.get("@angular/core") {
-                    let result: String = version.as_str().unwrap().to_string();
-                    return Some(result);
-                }
-            }
-        }
+        let mut stmt = connection
+            .prepare("SELECT path, standalone FROM ng_components WHERE project_id=:project_id;")?;
+        let rows = stmt.query_map(named_params! { ":project_id": project_id }, |row| {
+            Ok(AngularDirective {
+                path: row.get(0)?,
+                standalone: row.get(1)?,
+            })
+        })?;
+        let components: Vec<AngularDirective> = rows.filter_map(|entry| entry.ok()).collect();
 
-        None
+        let mut stmt = connection
+            .prepare("SELECT path, standalone FROM ng_directives WHERE project_id=:project_id;")?;
+        let rows = stmt.query_map(named_params! { ":project_id": project_id }, |row| {
+            Ok(AngularDirective {
+                path: row.get(0)?,
+                standalone: row.get(1)?,
+            })
+        })?;
+        let directives: Vec<AngularDirective> = rows.filter_map(|entry| entry.ok()).collect();
+
+        let mut stmt =
+            connection.prepare("SELECT path FROM ng_services WHERE project_id=:project_id;")?;
+        let rows = stmt.query_map(named_params! { ":project_id": project_id }, |row| {
+            Ok(AngularFile {
+                path: row.get(0).unwrap(),
+            })
+        })?;
+        let services: Vec<AngularFile> = rows.filter_map(|entry| entry.ok()).collect();
+
+        let mut stmt = connection
+            .prepare("SELECT path, standalone FROM ng_pipes WHERE project_id=:project_id;")?;
+        let rows = stmt.query_map(named_params! { ":project_id": project_id }, |row| {
+            Ok(AngularDirective {
+                path: row.get(0)?,
+                standalone: row.get(1)?,
+            })
+        })?;
+        let pipes: Vec<AngularDirective> = rows.filter_map(|entry| entry.ok()).collect();
+
+        let mut stmt = connection
+            .prepare("SELECT path, standalone FROM ng_dialogs WHERE project_id=:project_id;")?;
+        let rows = stmt.query_map(named_params! { ":project_id": project_id }, |row| {
+            Ok(AngularDirective {
+                path: row.get(0)?,
+                standalone: row.get(1)?,
+            })
+        })?;
+        let dialogs: Vec<AngularDirective> = rows.filter_map(|entry| entry.ok()).collect();
+
+        Ok(json!({
+            "modules": modules,
+            "components": components,
+            "directives": directives,
+            "services": services,
+            "pipes": pipes,
+            "dialogs": dialogs
+        }))
     }
 }
 
@@ -112,10 +150,6 @@ impl FileInspector for AngularInspector {
         "angular-entities"
     }
 
-    fn init(&mut self, working_dir: &Path, _output: &mut Map<String, Value>) {
-        self.framework = AngularInspector::get_angular_version(working_dir);
-    }
-
     fn supports_file(&self, path: &Path) -> bool {
         let display_path = path.display().to_string();
         path.is_file()
@@ -127,75 +161,88 @@ impl FileInspector for AngularInspector {
                 || display_path.ends_with(".dialog.ts"))
     }
 
-    fn inspect_file(&mut self, options: &FileInspectorOptions, _output: &mut Map<String, Value>) {
+    fn inspect_file(
+        &mut self,
+        connection: &Connection,
+        project_id: &Uuid,
+        options: &FileInspectorOptions,
+        _output: &mut Map<String, Value>,
+    ) -> Result<(), Box<dyn Error>> {
         let workspace_path = options.relative_path.display().to_string();
         let content = options.read_content();
 
         if workspace_path.ends_with(".module.ts") {
-            self.modules.push(AngularEntity {
-                path: workspace_path,
-            });
+            connection.execute(
+                "INSERT INTO ng_modules (id, project_id, path) VALUES (?1, ?2, ?3)",
+                params![Uuid::new_v4(), project_id, workspace_path],
+            )?;
         } else if workspace_path.ends_with(".component.ts") {
             if content.contains("@Component(") {
                 let standalone = AngularInspector::is_standalone(&content);
-                self.components.push(AngularComponent {
-                    path: workspace_path,
-                    standalone,
-                });
+
+                connection.execute(
+                "INSERT INTO ng_components (id, project_id, path, standalone) VALUES (?1, ?2, ?3, ?4)",
+                params![Uuid::new_v4(), project_id, workspace_path, standalone],
+                )?;
             }
         } else if workspace_path.ends_with(".directive.ts") {
             if content.contains("@Directive(") {
                 let standalone = AngularInspector::is_standalone(&content);
-                self.directives.push(AngularDirective {
-                    path: workspace_path,
-                    standalone,
-                });
+
+                connection.execute(
+                    "INSERT INTO ng_directives (id, project_id, path, standalone) VALUES (?1, ?2, ?3, ?4)",
+                    params![Uuid::new_v4(), project_id, workspace_path, standalone],
+                )?;
             }
         } else if workspace_path.ends_with(".service.ts") {
-            self.services.push(AngularEntity {
-                path: workspace_path,
-            });
+            connection.execute(
+                "INSERT INTO ng_services (id, project_id, path) VALUES (?1, ?2, ?3)",
+                params![Uuid::new_v4(), project_id, workspace_path],
+            )?;
         } else if workspace_path.ends_with(".pipe.ts") {
             if content.contains("@Pipe(") {
                 let standalone = AngularInspector::is_standalone(&content);
-                self.pipes.push(AngularPipe {
-                    path: workspace_path,
-                    standalone,
-                });
+
+                connection.execute(
+                    "INSERT INTO ng_pipes (id, project_id, path, standalone) VALUES (?1, ?2, ?3, ?4)",
+                    params![Uuid::new_v4(), project_id, workspace_path, standalone],
+                )?;
             }
         } else if workspace_path.ends_with(".dialog.ts") && content.contains("@Component(") {
             let standalone = AngularInspector::is_standalone(&content);
-            self.dialogs.push(AngularComponent {
-                path: workspace_path,
-                standalone,
-            });
+
+            connection.execute(
+                "INSERT INTO ng_dialogs (id, project_id, path, standalone) VALUES (?1, ?2, ?3, ?4)",
+                params![Uuid::new_v4(), project_id, workspace_path, standalone],
+            )?;
         }
+
+        Ok(())
     }
 
-    fn finalize(&mut self, connection: &Connection, output: &mut Map<String, Value>) {
-        let framework = match &self.framework {
-            Some(value) => value,
-            None => "unknown",
-        };
+    fn finalize(
+        &mut self,
+        connection: &Connection,
+        project_id: &Uuid,
+        output: &mut Map<String, Value>,
+    ) -> Result<(), Box<dyn Error>> {
+        // let framework = match &self.framework {
+        //     Some(value) => value,
+        //     None => "unknown",
+        // };
 
-        for module in &self.modules {
-            connection
-                .execute(
-                    "INSERT INTO ng_modules (id, path) VALUES (?1, ?2)",
-                    (Uuid::new_v4(), module.path.to_string()),
-                )
-                .unwrap();
-        }
+        let angular = AngularInspector::get_angular_report(connection, project_id)?;
+        output.entry("angular").or_insert(angular);
 
-        output.entry("angular").or_insert(json!({
-            "framework": framework,
-            "modules": self.modules,
-            "components": self.components,
-            "directives": self.directives,
-            "services": self.services,
-            "pipes": self.pipes,
-            "dialogs": self.dialogs
-        }));
+        // output.entry("angular").or_insert(json!({
+        //     "framework": framework,
+        //     "modules": self.modules,
+        //     "components": self.components,
+        //     "directives": self.directives,
+        //     "services": self.services,
+        //     "pipes": self.pipes,
+        //     "dialogs": self.dialogs
+        // }));
 
         let stats = output
             .entry("stats")
@@ -203,31 +250,25 @@ impl FileInspector for AngularInspector {
             .as_object_mut()
             .unwrap();
 
-        stats.entry("angular").or_insert(json!({
-            "module": self.modules.len(),
-            "component": self.components.len(),
-            "directive": self.directives.len(),
-            "service": self.services.len(),
-            "pipe": self.pipes.len(),
-            "dialog": self.dialogs.len()
-        }));
+        // stats.entry("angular").or_insert(json!({
+        //     "module": self.modules.len(),
+        //     "component": self.components.len(),
+        //     "directive": self.directives.len(),
+        //     "service": self.services.len(),
+        //     "pipe": self.pipes.len(),
+        //     "dialog": self.dialogs.len()
+        // }));
 
-        println!("Angular");
-        println!(" ├── Framework: {}", framework);
-        println!(" ├── Module: {}", self.modules.len());
-        println!(" ├── Component: {}", self.components.len());
-        println!(" ├── Directive: {}", self.directives.len());
-        println!(" ├── Service: {}", self.services.len());
-        println!(" ├── Pipe: {}", self.pipes.len());
-        println!(" └── Dialog: {}", self.dialogs.len());
+        // println!("Angular");
+        // println!(" ├── Framework: {}", framework);
+        // println!(" ├── Module: {}", self.modules.len());
+        // println!(" ├── Component: {}", self.components.len());
+        // println!(" ├── Directive: {}", self.directives.len());
+        // println!(" ├── Service: {}", self.services.len());
+        // println!(" ├── Pipe: {}", self.pipes.len());
+        // println!(" └── Dialog: {}", self.dialogs.len());
 
-        // cleanup
-        self.modules = Vec::new();
-        self.components = Vec::new();
-        self.directives = Vec::new();
-        self.services = Vec::new();
-        self.pipes = Vec::new();
-        self.dialogs = Vec::new();
+        Ok(())
     }
 }
 

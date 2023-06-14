@@ -3,8 +3,10 @@ use crate::inspectors::FileInspectorOptions;
 use rusqlite::Connection;
 use serde_json::{json, Map, Value};
 use std::collections::HashMap;
+use std::error::Error;
 use std::ffi::OsStr;
 use std::path::Path;
+use uuid::Uuid;
 
 pub struct FileTypeInspector {
     types: HashMap<String, i64>,
@@ -29,22 +31,33 @@ impl FileInspector for FileTypeInspector {
         "file-types"
     }
 
-    fn init(&mut self, _working_dir: &Path, _output: &mut Map<String, Value>) {}
-
     fn supports_file(&self, path: &Path) -> bool {
         path.is_file()
     }
 
-    fn inspect_file(&mut self, options: &FileInspectorOptions, _output: &mut Map<String, Value>) {
+    fn inspect_file(
+        &mut self,
+        connection: &Connection,
+        project_id: &Uuid,
+        options: &FileInspectorOptions,
+        _output: &mut Map<String, Value>,
+    ) -> Result<(), Box<dyn Error>> {
         if let Some(ext) = options.relative_path.extension().and_then(OsStr::to_str) {
             let entry = self.types.entry(ext.to_owned()).or_insert(0);
             *entry += 1;
         }
+
+        Ok(())
     }
 
-    fn finalize(&mut self, connection: &Connection, output: &mut Map<String, Value>) {
+    fn finalize(
+        &mut self,
+        connection: &Connection,
+        project_id: &Uuid,
+        output: &mut Map<String, Value>,
+    ) -> Result<(), Box<dyn Error>> {
         if self.types.is_empty() {
-            return;
+            return Ok(());
         }
 
         let stats = output
@@ -59,6 +72,8 @@ impl FileInspector for FileTypeInspector {
         for (key, value) in &self.types {
             println!(" ├── {}: {}", key, value);
         }
+
+        Ok(())
     }
 }
 
@@ -75,7 +90,7 @@ mod tests {
         let conn = Connection::open_in_memory()?;
         let mut map: Map<String, Value> = Map::new();
         let mut inspector = FileTypeInspector::new();
-        inspector.finalize(&conn, &mut map);
+        inspector.finalize(&conn, &Uuid::new_v4(), &mut map);
 
         assert_eq!(Value::Object(map), json!({}));
         Ok(())
@@ -84,6 +99,7 @@ mod tests {
     #[test]
     fn should_parse_multiple_types() -> Result<(), Box<dyn Error>> {
         let conn = Connection::open_in_memory()?;
+        let project_id = Uuid::new_v4();
         let file1 = NamedTempFile::new("test.spec.ts")?;
         file1.touch()?;
 
@@ -93,9 +109,9 @@ mod tests {
         let mut map: Map<String, Value> = Map::new();
         let mut inspector = FileTypeInspector::new();
 
-        inspector.inspect_file(&options_from_file(&file1), &mut map);
-        inspector.inspect_file(&options_from_file(&file2), &mut map);
-        inspector.finalize(&conn, &mut map);
+        inspector.inspect_file(&conn, &project_id, &options_from_file(&file1), &mut map);
+        inspector.inspect_file(&conn, &project_id, &options_from_file(&file2), &mut map);
+        inspector.finalize(&conn, &project_id, &mut map);
 
         assert_eq!(
             Value::Object(map),

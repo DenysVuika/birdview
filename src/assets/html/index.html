@@ -123,33 +123,30 @@
                 return result.sort((a, b) => a.name.localeCompare(b.name));
             }
 
-
-
             render({ data }, { activeTab, warnings, packages, dependencies, devDependencies }) {
-                const pkg = data.stats.package;
                 const TabHeader = ({ index, title }) => html`
                     <a class="${ activeTab === index ? 'is-active' : null}" onClick="${() => this.setActiveTab(index)}">${title}</a>
                 `;
 
                 return html`
                     <nav class="panel is-link">
-                        <p class="panel-heading">Packages (${pkg.files})</p>
+                        <p class="panel-heading">Packages (${packages.length})</p>
 
                         <p class="panel-tabs">
                             <${TabHeader} index=${0} title="Stats"/>
                             ${warnings.length > 0 && html`
                                 <${TabHeader} index=${4} title="Warnings (${warnings.length})"/>
                             `}
-                            <${TabHeader} index=${1} title="Packages (${pkg.files})" />
-                            <${TabHeader} index=${2} title="Prod Deps (${pkg.prod_deps})" />
-                            <${TabHeader} index=${3} title="Dev Deps (${pkg.dev_deps})" />
+                            <${TabHeader} index=${1} title="Packages (${packages.length})" />
+                            <${TabHeader} index=${2} title="Prod Deps (${dependencies.length})" />
+                            <${TabHeader} index=${3} title="Dev Deps (${devDependencies.length})" />
                         </p>
 
                         <div style="max-height: 500px; overflow-y: scroll">
                             ${activeTab === 0 && html`
-                                <${LinkRow} caption="Packages: ${pkg.files}"/>
-                                <${LinkRow} caption="Product dependencies: ${pkg.prod_deps}"/>
-                                <${LinkRow} caption="Development dependencies: ${pkg.dev_deps}"/>
+                                <${LinkRow} caption="Packages: ${packages.length}"/>
+                                <${LinkRow} caption="Product dependencies: ${dependencies.length}"/>
+                                <${LinkRow} caption="Development dependencies: ${devDependencies.length}"/>
                             `}
 
                             ${activeTab === 1 && html`
@@ -344,7 +341,7 @@
 
             setupChart() {
                 const ctx = document.getElementById('angular-chart');
-                const angular = window.data.stats.angular;
+                const angular = window.data.angular;
 
                 const existing = Chart.getChart('angular-chart');
                 if (existing) {
@@ -358,12 +355,12 @@
                         datasets: [{
                             label: '# of elements',
                             data: [
-                                angular.module,
-                                angular.component,
-                                angular.directive,
-                                angular.service,
-                                angular.pipe,
-                                angular.dialog
+                                angular.modules.length,
+                                angular.components.length,
+                                angular.directives.length,
+                                angular.services.length,
+                                angular.pipes.length,
+                                angular.dialogs.length
                             ],
                             backgroundColor: [
                                 'rgba(255, 99, 132, 0.2)',

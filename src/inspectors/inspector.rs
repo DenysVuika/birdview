@@ -1,22 +1,32 @@
 use super::utils;
 use rusqlite::Connection;
 use serde_json::{Map, Value};
+use std::error::Error;
 use std::path::{Path, PathBuf};
+use uuid::Uuid;
 
 pub trait FileInspector {
     fn get_module_name(&self) -> &str;
-
-    // Initialise inspector
-    fn init(&mut self, working_dir: &Path, output: &mut Map<String, Value>);
 
     /// Check if the inspector supports the file
     fn supports_file(&self, path: &Path) -> bool;
 
     /// Run inspections for the file
-    fn inspect_file(&mut self, options: &FileInspectorOptions, output: &mut Map<String, Value>);
+    fn inspect_file(
+        &mut self,
+        connection: &Connection,
+        project_id: &Uuid,
+        options: &FileInspectorOptions,
+        output: &mut Map<String, Value>,
+    ) -> Result<(), Box<dyn Error>>;
 
     /// Perform final tasks after all inspectors finished
-    fn finalize(&mut self, connection: &Connection, output: &mut Map<String, Value>);
+    fn finalize(
+        &mut self,
+        connection: &Connection,
+        project_id: &Uuid,
+        output: &mut Map<String, Value>,
+    ) -> Result<(), Box<dyn Error>>;
 }
 
 pub struct FileInspectorOptions {

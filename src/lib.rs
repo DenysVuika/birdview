@@ -9,30 +9,48 @@ use crate::inspectors::*;
 use crate::models::PackageJsonFile;
 use chrono::Utc;
 use ignore::WalkBuilder;
-use rusqlite::Connection;
+use rusqlite::{params, Connection};
 use serde_json::{json, Map, Value};
 use std::error::Error;
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use uuid::Uuid;
 
 fn create_connection(working_dir: &Path) -> Result<Connection, Box<dyn Error>> {
     let db_path = working_dir.join("birdview.db");
     let conn = Connection::open(db_path)?;
 
-    conn.execute_batch(
-        r#"
-        BEGIN;
-        CREATE TABLE IF NOT EXISTS ng_modules (id TEXT PRIMARY KEY, path TEXT NOT NULL);
-        COMMIT;
-    "#,
-    )?;
-
+    conn.execute_batch(include_str!("assets/sql/schema.sql"))?;
     Ok(conn)
 }
 
 pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
-    let conn = create_connection(&config.output_dir)?;
+    let package_json_path = &config.working_dir.join("package.json");
+    if !package_json_path.exists() {
+        panic!("Cannot find package.json file");
+    }
+
+    let project_id = Uuid::new_v4();
+    let connection = create_connection(&config.output_dir)?;
+
+    let package = PackageJsonFile::from_file(package_json_path)?;
+
+    if let Some(dependencies) = package.dependencies {
+        if let Some(version) = dependencies.get("@angular/core") {
+            connection.execute(
+                "INSERT INTO angular (id, project_id, version) VALUES (?1, ?2, ?3)",
+                params![Uuid::new_v4(), project_id, version],
+            )?;
+        }
+    }
+
+    connection
+        .execute(
+            "INSERT INTO projects (id, name, version, created_on) VALUES (?1, ?2, ?3, ?4)",
+            params![project_id, package.name, package.version, Utc::now()],
+        )
+        .unwrap();
 
     let mut inspectors: Vec<Box<dyn FileInspector>> = Vec::new();
 
@@ -54,7 +72,13 @@ pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
         return Ok(());
     }
 
-    let output = inspect(&config.working_dir, &conn, inspectors, config.verbose)?;
+    let output = inspect(
+        &config.working_dir,
+        &connection,
+        &project_id,
+        inspectors,
+        config.verbose,
+    )?;
 
     let output_file_path = get_output_file(&config.output_dir, config.format).unwrap();
     let mut output_file = File::create(&output_file_path)?;
@@ -104,6 +128,7 @@ fn get_output_file(output_dir: &Path, format: OutputFormat) -> Option<PathBuf> {
 fn inspect(
     working_dir: &PathBuf,
     connection: &Connection,
+    project_id: &Uuid,
     inspectors: Vec<Box<dyn FileInspector>>,
     verbose: bool,
 ) -> Result<Value, Box<dyn Error>> {
@@ -131,21 +156,25 @@ fn inspect(
         map.insert("git".to_owned(), json!(repo));
     }
 
-    run_inspectors(working_dir, connection, inspectors, &mut map, verbose);
+    run_inspectors(
+        working_dir,
+        connection,
+        project_id,
+        inspectors,
+        &mut map,
+        verbose,
+    );
     Ok(Value::Object(map))
 }
 
 fn run_inspectors(
     working_dir: &PathBuf,
     connection: &Connection,
+    project_id: &Uuid,
     mut inspectors: Vec<Box<dyn FileInspector>>,
     map: &mut Map<String, Value>,
     verbose: bool,
 ) {
-    for inspector in inspectors.iter_mut() {
-        inspector.init(working_dir, map);
-    }
-
     for entry in WalkBuilder::new(working_dir)
         .build()
         .filter_map(|entry| entry.ok())
@@ -162,7 +191,9 @@ fn run_inspectors(
 
         for inspector in inspectors.iter_mut() {
             if entry_path.is_file() && inspector.supports_file(entry_path) {
-                inspector.inspect_file(&options, map);
+                inspector
+                    .inspect_file(connection, project_id, &options, map)
+                    .unwrap();
                 processed = true;
             }
         }
@@ -177,7 +208,7 @@ fn run_inspectors(
     }
 
     for inspector in inspectors.iter_mut() {
-        inspector.finalize(connection, map);
+        inspector.finalize(connection, project_id, map).unwrap();
     }
 }
 
