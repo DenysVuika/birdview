@@ -31,9 +31,14 @@ pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
         panic!("Cannot find package.json file");
     }
 
-    let project_id = Uuid::new_v4();
-    let connection = create_connection(&config.output_dir)?;
+    let mut output = Map::new();
+    output.insert(
+        "report_date".to_owned(),
+        Value::String(Utc::now().to_string()),
+    );
 
+    let connection = create_connection(&config.output_dir)?;
+    let project_id = Uuid::new_v4();
     let package = PackageJsonFile::from_file(package_json_path)?;
 
     if let Some(dependencies) = package.dependencies {
@@ -42,6 +47,7 @@ pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
                 "INSERT INTO angular (id, project_id, version) VALUES (?1, ?2, ?3)",
                 params![Uuid::new_v4(), project_id, version],
             )?;
+            output.insert("angular_version".to_owned(), json!(version));
         }
     }
 
@@ -72,11 +78,12 @@ pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
         return Ok(());
     }
 
-    let output = inspect(
+    inspect(
         &config.working_dir,
         &connection,
         &project_id,
         inspectors,
+        &mut output,
         config.verbose,
     )?;
 
@@ -130,18 +137,12 @@ fn inspect(
     connection: &Connection,
     project_id: &Uuid,
     inspectors: Vec<Box<dyn FileInspector>>,
+    output: &mut Map<String, Value>,
     verbose: bool,
-) -> Result<Value, Box<dyn Error>> {
+) -> Result<(), Box<dyn Error>> {
     if verbose {
         println!("{}", working_dir.display());
     }
-
-    let mut map = Map::new();
-
-    map.insert(
-        "report_date".to_owned(),
-        Value::String(Utc::now().to_string()),
-    );
 
     let modules: Vec<&str> = inspectors
         .iter()
@@ -149,11 +150,11 @@ fn inspect(
         .collect();
 
     if let Some(project) = get_project_info(working_dir, modules) {
-        map.insert("project".to_owned(), project);
+        output.insert("project".to_owned(), project);
     }
 
     if let Some(repo) = get_repository_info(working_dir) {
-        map.insert("git".to_owned(), json!(repo));
+        output.insert("git".to_owned(), json!(repo));
     }
 
     run_inspectors(
@@ -161,10 +162,11 @@ fn inspect(
         connection,
         project_id,
         inspectors,
-        &mut map,
+        output,
         verbose,
     );
-    Ok(Value::Object(map))
+
+    Ok(())
 }
 
 fn run_inspectors(

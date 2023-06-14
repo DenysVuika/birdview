@@ -20,21 +20,11 @@ pub struct AngularFile {
     path: String,
 }
 
-pub struct AngularInspector {
-    // framework: Option<String>,
-}
+pub struct AngularInspector {}
 
 impl AngularInspector {
     pub fn new() -> Self {
-        AngularInspector {
-            // framework: None,
-            // modules: vec![],
-            // components: vec![],
-            // directives: vec![],
-            // services: vec![],
-            // pipes: vec![],
-            // dialogs: vec![],
-        }
+        AngularInspector {}
     }
 
     fn extract_metadata(contents: &str) -> Vec<&str> {
@@ -226,38 +216,8 @@ impl FileInspector for AngularInspector {
         project_id: &Uuid,
         output: &mut Map<String, Value>,
     ) -> Result<(), Box<dyn Error>> {
-        // let framework = match &self.framework {
-        //     Some(value) => value,
-        //     None => "unknown",
-        // };
-
         let angular = AngularInspector::get_angular_report(connection, project_id)?;
         output.entry("angular").or_insert(angular);
-
-        // output.entry("angular").or_insert(json!({
-        //     "framework": framework,
-        //     "modules": self.modules,
-        //     "components": self.components,
-        //     "directives": self.directives,
-        //     "services": self.services,
-        //     "pipes": self.pipes,
-        //     "dialogs": self.dialogs
-        // }));
-
-        let stats = output
-            .entry("stats")
-            .or_insert(json!({}))
-            .as_object_mut()
-            .unwrap();
-
-        // stats.entry("angular").or_insert(json!({
-        //     "module": self.modules.len(),
-        //     "component": self.components.len(),
-        //     "directive": self.directives.len(),
-        //     "service": self.services.len(),
-        //     "pipe": self.pipes.len(),
-        //     "dialog": self.dialogs.len()
-        // }));
 
         // println!("Angular");
         // println!(" ├── Framework: {}", framework);
