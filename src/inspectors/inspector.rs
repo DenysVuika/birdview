@@ -6,8 +6,6 @@ use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
 pub trait FileInspector {
-    fn get_module_name(&self) -> &str;
-
     /// Check if the inspector supports the file
     fn supports_file(&self, path: &Path) -> bool;
 

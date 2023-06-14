@@ -136,10 +136,6 @@ impl Default for AngularInspector {
 }
 
 impl FileInspector for AngularInspector {
-    fn get_module_name(&self) -> &str {
-        "angular-entities"
-    }
-
     fn supports_file(&self, path: &Path) -> bool {
         let display_path = path.display().to_string();
         path.is_file()

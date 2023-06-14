@@ -55,10 +55,6 @@ impl Default for TestInspector {
 }
 
 impl FileInspector for TestInspector {
-    fn get_module_name(&self) -> &str {
-        "angular-tests"
-    }
-
     fn supports_file(&self, path: &Path) -> bool {
         let display_path = path.display().to_string();
         path.is_file()
@@ -206,7 +202,7 @@ mod tests {
         let conn = Connection::open_in_memory()?;
 
         let mut map: Map<String, Value> = Map::new();
-        inspector.finalize(&conn, &Uuid::new_v4(), &mut map);
+        inspector.finalize(&conn, &Uuid::new_v4(), &mut map)?;
 
         assert_eq!(
             Value::Object(map),
@@ -243,8 +239,8 @@ mod tests {
         let mut inspector = TestInspector::new();
         let mut map: Map<String, Value> = Map::new();
 
-        inspector.inspect_file(&conn, &project_id, &options_from_file(&file), &mut map);
-        inspector.finalize(&conn, &project_id, &mut map);
+        inspector.inspect_file(&conn, &project_id, &options_from_file(&file), &mut map)?;
+        inspector.finalize(&conn, &project_id, &mut map)?;
 
         assert_eq!(
             Value::Object(map),
@@ -293,8 +289,8 @@ mod tests {
         let mut map: Map<String, Value> = Map::new();
         let options = options_from_file(&file);
 
-        inspector.inspect_file(&conn, &project_id, &options, &mut map);
-        inspector.finalize(&conn, &Uuid::new_v4(), &mut map);
+        inspector.inspect_file(&conn, &project_id, &options, &mut map)?;
+        inspector.finalize(&conn, &Uuid::new_v4(), &mut map)?;
 
         assert_eq!(
             Value::Object(map),

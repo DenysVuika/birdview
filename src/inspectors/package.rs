@@ -39,10 +39,6 @@ impl Default for PackageJsonInspector {
 }
 
 impl FileInspector for PackageJsonInspector {
-    fn get_module_name(&self) -> &str {
-        "packages"
-    }
-
     fn supports_file(&self, path: &Path) -> bool {
         path.is_file() && path.ends_with("package.json")
     }
@@ -66,7 +62,6 @@ impl FileInspector for PackageJsonInspector {
 
         if package.name.is_none() {
             warnings.push(json!({
-                "module": self.get_module_name(),
                 "path": workspace_path,
                 "message": "Missing name attribute",
             }));
@@ -74,7 +69,6 @@ impl FileInspector for PackageJsonInspector {
 
         if package.version.is_none() {
             warnings.push(json!({
-                "module": self.get_module_name(),
                 "path": workspace_path,
                 "message": "Missing version attribute",
             }));
@@ -180,8 +174,8 @@ mod tests {
         let mut map: Map<String, Value> = Map::new();
         let options = options_from_file(&file);
 
-        inspector.inspect_file(&conn, &project_id, &options, &mut map);
-        inspector.finalize(&conn, &project_id, &mut map);
+        inspector.inspect_file(&conn, &project_id, &options, &mut map)?;
+        inspector.finalize(&conn, &project_id, &mut map)?;
 
         assert_eq!(
             Value::Object(map),

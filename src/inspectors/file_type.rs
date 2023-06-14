@@ -27,10 +27,6 @@ impl Default for FileTypeInspector {
 }
 
 impl FileInspector for FileTypeInspector {
-    fn get_module_name(&self) -> &str {
-        "file-types"
-    }
-
     fn supports_file(&self, path: &Path) -> bool {
         path.is_file()
     }
@@ -60,18 +56,12 @@ impl FileInspector for FileTypeInspector {
             return Ok(());
         }
 
-        let stats = output
-            .entry("stats")
-            .or_insert(json!({}))
-            .as_object_mut()
-            .unwrap();
+        output.entry("types").or_insert(json!(self.types));
 
-        stats.entry("types").or_insert(json!(self.types));
-
-        println!("Project Files");
-        for (key, value) in &self.types {
-            println!(" ├── {}: {}", key, value);
-        }
+        // println!("Project Files");
+        // for (key, value) in &self.types {
+        //     println!(" ├── {}: {}", key, value);
+        // }
 
         Ok(())
     }
@@ -90,7 +80,7 @@ mod tests {
         let conn = Connection::open_in_memory()?;
         let mut map: Map<String, Value> = Map::new();
         let mut inspector = FileTypeInspector::new();
-        inspector.finalize(&conn, &Uuid::new_v4(), &mut map);
+        inspector.finalize(&conn, &Uuid::new_v4(), &mut map)?;
 
         assert_eq!(Value::Object(map), json!({}));
         Ok(())
@@ -109,9 +99,9 @@ mod tests {
         let mut map: Map<String, Value> = Map::new();
         let mut inspector = FileTypeInspector::new();
 
-        inspector.inspect_file(&conn, &project_id, &options_from_file(&file1), &mut map);
-        inspector.inspect_file(&conn, &project_id, &options_from_file(&file2), &mut map);
-        inspector.finalize(&conn, &project_id, &mut map);
+        inspector.inspect_file(&conn, &project_id, &options_from_file(&file1), &mut map)?;
+        inspector.inspect_file(&conn, &project_id, &options_from_file(&file2), &mut map)?;
+        inspector.finalize(&conn, &project_id, &mut map)?;
 
         assert_eq!(
             Value::Object(map),

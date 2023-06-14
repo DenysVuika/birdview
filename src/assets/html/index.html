@@ -572,7 +572,7 @@
 
             return html`
                 <nav class="panel is-link">
-                    <p class="panel-heading">Files</p>
+                    <p class="panel-heading">File Types</p>
 
                     <div style="max-height: 500px; overflow-y: scroll">
                         ${rows.map(row => html`
@@ -584,18 +584,21 @@
         }
 
         function App({ data }) {
-            const hasModule = (moduleName) => data.project.modules.includes(moduleName);
             const hasGit = !!data.git;
+            const hasPackages = !!(data.packages && data.packages.length > 0);
+            const hasAngular = !!data.angular;
+            const hasTests = !!data.unit_tests || !!data.e2e_tests;
+            const hasTypes = !!data.types;
 
             return html`
                 <main>
                     <${Header} data=${data}></Header>
                     <section class="section">
                         ${hasGit && html`<${GitReport} data=${data.git}/>`}
-                        ${hasModule('packages') && html`<${Packages} data=${data}/>`}
-                        ${hasModule('angular-entities') && html`<${Angular} data=${data}/>`}
-                        ${hasModule('angular-tests') && html`<${Tests} data=${data}/>`}
-                        ${hasModule('file-types') && html`<${FileTypes} data=${data.stats.types}></FileTypes>`}
+                        ${hasPackages && html`<${Packages} data=${data}/>`}
+                        ${hasAngular && html`<${Angular} data=${data}/>`}
+                        ${hasTests && html`<${Tests} data=${data}/>`}
+                        ${hasTypes && html`<${FileTypes} data=${data.types}></FileTypes>`}
                     </section>
                 </main>
             `;

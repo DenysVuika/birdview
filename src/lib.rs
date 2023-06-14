@@ -51,6 +51,14 @@ pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
         }
     }
 
+    output.insert(
+        "project".to_owned(),
+        json!({
+            "name": package.name,
+            "version": package.version
+        }),
+    );
+
     connection
         .execute(
             "INSERT INTO projects (id, name, version, created_on) VALUES (?1, ?2, ?3, ?4)",
@@ -144,15 +152,6 @@ fn inspect(
         println!("{}", working_dir.display());
     }
 
-    let modules: Vec<&str> = inspectors
-        .iter()
-        .map(|inspector| inspector.get_module_name())
-        .collect();
-
-    if let Some(project) = get_project_info(working_dir, modules) {
-        output.insert("project".to_owned(), project);
-    }
-
     if let Some(repo) = get_repository_info(working_dir) {
         output.insert("git".to_owned(), json!(repo));
     }
@@ -212,21 +211,4 @@ fn run_inspectors(
     for inspector in inspectors.iter_mut() {
         inspector.finalize(connection, project_id, map).unwrap();
     }
-}
-
-fn get_project_info(working_dir: &Path, modules: Vec<&str>) -> Option<Value> {
-    let package_json_path = working_dir.join("package.json");
-    if package_json_path.exists() {
-        let package = PackageJsonFile::from_file(&package_json_path).unwrap();
-
-        return Some(json!({
-            "name": package.name,
-            "version": package.version,
-            "modules": modules
-        }));
-    } else {
-        println!("Warning: no package.json file found in the workspace");
-    }
-
-    None
 }
