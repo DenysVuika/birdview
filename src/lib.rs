@@ -9,7 +9,8 @@ use crate::inspectors::*;
 use crate::models::PackageJsonFile;
 use chrono::Utc;
 use ignore::WalkBuilder;
-use rusqlite::{params, Connection};
+use rusqlite::{named_params, params, Connection};
+use serde::Serialize;
 use serde_json::{json, Map, Value};
 use std::error::Error;
 use std::fs::File;
@@ -94,6 +95,10 @@ pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
         &mut output,
         config.verbose,
     )?;
+
+    if let Ok(warnings) = get_warnings(&connection, &project_id) {
+        output.insert("warnings".to_owned(), json!(warnings));
+    }
 
     let output_file_path = get_output_file(&config.output_dir, config.format).unwrap();
     let mut output_file = File::create(&output_file_path)?;
@@ -211,4 +216,26 @@ fn run_inspectors(
     for inspector in inspectors.iter_mut() {
         inspector.finalize(connection, project_id, map).unwrap();
     }
+}
+
+#[derive(Debug, Serialize)]
+struct CodeWarning {
+    path: String,
+    message: String,
+}
+
+fn get_warnings(
+    connection: &Connection,
+    project_id: &Uuid,
+) -> Result<Vec<CodeWarning>, Box<dyn Error>> {
+    let mut stmt =
+        connection.prepare("SELECT path, message FROM warnings WHERE project_id=:project_id;")?;
+    let rows = stmt.query_map(named_params! { ":project_id": project_id }, |row| {
+        Ok(CodeWarning {
+            path: row.get(0)?,
+            message: row.get(1)?,
+        })
+    })?;
+    let warnings: Vec<CodeWarning> = rows.filter_map(|entry| entry.ok()).collect();
+    Ok(warnings)
 }

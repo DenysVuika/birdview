@@ -81,7 +81,6 @@
                 const data = this.props.data;
                 const git = data.git;
                 const warnings = (data.warnings || [])
-                    .filter(warning => warning.module === 'packages')
                     .map(entry => ({
                         ...entry,
                         url: !!git ? `${git.remote}/blob/${git.target}/${entry.path}`: ''

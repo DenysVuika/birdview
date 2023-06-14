@@ -1,7 +1,7 @@
 use super::FileInspector;
 use crate::inspectors::FileInspectorOptions;
 use crate::models::PackageJsonFile;
-use rusqlite::Connection;
+use rusqlite::{params, Connection};
 use serde::Serialize;
 use serde_json::{json, Map, Value};
 use std::error::Error;
@@ -54,24 +54,29 @@ impl FileInspector for PackageJsonInspector {
             .unwrap_or_else(|_| panic!("Error reading {}", &options.path.display()));
 
         let workspace_path = options.relative_path.display().to_string();
-        let warnings = output
-            .entry("warnings")
-            .or_insert(json!([]))
-            .as_array_mut()
-            .unwrap();
 
         if package.name.is_none() {
-            warnings.push(json!({
-                "path": workspace_path,
-                "message": "Missing name attribute",
-            }));
+            connection.execute(
+                "INSERT INTO warnings (id, project_id, path, message) VALUES (?1, ?2, ?3, ?4)",
+                params![
+                    Uuid::new_v4(),
+                    project_id,
+                    workspace_path,
+                    "Missing name attribute"
+                ],
+            )?;
         }
 
         if package.version.is_none() {
-            warnings.push(json!({
-                "path": workspace_path,
-                "message": "Missing version attribute",
-            }));
+            connection.execute(
+                "INSERT INTO warnings (id, project_id, path, message) VALUES (?1, ?2, ?3, ?4)",
+                params![
+                    Uuid::new_v4(),
+                    project_id,
+                    workspace_path,
+                    "Missing version attribute"
+                ],
+            )?;
         }
 
         let mut dependencies: Vec<DependencyEntry> = Vec::new();
@@ -111,14 +116,6 @@ impl FileInspector for PackageJsonInspector {
         output: &mut Map<String, Value>,
     ) -> Result<(), Box<dyn Error>> {
         output.entry("packages").or_insert(json!(self.packages));
-
-        // println!("Packages");
-        // println!(" ├── Files: {}", self.packages.len());
-        // println!(" ├── Dependencies: {}", self.total_deps);
-        // println!(" └── Dev dependencies: {}", self.total_dev_deps);
-
-        // cleanup
-        // self.packages = vec![];
         Ok(())
     }
 }
