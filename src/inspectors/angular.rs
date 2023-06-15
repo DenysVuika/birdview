@@ -3,7 +3,6 @@ use crate::inspectors::FileInspectorOptions;
 use lazy_static::lazy_static;
 use regex::Regex;
 use rusqlite::{params, Connection};
-use serde_json::{Map, Value};
 use std::error::Error;
 use std::path::Path;
 use uuid::Uuid;
@@ -68,7 +67,6 @@ impl FileInspector for AngularInspector {
         connection: &Connection,
         project_id: &Uuid,
         options: &FileInspectorOptions,
-        _output: &mut Map<String, Value>,
     ) -> Result<(), Box<dyn Error>> {
         let workspace_path = options.relative_path.display().to_string();
         let content = options.read_content();

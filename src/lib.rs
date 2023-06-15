@@ -204,7 +204,7 @@ fn run_inspectors(
         let options = FileInspectorOptions {
             working_dir: working_dir.to_owned(),
             path: entry_path.to_path_buf(),
-            relative_path: entry_path.strip_prefix(working_dir).unwrap().to_owned(),
+            relative_path: entry_path.strip_prefix(working_dir)?.to_owned(),
         };
 
         for inspector in inspectors.iter_mut() {
@@ -215,9 +215,7 @@ fn run_inspectors(
                 }
 
                 if inspector.supports_file(entry_path) {
-                    inspector
-                        .inspect_file(connection, project_id, &options, map)
-                        .unwrap();
+                    inspector.inspect_file(connection, project_id, &options)?;
                     processed = true;
                 }
             }

@@ -1,6 +1,4 @@
-use super::utils;
 use rusqlite::Connection;
-use serde_json::{Map, Value};
 use std::error::Error;
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
@@ -15,7 +13,6 @@ pub trait FileInspector {
         connection: &Connection,
         project_id: &Uuid,
         options: &FileInspectorOptions,
-        output: &mut Map<String, Value>,
     ) -> Result<(), Box<dyn Error>>;
 }
 
@@ -26,10 +23,6 @@ pub struct FileInspectorOptions {
 }
 
 impl FileInspectorOptions {
-    pub fn as_json(&self) -> Value {
-        utils::load_json_file(&self.path)
-    }
-
     pub fn read_content(&self) -> String {
         std::fs::read_to_string(&self.path).unwrap()
     }
