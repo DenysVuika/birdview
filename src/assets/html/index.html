@@ -207,12 +207,21 @@
                 const unitTests = this.getEntries(data, 'unit_tests');
                 const e2eTests = this.getEntries(data, 'e2e_tests');
 
-                const tests = data.stats.tests;
-                const totalCases = tests.unit_test_case + tests.e2e_test_case;
+                const unit_test_cases = unitTests
+                    .map(entry => entry.cases)
+                    .reduceRight((acc, cur) => acc + cur, 0);
+
+                const e2e_test_cases = e2eTests
+                    .map(entry => entry.cases)
+                    .reduceRight((acc, cur) => acc + cur, 0);
+
+                const totalCases = unit_test_cases + e2e_test_cases;
 
                 this.setState({
                     unitTests,
+                    unit_test_cases,
                     e2eTests,
+                    e2e_test_cases,
                     totalCases
                 });
             }
@@ -222,15 +231,14 @@
                 const git = data.git;
 
                 return tests.map(entry => ({
-                    path: entry.path,
-                    cases: entry.cases.length,
+                    ...entry,
                     url: !!git ? `${git.remote}/blob/${git.target}/${entry.path}`: ''
                 }));
             }
 
             setupChart() {
                 const ctx = document.getElementById('tests-chart');
-                const tests = window.data.stats.tests;
+                const { unit_test_cases, e2e_test_cases } = this.state;
 
                 const existing = Chart.getChart('tests-chart');
                 if (existing) {
@@ -244,8 +252,8 @@
                         datasets: [{
                             label: '# of cases',
                             data: [
-                                tests.unit_test_case,
-                                tests.e2e_test_case,
+                                unit_test_cases,
+                                e2e_test_cases,
                             ],
                             backgroundColor: [
                                 'rgb(255, 99, 132)',

@@ -2,9 +2,9 @@ use super::FileInspector;
 use crate::inspectors::FileInspectorOptions;
 use lazy_static::lazy_static;
 use regex::Regex;
-use rusqlite::Connection;
+use rusqlite::{params, Connection};
 use serde::Serialize;
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value};
 use std::error::Error;
 use std::path::Path;
 use uuid::Uuid;
@@ -15,22 +15,12 @@ struct TestEntry {
     cases: Vec<String>,
 }
 
-pub struct TestInspector {
-    unit_test_cases: i64,
-    unit_test_files: Vec<TestEntry>,
-    e2e_test_cases: i64,
-    e2e_test_files: Vec<TestEntry>,
-}
+pub struct TestInspector {}
 
 impl TestInspector {
     /// Creates a new instance of the inspector
     pub fn new() -> Self {
-        TestInspector {
-            unit_test_cases: 0,
-            unit_test_files: vec![],
-            e2e_test_cases: 0,
-            e2e_test_files: vec![],
-        }
+        TestInspector {}
     }
 
     pub fn extract_test_names(contents: &str) -> Vec<String> {
@@ -74,19 +64,35 @@ impl FileInspector for TestInspector {
         let test_names = TestInspector::extract_test_names(&contents);
 
         if !test_names.is_empty() {
+            let test_id = Uuid::new_v4();
             let workspace_path = options.relative_path.display().to_string();
-            let total_cases = test_names.len() as i64;
-            let entry = TestEntry {
-                path: workspace_path.to_owned(),
-                cases: test_names,
-            };
 
             if workspace_path.ends_with(".spec.ts") {
-                self.unit_test_files.push(entry);
-                self.unit_test_cases += total_cases
+                connection.execute(
+                    "INSERT INTO unit_tests (id, project_id, path) VALUES (?1, ?2, ?3)",
+                    params![test_id, project_id, workspace_path],
+                )?;
+
+                let mut stmt =
+                    connection.prepare("INSERT INTO test_cases (test_id, name) VALUES (?1, ?2)")?;
+
+                // todo: slow
+                for name in test_names {
+                    stmt.execute(params![test_id, name])?;
+                }
             } else if workspace_path.ends_with(".test.ts") || workspace_path.ends_with(".e2e.ts") {
-                self.e2e_test_files.push(entry);
-                self.e2e_test_cases += total_cases;
+                connection.execute(
+                    "INSERT INTO e2e_tests (id, project_id, path) VALUES (?1, ?2, ?3)",
+                    params![test_id, project_id, workspace_path],
+                )?;
+
+                let mut stmt =
+                    connection.prepare("INSERT INTO test_cases (test_id, name) VALUES (?1, ?2)")?;
+
+                // todo: slow
+                for name in test_names {
+                    stmt.execute(params![test_id, name])?;
+                }
             }
         }
 
@@ -99,39 +105,6 @@ impl FileInspector for TestInspector {
         project_id: &Uuid,
         output: &mut Map<String, Value>,
     ) -> Result<(), Box<dyn Error>> {
-        output
-            .entry("unit_tests")
-            .or_insert(json!(self.unit_test_files));
-
-        output
-            .entry("e2e_tests")
-            .or_insert(json!(self.e2e_test_files));
-
-        let stats = output
-            .entry("stats")
-            .or_insert(json!({}))
-            .as_object_mut()
-            .unwrap();
-
-        stats.entry("tests").or_insert(json!({
-            "unit_test": self.unit_test_files.len(),
-            "unit_test_case": self.unit_test_cases,
-            "e2e_test": self.e2e_test_files.len(),
-            "e2e_test_case": self.e2e_test_cases
-        }));
-
-        if !self.unit_test_files.is_empty() {
-            println!("Unit Tests");
-            println!(" ├── Cases: {}", self.unit_test_cases);
-            println!(" └── Files: {}", self.unit_test_files.len());
-        }
-
-        if !self.e2e_test_files.is_empty() {
-            println!("E2E Tests");
-            println!(" ├── Cases: {}", self.e2e_test_cases);
-            println!(" └── Files: {}", self.e2e_test_files.len());
-        }
-
         Ok(())
     }
 }

@@ -124,6 +124,20 @@ pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
         Err(err) => println!("{}", err),
     };
 
+    match get_unit_tests(&connection, &project_id) {
+        Ok(tests) => {
+            output.entry("unit_tests").or_insert(json!(tests));
+        }
+        Err(err) => println!("{}", err),
+    }
+
+    match get_e2e_tests(&connection, &project_id) {
+        Ok(tests) => {
+            output.entry("e2e_tests").or_insert(json!(tests));
+        }
+        Err(err) => println!("{}", err),
+    }
+
     let output_file_path = get_output_file(&config.output_dir, config.format).unwrap();
     let mut output_file = File::create(&output_file_path)?;
     let json_string = serde_json::to_string_pretty(&output)?;
@@ -399,4 +413,58 @@ fn get_angular_report(connection: &Connection, project_id: &Uuid) -> Result<Valu
         "pipes": pipes,
         "dialogs": dialogs
     }))
+}
+
+#[derive(Serialize)]
+struct TestEntry {
+    path: String,
+    cases: i64,
+}
+
+fn get_unit_tests(
+    connection: &Connection,
+    project_id: &Uuid,
+) -> Result<Vec<TestEntry>, Box<dyn Error>> {
+    let mut stmt = connection.prepare(
+        r#"
+        SELECT ut.path, COUNT(DISTINCT tc.name) as cases FROM unit_tests ut
+          LEFT JOIN test_cases tc on ut.id = tc.test_id
+        WHERE ut.project_id=:project_id
+        GROUP BY ut.path
+    "#,
+    )?;
+
+    let rows = stmt.query_map(named_params! {":project_id": project_id}, |row| {
+        Ok(TestEntry {
+            path: row.get(0)?,
+            cases: row.get(1)?,
+        })
+    })?;
+
+    let entries: Vec<TestEntry> = rows.filter_map(|entry| entry.ok()).collect();
+    Ok(entries)
+}
+
+fn get_e2e_tests(
+    connection: &Connection,
+    project_id: &Uuid,
+) -> Result<Vec<TestEntry>, Box<dyn Error>> {
+    let mut stmt = connection.prepare(
+        r#"
+        SELECT ut.path, COUNT(DISTINCT tc.name) as cases FROM e2e_tests ut
+          LEFT JOIN test_cases tc on ut.id = tc.test_id
+        WHERE ut.project_id=:project_id
+        GROUP BY ut.path
+    "#,
+    )?;
+
+    let rows = stmt.query_map(named_params! {":project_id": project_id}, |row| {
+        Ok(TestEntry {
+            path: row.get(0)?,
+            cases: row.get(1)?,
+        })
+    })?;
+
+    let entries: Vec<TestEntry> = rows.filter_map(|entry| entry.ok()).collect();
+    Ok(entries)
 }
