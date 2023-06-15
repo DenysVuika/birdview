@@ -232,15 +232,9 @@ fn run_inspectors(
         }
     }
 
-    if config.inspect_types {
-        for inspector in inspectors.iter_mut() {
-            inspector.finalize(connection, project_id, map).unwrap();
-        }
-
-        if !types.is_empty() {
-            save_file_types(connection, project_id, &types)?;
-            map.entry("types").or_insert(json!(types));
-        }
+    if config.inspect_types && !types.is_empty() {
+        save_file_types(connection, project_id, &types)?;
+        map.entry("types").or_insert(json!(types));
     }
 
     Ok(())

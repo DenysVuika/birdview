@@ -98,15 +98,6 @@ impl FileInspector for TestInspector {
 
         Ok(())
     }
-
-    fn finalize(
-        &mut self,
-        connection: &Connection,
-        project_id: &Uuid,
-        output: &mut Map<String, Value>,
-    ) -> Result<(), Box<dyn Error>> {
-        Ok(())
-    }
 }
 
 #[cfg(test)]
@@ -115,6 +106,7 @@ mod tests {
     use crate::inspectors::utils::test_utils::options_from_file;
     use assert_fs::prelude::*;
     use assert_fs::NamedTempFile;
+    use serde_json::json;
     use std::error::Error;
 
     #[test]
@@ -169,34 +161,6 @@ mod tests {
     }
 
     #[test]
-    fn writes_default_values_on_finalise() -> Result<(), Box<dyn Error>> {
-        let mut inspector: TestInspector = Default::default();
-
-        let conn = Connection::open_in_memory()?;
-
-        let mut map: Map<String, Value> = Map::new();
-        inspector.finalize(&conn, &Uuid::new_v4(), &mut map)?;
-
-        assert_eq!(
-            Value::Object(map),
-            json!({
-                "unit_tests": [],
-                "e2e_tests": [],
-                "stats": {
-                    "tests": {
-                        "unit_test": 0,
-                        "unit_test_case": 0,
-                        "e2e_test": 0,
-                        "e2e_test_case": 0
-                    }
-                }
-            })
-        );
-
-        Ok(())
-    }
-
-    #[test]
     fn parses_unit_tests() -> Result<(), Box<dyn Error>> {
         let conn = Connection::open_in_memory()?;
         let project_id = Uuid::new_v4();
@@ -213,7 +177,7 @@ mod tests {
         let mut map: Map<String, Value> = Map::new();
 
         inspector.inspect_file(&conn, &project_id, &options_from_file(&file), &mut map)?;
-        inspector.finalize(&conn, &project_id, &mut map)?;
+        // inspector.finalize(&conn, &project_id, &mut map)?;
 
         assert_eq!(
             Value::Object(map),
@@ -263,7 +227,7 @@ mod tests {
         let options = options_from_file(&file);
 
         inspector.inspect_file(&conn, &project_id, &options, &mut map)?;
-        inspector.finalize(&conn, &Uuid::new_v4(), &mut map)?;
+        // inspector.finalize(&conn, &Uuid::new_v4(), &mut map)?;
 
         assert_eq!(
             Value::Object(map),

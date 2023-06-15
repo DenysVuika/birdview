@@ -17,14 +17,6 @@ pub trait FileInspector {
         options: &FileInspectorOptions,
         output: &mut Map<String, Value>,
     ) -> Result<(), Box<dyn Error>>;
-
-    /// Perform final tasks after all inspectors finished
-    fn finalize(
-        &mut self,
-        connection: &Connection,
-        project_id: &Uuid,
-        output: &mut Map<String, Value>,
-    ) -> Result<(), Box<dyn Error>>;
 }
 
 pub struct FileInspectorOptions {

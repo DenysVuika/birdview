@@ -102,15 +102,6 @@ impl FileInspector for PackageJsonInspector {
 
         Ok(())
     }
-
-    fn finalize(
-        &mut self,
-        connection: &Connection,
-        project_id: &Uuid,
-        output: &mut Map<String, Value>,
-    ) -> Result<(), Box<dyn Error>> {
-        Ok(())
-    }
 }
 
 #[cfg(test)]
@@ -166,7 +157,7 @@ mod tests {
         let options = options_from_file(&file);
 
         inspector.inspect_file(&conn, &project_id, &options, &mut map)?;
-        inspector.finalize(&conn, &project_id, &mut map)?;
+        // inspector.finalize(&conn, &project_id, &mut map)?;
 
         assert_eq!(
             Value::Object(map),
