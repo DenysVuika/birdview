@@ -99,6 +99,7 @@ pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
         inspectors,
         &mut output,
         config.verbose,
+        &repo,
     )?;
 
     if let Ok(warnings) = get_warnings(&connection, &project_id) {
@@ -112,7 +113,7 @@ pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
         Err(err) => println!("{}", err),
     }
 
-    match get_packages(&connection, &project_id, repo) {
+    match get_packages(&connection, &project_id) {
         Ok(packages) => {
             output.insert("packages".to_owned(), json!(packages));
         }
@@ -191,6 +192,7 @@ fn run_inspectors(
     inspectors: Vec<Box<dyn FileInspector>>,
     map: &mut Map<String, Value>,
     verbose: bool,
+    repo: &Option<RepositoryInfo>,
 ) -> Result<(), Box<dyn Error>> {
     let working_dir = &config.working_dir;
     let mut types: HashMap<String, i64> = HashMap::new();
@@ -217,7 +219,7 @@ fn run_inspectors(
                 }
 
                 if inspector.supports_file(entry_path) {
-                    inspector.inspect_file(connection, project_id, &options)?;
+                    inspector.inspect_file(connection, project_id, &options, repo)?;
                     processed = true;
                 }
             }
@@ -294,21 +296,14 @@ struct PackageDependency {
 fn get_packages(
     connection: &Connection,
     project_id: &Uuid,
-    repo: Option<RepositoryInfo>,
 ) -> Result<Vec<PackageFile>, Box<dyn Error>> {
-    let mut stmt = connection.prepare("SELECT path FROM packages WHERE project_id=:project_id")?;
+    let mut stmt =
+        connection.prepare("SELECT path, url FROM packages WHERE project_id=:project_id")?;
     let rows = stmt.query_map(named_params! {":project_id": project_id}, |row| {
-        let path: String = row.get(0)?;
-        let url = match &repo {
-            None => None,
-            Some(repo) => {
-                let remote = &repo.remote;
-                let target = &repo.target;
-                let result = format!("{remote}/blob/{target}/{path}");
-                Some(result)
-            }
-        };
-        Ok(PackageFile { path, url })
+        Ok(PackageFile {
+            path: row.get(0)?,
+            url: row.get(1)?,
+        })
     })?;
 
     let entries: Vec<PackageFile> = rows.filter_map(|entry| entry.ok()).collect();

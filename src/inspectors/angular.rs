@@ -1,4 +1,5 @@
 use super::FileInspector;
+use crate::git::RepositoryInfo;
 use crate::inspectors::FileInspectorOptions;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -67,6 +68,7 @@ impl FileInspector for AngularInspector {
         connection: &Connection,
         project_id: &Uuid,
         options: &FileInspectorOptions,
+        repo: &Option<RepositoryInfo>,
     ) -> Result<(), Box<dyn Error>> {
         let workspace_path = options.relative_path.display().to_string();
         let content = options.read_content();

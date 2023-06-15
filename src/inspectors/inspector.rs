@@ -1,3 +1,4 @@
+use crate::git::RepositoryInfo;
 use rusqlite::Connection;
 use std::error::Error;
 use std::path::{Path, PathBuf};
@@ -13,6 +14,7 @@ pub trait FileInspector {
         connection: &Connection,
         project_id: &Uuid,
         options: &FileInspectorOptions,
+        repo: &Option<RepositoryInfo>,
     ) -> Result<(), Box<dyn Error>>;
 }
 

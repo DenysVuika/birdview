@@ -1,4 +1,5 @@
 use super::FileInspector;
+use crate::git::RepositoryInfo;
 use crate::inspectors::FileInspectorOptions;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -50,6 +51,7 @@ impl FileInspector for TestInspector {
         connection: &Connection,
         project_id: &Uuid,
         options: &FileInspectorOptions,
+        repo: &Option<RepositoryInfo>,
     ) -> Result<(), Box<dyn Error>> {
         let contents = options.read_content();
         let test_names = TestInspector::extract_test_names(&contents);

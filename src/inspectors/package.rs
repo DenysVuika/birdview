@@ -1,4 +1,5 @@
 use super::FileInspector;
+use crate::git::RepositoryInfo;
 use crate::inspectors::FileInspectorOptions;
 use crate::models::PackageJsonFile;
 use rusqlite::{params, Connection};
@@ -31,6 +32,7 @@ impl FileInspector for PackageJsonInspector {
         connection: &Connection,
         project_id: &Uuid,
         options: &FileInspectorOptions,
+        repo: &Option<RepositoryInfo>,
     ) -> Result<(), Box<dyn Error>> {
         let package = PackageJsonFile::from_file(&options.path)
             // todo: convert to db warning instead
@@ -38,63 +40,49 @@ impl FileInspector for PackageJsonInspector {
 
         let workspace_path = options.relative_path.display().to_string();
 
+        let url = match &repo {
+            None => None,
+            Some(repo) => {
+                let remote = &repo.remote;
+                let target = &repo.target;
+                let result = format!("{remote}/blob/{target}/{workspace_path}");
+                Some(result)
+            }
+        };
+
         if package.name.is_none() {
             connection.execute(
-                "INSERT INTO warnings (id, project_id, path, message) VALUES (?1, ?2, ?3, ?4)",
-                params![
-                    Uuid::new_v4(),
-                    project_id,
-                    workspace_path,
-                    "Missing name attribute"
-                ],
+                "INSERT INTO warnings (project_id, path, message) VALUES (?1, ?2, ?3)",
+                params![project_id, workspace_path, "Missing name attribute"],
             )?;
         }
 
         if package.version.is_none() {
             connection.execute(
-                "INSERT INTO warnings (id, project_id, path, message) VALUES (?1, ?2, ?3, ?4)",
-                params![
-                    Uuid::new_v4(),
-                    project_id,
-                    workspace_path,
-                    "Missing version attribute"
-                ],
+                "INSERT INTO warnings (project_id, path, message) VALUES (?1, ?2, ?3)",
+                params![project_id, workspace_path, "Missing version attribute"],
             )?;
         }
 
         let package_id = Uuid::new_v4();
         connection.execute(
-            "INSERT INTO packages (id, project_id, path) VALUES (?1, ?2, ?3)",
-            params![package_id, project_id, workspace_path],
+            "INSERT INTO packages (id, project_id, path, url) VALUES (?1, ?2, ?3, ?4)",
+            params![package_id, project_id, workspace_path, url],
         )?;
 
         let mut stmt = connection.prepare(
-            "INSERT INTO dependencies (id, project_id, package_id, name, version, dev) VALUES (?1, ?2, ?3, ?4, ?5, ?6)"
+            "INSERT INTO dependencies (project_id, package_id, name, version, dev) VALUES (?1, ?2, ?3, ?4, ?5)"
         )?;
 
         if let Some(data) = package.dependencies {
             for (name, version) in data {
-                stmt.execute(params![
-                    Uuid::new_v4(),
-                    project_id,
-                    package_id,
-                    name,
-                    version,
-                    false
-                ])?;
+                stmt.execute(params![project_id, package_id, name, version, false])?;
             }
         }
 
         if let Some(data) = package.dev_dependencies {
             for (name, version) in data {
-                stmt.execute(params![
-                    Uuid::new_v4(),
-                    project_id,
-                    package_id,
-                    name,
-                    version,
-                    true
-                ])?;
+                stmt.execute(params![project_id, package_id, name, version, true])?;
             }
         }
 
