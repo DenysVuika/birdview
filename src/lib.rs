@@ -12,7 +12,9 @@ use ignore::WalkBuilder;
 use rusqlite::{named_params, params, Connection};
 use serde::Serialize;
 use serde_json::{json, Map, Value};
+use std::collections::HashMap;
 use std::error::Error;
+use std::ffi::OsStr;
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -82,9 +84,6 @@ pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
     if config.inspect_angular {
         inspectors.push(Box::new(AngularInspector::new()));
     }
-    if config.inspect_types {
-        inspectors.push(Box::new(FileTypeInspector::new()));
-    }
 
     if inspectors.is_empty() {
         println!("No inspectors defined.\nRun 'birdview inspect --help' for available options.");
@@ -92,13 +91,13 @@ pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
     }
 
     run_inspectors(
-        &config.working_dir,
+        config,
         &connection,
         &project_id,
         inspectors,
         &mut output,
         config.verbose,
-    );
+    )?;
 
     if let Ok(warnings) = get_warnings(&connection, &project_id) {
         output.insert("warnings".to_owned(), json!(warnings));
@@ -170,13 +169,16 @@ fn get_output_file(output_dir: &Path, format: OutputFormat) -> Option<PathBuf> {
 }
 
 fn run_inspectors(
-    working_dir: &PathBuf,
+    config: &Config,
     connection: &Connection,
     project_id: &Uuid,
     mut inspectors: Vec<Box<dyn FileInspector>>,
     map: &mut Map<String, Value>,
     verbose: bool,
-) {
+) -> Result<(), Box<dyn Error>> {
+    let working_dir = &config.working_dir;
+    let mut types: HashMap<String, i64> = HashMap::new();
+
     for entry in WalkBuilder::new(working_dir)
         .build()
         .filter_map(|entry| entry.ok())
@@ -192,11 +194,18 @@ fn run_inspectors(
         };
 
         for inspector in inspectors.iter_mut() {
-            if entry_path.is_file() && inspector.supports_file(entry_path) {
-                inspector
-                    .inspect_file(connection, project_id, &options, map)
-                    .unwrap();
-                processed = true;
+            if entry_path.is_file() {
+                if let Some(ext) = options.relative_path.extension().and_then(OsStr::to_str) {
+                    let entry = types.entry(ext.to_owned()).or_insert(0);
+                    *entry += 1;
+                }
+
+                if inspector.supports_file(entry_path) {
+                    inspector
+                        .inspect_file(connection, project_id, &options, map)
+                        .unwrap();
+                    processed = true;
+                }
             }
         }
 
@@ -209,9 +218,33 @@ fn run_inspectors(
         }
     }
 
-    for inspector in inspectors.iter_mut() {
-        inspector.finalize(connection, project_id, map).unwrap();
+    if config.inspect_types {
+        for inspector in inspectors.iter_mut() {
+            inspector.finalize(connection, project_id, map).unwrap();
+        }
+
+        if !types.is_empty() {
+            save_file_types(connection, project_id, &types)?;
+            map.entry("types").or_insert(json!(types));
+        }
     }
+
+    Ok(())
+}
+
+fn save_file_types(
+    connection: &Connection,
+    project_id: &Uuid,
+    types: &HashMap<String, i64>,
+) -> Result<(), Box<dyn Error>> {
+    let mut stmt = connection
+        .prepare("INSERT INTO file_types (project_id, name, count) VALUES (?1, ?2, ?3)")?;
+
+    for (key, value) in types {
+        stmt.execute(params![project_id, key, value])?;
+    }
+
+    Ok(())
 }
 
 #[derive(Debug, Serialize)]
