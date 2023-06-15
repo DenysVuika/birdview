@@ -3,16 +3,9 @@ use crate::inspectors::FileInspectorOptions;
 use lazy_static::lazy_static;
 use regex::Regex;
 use rusqlite::{params, Connection};
-use serde::Serialize;
 use std::error::Error;
 use std::path::Path;
 use uuid::Uuid;
-
-#[derive(Serialize)]
-struct TestEntry {
-    path: String,
-    cases: Vec<String>,
-}
 
 pub struct TestInspector {}
 

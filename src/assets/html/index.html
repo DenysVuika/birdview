@@ -85,21 +85,11 @@
                         ...entry,
                         url: !!git ? `${git.remote}/blob/${git.target}/${entry.path}`: ''
                     }));
-                const packages = this.getPackages(data);
+                const packages = data.packages || [];
                 const dependencies = this.getDependencies(data, false);
                 const devDependencies = this.getDependencies(data, true);
 
                 this.setState({ warnings, packages, dependencies, devDependencies });
-            }
-
-            getPackages(data) {
-                const packages = data.packages || [];
-                const git = data.git;
-
-                return packages.map(entry => ({
-                    path: entry.path,
-                    url: !!git ? `${git.remote}/blob/${git.target}/${entry.path}`: ''
-                }));
             }
 
             getDependencies(data, dev) {

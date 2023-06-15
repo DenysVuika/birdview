@@ -12,10 +12,10 @@ pub struct AuthorInfo {
 
 #[derive(Debug, Serialize)]
 pub struct RepositoryInfo {
-    remote: String,
-    branch: String,
-    target: String,
-    authors: Vec<AuthorInfo>,
+    pub remote: String,
+    pub branch: String,
+    pub target: String,
+    pub authors: Vec<AuthorInfo>,
 }
 
 pub fn get_repository_info(path: &PathBuf) -> Option<RepositoryInfo> {

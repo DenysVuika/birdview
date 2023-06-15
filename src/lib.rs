@@ -4,7 +4,7 @@ pub mod inspectors;
 pub mod models;
 
 use crate::config::{Config, OutputFormat};
-use crate::git::get_repository_info;
+use crate::git::{get_repository_info, RepositoryInfo};
 use crate::inspectors::*;
 use crate::models::PackageJsonFile;
 use chrono::Utc;
@@ -62,7 +62,9 @@ pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
         }),
     );
 
-    if let Some(repo) = get_repository_info(&config.working_dir) {
+    let repo = get_repository_info(&config.working_dir);
+
+    if repo.is_some() {
         output.insert("git".to_owned(), json!(repo));
     }
 
@@ -110,7 +112,7 @@ pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
         Err(err) => println!("{}", err),
     }
 
-    match get_packages(&connection, &project_id) {
+    match get_packages(&connection, &project_id, repo) {
         Ok(packages) => {
             output.insert("packages".to_owned(), json!(packages));
         }
@@ -278,6 +280,7 @@ fn get_warnings(
 #[derive(Serialize)]
 struct PackageFile {
     path: String,
+    url: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -291,10 +294,21 @@ struct PackageDependency {
 fn get_packages(
     connection: &Connection,
     project_id: &Uuid,
+    repo: Option<RepositoryInfo>,
 ) -> Result<Vec<PackageFile>, Box<dyn Error>> {
     let mut stmt = connection.prepare("SELECT path FROM packages WHERE project_id=:project_id")?;
     let rows = stmt.query_map(named_params! {":project_id": project_id}, |row| {
-        Ok(PackageFile { path: row.get(0)? })
+        let path: String = row.get(0)?;
+        let url = match &repo {
+            None => None,
+            Some(repo) => {
+                let remote = &repo.remote;
+                let target = &repo.target;
+                let result = format!("{remote}/blob/{target}/{path}");
+                Some(result)
+            }
+        };
+        Ok(PackageFile { path, url })
     })?;
 
     let entries: Vec<PackageFile> = rows.filter_map(|entry| entry.ok()).collect();
