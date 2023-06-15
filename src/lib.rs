@@ -186,7 +186,7 @@ fn run_inspectors(
     config: &Config,
     connection: &Connection,
     project_id: &Uuid,
-    mut inspectors: Vec<Box<dyn FileInspector>>,
+    inspectors: Vec<Box<dyn FileInspector>>,
     map: &mut Map<String, Value>,
     verbose: bool,
 ) -> Result<(), Box<dyn Error>> {
@@ -207,7 +207,7 @@ fn run_inspectors(
             relative_path: entry_path.strip_prefix(working_dir)?.to_owned(),
         };
 
-        for inspector in inspectors.iter_mut() {
+        for inspector in inspectors.iter() {
             if entry_path.is_file() {
                 if let Some(ext) = options.relative_path.extension().and_then(OsStr::to_str) {
                     let entry = types.entry(ext.to_owned()).or_insert(0);

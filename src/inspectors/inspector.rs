@@ -9,7 +9,7 @@ pub trait FileInspector {
 
     /// Run inspections for the file
     fn inspect_file(
-        &mut self,
+        &self,
         connection: &Connection,
         project_id: &Uuid,
         options: &FileInspectorOptions,

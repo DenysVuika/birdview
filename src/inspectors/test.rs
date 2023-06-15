@@ -53,7 +53,7 @@ impl FileInspector for TestInspector {
     }
 
     fn inspect_file(
-        &mut self,
+        &self,
         connection: &Connection,
         project_id: &Uuid,
         options: &FileInspectorOptions,
