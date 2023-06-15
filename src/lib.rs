@@ -118,6 +118,13 @@ pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
         Err(err) => println!("{}", err),
     }
 
+    match get_angular_report(&connection, &project_id) {
+        Ok(angular) => {
+            output.entry("angular").or_insert(angular);
+        }
+        Err(err) => println!("{}", err),
+    };
+
     let output_file_path = get_output_file(&config.output_dir, config.format).unwrap();
     let mut output_file = File::create(&output_file_path)?;
     let json_string = serde_json::to_string_pretty(&output)?;
@@ -279,4 +286,84 @@ fn get_dependencies(
 
     let entries: Vec<PackageDependency> = rows.filter_map(|entry| entry.ok()).collect();
     Ok(entries)
+}
+
+#[derive(Serialize)]
+pub struct AngularDirective {
+    path: String,
+    standalone: bool,
+}
+
+#[derive(Serialize)]
+pub struct AngularFile {
+    path: String,
+}
+
+fn get_angular_report(connection: &Connection, project_id: &Uuid) -> Result<Value, Box<dyn Error>> {
+    let mut stmt =
+        connection.prepare("SELECT path FROM ng_modules WHERE project_id=:project_id;")?;
+    let rows = stmt.query_map(named_params! { ":project_id": project_id }, |row| {
+        Ok(AngularFile {
+            path: row.get(0).unwrap(),
+        })
+    })?;
+    let modules: Vec<AngularFile> = rows.filter_map(|entry| entry.ok()).collect();
+
+    let mut stmt = connection
+        .prepare("SELECT path, standalone FROM ng_components WHERE project_id=:project_id;")?;
+    let rows = stmt.query_map(named_params! { ":project_id": project_id }, |row| {
+        Ok(AngularDirective {
+            path: row.get(0)?,
+            standalone: row.get(1)?,
+        })
+    })?;
+    let components: Vec<AngularDirective> = rows.filter_map(|entry| entry.ok()).collect();
+
+    let mut stmt = connection
+        .prepare("SELECT path, standalone FROM ng_directives WHERE project_id=:project_id;")?;
+    let rows = stmt.query_map(named_params! { ":project_id": project_id }, |row| {
+        Ok(AngularDirective {
+            path: row.get(0)?,
+            standalone: row.get(1)?,
+        })
+    })?;
+    let directives: Vec<AngularDirective> = rows.filter_map(|entry| entry.ok()).collect();
+
+    let mut stmt =
+        connection.prepare("SELECT path FROM ng_services WHERE project_id=:project_id;")?;
+    let rows = stmt.query_map(named_params! { ":project_id": project_id }, |row| {
+        Ok(AngularFile {
+            path: row.get(0).unwrap(),
+        })
+    })?;
+    let services: Vec<AngularFile> = rows.filter_map(|entry| entry.ok()).collect();
+
+    let mut stmt = connection
+        .prepare("SELECT path, standalone FROM ng_pipes WHERE project_id=:project_id;")?;
+    let rows = stmt.query_map(named_params! { ":project_id": project_id }, |row| {
+        Ok(AngularDirective {
+            path: row.get(0)?,
+            standalone: row.get(1)?,
+        })
+    })?;
+    let pipes: Vec<AngularDirective> = rows.filter_map(|entry| entry.ok()).collect();
+
+    let mut stmt = connection
+        .prepare("SELECT path, standalone FROM ng_dialogs WHERE project_id=:project_id;")?;
+    let rows = stmt.query_map(named_params! { ":project_id": project_id }, |row| {
+        Ok(AngularDirective {
+            path: row.get(0)?,
+            standalone: row.get(1)?,
+        })
+    })?;
+    let dialogs: Vec<AngularDirective> = rows.filter_map(|entry| entry.ok()).collect();
+
+    Ok(json!({
+        "modules": modules,
+        "components": components,
+        "directives": directives,
+        "services": services,
+        "pipes": pipes,
+        "dialogs": dialogs
+    }))
 }

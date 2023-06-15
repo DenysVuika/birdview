@@ -119,6 +119,7 @@ mod tests {
     use crate::inspectors::utils::test_utils::options_from_file;
     use assert_fs::prelude::*;
     use assert_fs::NamedTempFile;
+    use serde_json::json;
     use std::error::Error;
 
     #[test]

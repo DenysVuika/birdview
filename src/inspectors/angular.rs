@@ -2,23 +2,12 @@ use super::FileInspector;
 use crate::inspectors::FileInspectorOptions;
 use lazy_static::lazy_static;
 use regex::Regex;
-use rusqlite::{named_params, params, Connection};
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Map, Value};
+use rusqlite::{params, Connection};
+use serde::Serialize;
+use serde_json::{Map, Value};
 use std::error::Error;
 use std::path::Path;
 use uuid::Uuid;
-
-#[derive(Serialize, Deserialize)]
-pub struct AngularDirective {
-    path: String,
-    standalone: bool,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct AngularFile {
-    path: String,
-}
 
 pub struct AngularInspector {}
 
@@ -54,78 +43,6 @@ impl AngularInspector {
         }
 
         standalone
-    }
-
-    fn get_angular_report(
-        connection: &Connection,
-        project_id: &Uuid,
-    ) -> Result<Value, Box<dyn Error>> {
-        let mut stmt =
-            connection.prepare("SELECT path FROM ng_modules WHERE project_id=:project_id;")?;
-        let rows = stmt.query_map(named_params! { ":project_id": project_id }, |row| {
-            Ok(AngularFile {
-                path: row.get(0).unwrap(),
-            })
-        })?;
-        let modules: Vec<AngularFile> = rows.filter_map(|entry| entry.ok()).collect();
-
-        let mut stmt = connection
-            .prepare("SELECT path, standalone FROM ng_components WHERE project_id=:project_id;")?;
-        let rows = stmt.query_map(named_params! { ":project_id": project_id }, |row| {
-            Ok(AngularDirective {
-                path: row.get(0)?,
-                standalone: row.get(1)?,
-            })
-        })?;
-        let components: Vec<AngularDirective> = rows.filter_map(|entry| entry.ok()).collect();
-
-        let mut stmt = connection
-            .prepare("SELECT path, standalone FROM ng_directives WHERE project_id=:project_id;")?;
-        let rows = stmt.query_map(named_params! { ":project_id": project_id }, |row| {
-            Ok(AngularDirective {
-                path: row.get(0)?,
-                standalone: row.get(1)?,
-            })
-        })?;
-        let directives: Vec<AngularDirective> = rows.filter_map(|entry| entry.ok()).collect();
-
-        let mut stmt =
-            connection.prepare("SELECT path FROM ng_services WHERE project_id=:project_id;")?;
-        let rows = stmt.query_map(named_params! { ":project_id": project_id }, |row| {
-            Ok(AngularFile {
-                path: row.get(0).unwrap(),
-            })
-        })?;
-        let services: Vec<AngularFile> = rows.filter_map(|entry| entry.ok()).collect();
-
-        let mut stmt = connection
-            .prepare("SELECT path, standalone FROM ng_pipes WHERE project_id=:project_id;")?;
-        let rows = stmt.query_map(named_params! { ":project_id": project_id }, |row| {
-            Ok(AngularDirective {
-                path: row.get(0)?,
-                standalone: row.get(1)?,
-            })
-        })?;
-        let pipes: Vec<AngularDirective> = rows.filter_map(|entry| entry.ok()).collect();
-
-        let mut stmt = connection
-            .prepare("SELECT path, standalone FROM ng_dialogs WHERE project_id=:project_id;")?;
-        let rows = stmt.query_map(named_params! { ":project_id": project_id }, |row| {
-            Ok(AngularDirective {
-                path: row.get(0)?,
-                standalone: row.get(1)?,
-            })
-        })?;
-        let dialogs: Vec<AngularDirective> = rows.filter_map(|entry| entry.ok()).collect();
-
-        Ok(json!({
-            "modules": modules,
-            "components": components,
-            "directives": directives,
-            "services": services,
-            "pipes": pipes,
-            "dialogs": dialogs
-        }))
     }
 }
 
@@ -212,8 +129,6 @@ impl FileInspector for AngularInspector {
         project_id: &Uuid,
         output: &mut Map<String, Value>,
     ) -> Result<(), Box<dyn Error>> {
-        let angular = AngularInspector::get_angular_report(connection, project_id)?;
-        output.entry("angular").or_insert(angular);
         Ok(())
     }
 }
