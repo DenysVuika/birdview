@@ -124,3 +124,47 @@ pub fn create_package(
 
     Ok(package_id)
 }
+
+pub fn create_unit_test(
+    conn: &Connection,
+    project_id: &Uuid,
+    path: &str,
+    test_cases: Vec<String>,
+) -> Result<()> {
+    let test_id = Uuid::new_v4();
+
+    conn.execute(
+        "INSERT INTO unit_tests (id, project_id, path) VALUES (?1, ?2, ?3)",
+        params![test_id, project_id, path],
+    )?;
+
+    let mut stmt = conn.prepare("INSERT INTO test_cases (test_id, name) VALUES (?1, ?2)")?;
+
+    for name in test_cases {
+        stmt.execute(params![test_id, name])?;
+    }
+
+    Ok(())
+}
+
+pub fn create_e2e_test(
+    conn: &Connection,
+    project_id: &Uuid,
+    path: &str,
+    test_cases: Vec<String>,
+) -> Result<()> {
+    let test_id = Uuid::new_v4();
+
+    conn.execute(
+        "INSERT INTO e2e_tests (id, project_id, path) VALUES (?1, ?2, ?3)",
+        params![test_id, project_id, path],
+    )?;
+
+    let mut stmt = conn.prepare("INSERT INTO test_cases (test_id, name) VALUES (?1, ?2)")?;
+
+    for name in test_cases {
+        stmt.execute(params![test_id, name])?;
+    }
+
+    Ok(())
+}

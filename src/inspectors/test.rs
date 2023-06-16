@@ -1,11 +1,11 @@
 use super::FileInspector;
+use crate::db;
 use crate::inspectors::FileInspectorOptions;
 use anyhow::Result;
 use lazy_static::lazy_static;
 use regex::Regex;
-use rusqlite::{params, Connection};
+use rusqlite::Connection;
 use std::path::Path;
-use uuid::Uuid;
 
 pub struct TestInspector {}
 
@@ -36,39 +36,16 @@ impl FileInspector for TestInspector {
 
     fn inspect_file(&self, conn: &Connection, opts: &FileInspectorOptions) -> Result<()> {
         let contents = opts.read_content();
-        let test_names = TestInspector::extract_test_cases(&contents);
+        let test_cases = TestInspector::extract_test_cases(&contents);
 
-        if !test_names.is_empty() {
-            let test_id = Uuid::new_v4();
+        if !test_cases.is_empty() {
             let path = &opts.relative_path;
             let project_id = &opts.project_id;
 
             if path.ends_with(".spec.ts") {
-                conn.execute(
-                    "INSERT INTO unit_tests (id, project_id, path) VALUES (?1, ?2, ?3)",
-                    params![test_id, project_id, path],
-                )?;
-
-                let mut stmt =
-                    conn.prepare("INSERT INTO test_cases (test_id, name) VALUES (?1, ?2)")?;
-
-                // todo: slow
-                for name in test_names {
-                    stmt.execute(params![test_id, name])?;
-                }
+                db::create_unit_test(conn, project_id, path, test_cases)?;
             } else if path.ends_with(".test.ts") || path.ends_with(".e2e.ts") {
-                conn.execute(
-                    "INSERT INTO e2e_tests (id, project_id, path) VALUES (?1, ?2, ?3)",
-                    params![test_id, project_id, path],
-                )?;
-
-                let mut stmt =
-                    conn.prepare("INSERT INTO test_cases (test_id, name) VALUES (?1, ?2)")?;
-
-                // todo: slow
-                for name in test_names {
-                    stmt.execute(params![test_id, name])?;
-                }
+                db::create_e2e_test(conn, project_id, path, test_cases)?;
             }
         }
 
@@ -127,7 +104,7 @@ mod tests {
     fn supports_spec_file() -> Result<(), Box<dyn Error>> {
         let file = NamedTempFile::new("test.spec.ts")?;
         file.touch()?;
-        let inspector: TestInspector = Default::default();
+        let inspector = TestInspector {};
         assert!(inspector.supports_file(file.path()));
 
         file.close()?;
