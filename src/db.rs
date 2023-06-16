@@ -1,15 +1,45 @@
 use crate::models::PackageJsonFile;
 use anyhow::Result;
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use rusqlite::{params, Connection};
 use std::collections::HashMap;
 
-pub fn create_project(conn: &Connection, name: &String, version: &String) -> Result<i64> {
+pub struct ProjectInfo {
+    pub id: i64,
+    pub name: String,
+    pub version: String,
+    pub created_on: DateTime<Utc>,
+    pub origin: Option<String>,
+}
+
+pub fn create_project(
+    conn: &Connection,
+    name: &String,
+    version: &String,
+    origin: Option<String>,
+) -> Result<i64> {
     conn.execute(
-        "INSERT INTO projects (name, version, created_on) VALUES (?1, ?2, ?3)",
-        params![name, version, Utc::now()],
+        "INSERT INTO projects (name, version, created_on, origin) VALUES (?1, ?2, ?3, ?4)",
+        params![name, version, Utc::now(), origin],
     )?;
     Ok(conn.last_insert_rowid())
+}
+
+pub fn get_project_by_id(conn: &Connection, project_id: i64) -> Result<ProjectInfo> {
+    let project_info = conn.query_row(
+        "SELECT name, version, created_on, origin FROM projects WHERE OID=:project_id",
+        params![project_id],
+        |row| {
+            Ok(ProjectInfo {
+                id: project_id,
+                name: row.get(0)?,
+                version: row.get(1)?,
+                created_on: row.get(2)?,
+                origin: row.get(3)?,
+            })
+        },
+    )?;
+    Ok(project_info)
 }
 
 pub fn create_ng_version(conn: &Connection, project_id: i64, version: &str) -> Result<i64> {

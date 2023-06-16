@@ -204,7 +204,7 @@
 
                 return tests.map(entry => ({
                     ...entry,
-                    url: !!git ? `${git.remote}/blob/${git.target}/${entry.path}`: ''
+                    url: !!git ? `${git.remote_url}/blob/${git.sha}/${entry.path}`: ''
                 }));
             }
 
@@ -371,7 +371,7 @@
 
                 return entities.map(entry => ({
                     ...entry,
-                    url: !!git ? `${git.remote}/blob/${git.target}/${entry.path}` : ''
+                    url: !!git ? `${git.remote_url}/blob/${git.sha}/${entry.path}` : ''
                 }));
             }
 
@@ -517,9 +517,9 @@
 
                         <div style="max-height: 500px; overflow-y: scroll">
                             ${activeTab === 0 && html`
-                                <${LinkRow} caption="Remote: ${data.remote}" url="${data.remote}"/>
+                                <${LinkRow} caption="Remote: ${data.remote_url}" url="${data.remote_url}"/>
                                 <${LinkRow} caption="Branch: ${data.branch}"/>
-                                <${LinkRow} caption="Head: ${data.target}"/>
+                                <${LinkRow} caption="Head: ${data.sha}"/>
                             `}
                             ${activeTab === 1 && html`
                                 <div style="max-height: 400px; padding: 12px">

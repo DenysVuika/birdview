@@ -1,6 +1,6 @@
 BEGIN;
-CREATE TABLE IF NOT EXISTS projects (name TEXT, version TEXT, created_on TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS angular (project_id INTEGER NOT NULL , version TEXT);
+CREATE TABLE IF NOT EXISTS projects (name TEXT, version TEXT, created_on TEXT NOT NULL, origin TEXT);
+CREATE TABLE IF NOT EXISTS angular (project_id INTEGER NOT NULL, version TEXT);
 CREATE TABLE IF NOT EXISTS ng_modules (project_id INTEGER NOT NULL, path TEXT NOT NULL, url TEXT);
 CREATE TABLE IF NOT EXISTS ng_components (project_id INTEGER NOT NULL, path TEXT NOT NULL, standalone INTEGER, url TEXT);
 CREATE TABLE IF NOT EXISTS ng_directives (project_id INTEGER NOT NULL, path TEXT NOT NULL, standalone INTEGER);

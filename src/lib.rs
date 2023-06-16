@@ -40,23 +40,13 @@ pub fn run(config: &Config) -> Result<()> {
         Value::String(Utc::now().to_string()),
     );
 
+    let repo = get_repository_info(&config.working_dir);
     let connection = create_connection(&config.output_dir)?;
     let package = PackageJsonFile::from_file(package_json_path)?;
 
     let name = package.name.unwrap();
     let version = package.version.unwrap();
-
-    let project_id = db::create_project(&connection, &name, &version)?;
-
-    output.insert(
-        "project".to_owned(),
-        json!({
-            "name": name,
-            "version": version
-        }),
-    );
-
-    let repo = get_repository_info(&config.working_dir);
+    let project_id = db::create_project(&connection, &name, &version, None)?;
 
     if repo.is_some() {
         output.insert("git".to_owned(), json!(repo));
@@ -84,9 +74,6 @@ pub fn run(config: &Config) -> Result<()> {
         config.verbose,
         &repo,
     )?;
-
-    let warnings = get_warnings(&connection, project_id).unwrap_or(vec![]);
-    output.insert("warnings".to_owned(), json!(warnings));
 
     match get_dependencies(&connection, project_id) {
         Ok(dependencies) => {
@@ -123,6 +110,8 @@ pub fn run(config: &Config) -> Result<()> {
         Err(err) => println!("{}", err),
     }
 
+    generate_report(&connection, project_id, &mut output)?;
+
     let output_file_path = get_output_file(&config.output_dir, config.format).unwrap();
     let mut output_file = File::create(&output_file_path)?;
     let json_string = serde_json::to_string_pretty(&output)?;
@@ -147,6 +136,29 @@ pub fn run(config: &Config) -> Result<()> {
     }
 
     println!("Inspection complete");
+    Ok(())
+}
+
+fn generate_report(
+    conn: &Connection,
+    project_id: i64,
+    output: &mut Map<String, Value>,
+) -> Result<()> {
+    let project = db::get_project_by_id(conn, project_id)?;
+
+    output.insert(
+        "project".to_owned(),
+        json!({
+            "name": project.name,
+            "version": project.version,
+            "created_on": project.created_on,
+            "origin": project.origin
+        }),
+    );
+
+    let warnings = get_warnings(conn, project_id).unwrap_or(vec![]);
+    output.insert("warnings".to_owned(), json!(warnings));
+
     Ok(())
 }
 
@@ -199,8 +211,8 @@ fn run_inspectors(
                     let url = match &repo {
                         None => None,
                         Some(repo) => {
-                            let remote = &repo.remote;
-                            let target = &repo.target;
+                            let remote = &repo.remote_url;
+                            let target = &repo.sha;
                             let result = format!("{remote}/blob/{target}/{rel_path}");
                             Some(result)
                         }
@@ -397,6 +409,7 @@ fn get_angular_report(conn: &Connection, project_id: i64) -> Result<Value> {
 struct TestEntry {
     path: String,
     cases: i64,
+    url: String,
 }
 
 fn get_unit_tests(conn: &Connection, project_id: i64) -> Result<Vec<TestEntry>> {
@@ -413,6 +426,7 @@ fn get_unit_tests(conn: &Connection, project_id: i64) -> Result<Vec<TestEntry>> 
         Ok(TestEntry {
             path: row.get(0)?,
             cases: row.get(1)?,
+            url: String::new(),
         })
     })?;
 
@@ -434,6 +448,7 @@ fn get_e2e_tests(conn: &Connection, project_id: i64) -> Result<Vec<TestEntry>> {
         Ok(TestEntry {
             path: row.get(0)?,
             cases: row.get(1)?,
+            url: String::new(),
         })
     })?;
 

@@ -12,9 +12,9 @@ pub struct AuthorInfo {
 
 #[derive(Debug, Serialize)]
 pub struct RepositoryInfo {
-    pub remote: String,
+    pub remote_url: String,
     pub branch: String,
-    pub target: String,
+    pub sha: String,
     pub authors: Vec<AuthorInfo>,
 }
 
@@ -35,9 +35,9 @@ pub fn get_repository_info(path: &PathBuf) -> Option<RepositoryInfo> {
                         let authors = get_commit_authors(&repo).unwrap();
 
                         return Some(RepositoryInfo {
-                            remote: remote_url.to_owned(),
+                            remote_url: remote_url.to_owned(),
                             branch: head.shorthand().unwrap().to_owned(),
-                            target: head.target().unwrap().to_string(),
+                            sha: head.target().unwrap().to_string(),
                             authors,
                         });
                     }

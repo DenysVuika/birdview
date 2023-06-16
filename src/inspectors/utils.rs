@@ -14,13 +14,12 @@
 pub mod test_utils {
     use crate::inspectors::FileInspectorOptions;
     use assert_fs::NamedTempFile;
-    use uuid::Uuid;
 
     pub fn options_from_file(file: &NamedTempFile) -> FileInspectorOptions {
         let parent = file.parent().unwrap();
 
         FileInspectorOptions {
-            project_id: Uuid::new_v4(),
+            project_id: 0,
             path: file.path().to_path_buf(),
             relative_path: file
                 .path()
