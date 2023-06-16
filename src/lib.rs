@@ -11,7 +11,7 @@ use crate::models::PackageJsonFile;
 use anyhow::Result;
 use chrono::Utc;
 use ignore::WalkBuilder;
-use rusqlite::{named_params, params, Connection};
+use rusqlite::{named_params, Connection};
 use serde::Serialize;
 use serde_json::{json, Map, Value};
 use std::collections::HashMap;
@@ -19,7 +19,6 @@ use std::ffi::OsStr;
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use uuid::Uuid;
 
 fn create_connection(working_dir: &Path) -> Result<Connection> {
     let db_path = working_dir.join("birdview.db");
@@ -42,21 +41,18 @@ pub fn run(config: &Config) -> Result<()> {
     );
 
     let connection = create_connection(&config.output_dir)?;
-    let project_id = Uuid::new_v4();
     let package = PackageJsonFile::from_file(package_json_path)?;
 
-    if let Some(dependencies) = package.dependencies {
-        if let Some(version) = dependencies.get("@angular/core") {
-            db::create_ng_version(&connection, &project_id, version)?;
-            output.insert("angular_version".to_owned(), json!(version));
-        }
-    }
+    let name = package.name.unwrap();
+    let version = package.version.unwrap();
+
+    let project_id = db::create_project(&connection, &name, &version)?;
 
     output.insert(
         "project".to_owned(),
         json!({
-            "name": package.name,
-            "version": package.version
+            "name": name,
+            "version": version
         }),
     );
 
@@ -66,12 +62,12 @@ pub fn run(config: &Config) -> Result<()> {
         output.insert("git".to_owned(), json!(repo));
     }
 
-    db::create_project(
-        &connection,
-        &project_id,
-        &package.name.unwrap(),
-        &package.version.unwrap(),
-    )?;
+    if let Some(dependencies) = package.dependencies {
+        if let Some(version) = dependencies.get("@angular/core") {
+            db::create_ng_version(&connection, project_id, version)?;
+            output.insert("angular_version".to_owned(), json!(version));
+        }
+    }
 
     let inspectors: Vec<Box<dyn FileInspector>> = vec![
         Box::new(PackageJsonInspector {}),
@@ -82,45 +78,45 @@ pub fn run(config: &Config) -> Result<()> {
     run_inspectors(
         config,
         &connection,
-        &project_id,
+        project_id,
         inspectors,
         &mut output,
         config.verbose,
         &repo,
     )?;
 
-    let warnings = get_warnings(&connection, &project_id).unwrap_or(vec![]);
+    let warnings = get_warnings(&connection, project_id).unwrap_or(vec![]);
     output.insert("warnings".to_owned(), json!(warnings));
 
-    match get_dependencies(&connection, &project_id) {
+    match get_dependencies(&connection, project_id) {
         Ok(dependencies) => {
             output.insert("dependencies".to_owned(), json!(dependencies));
         }
         Err(err) => println!("{}", err),
     }
 
-    match get_packages(&connection, &project_id) {
+    match get_packages(&connection, project_id) {
         Ok(packages) => {
             output.insert("packages".to_owned(), json!(packages));
         }
         Err(err) => println!("{}", err),
     }
 
-    match get_angular_report(&connection, &project_id) {
+    match get_angular_report(&connection, project_id) {
         Ok(angular) => {
             output.entry("angular").or_insert(angular);
         }
         Err(err) => println!("{}", err),
     };
 
-    match get_unit_tests(&connection, &project_id) {
+    match get_unit_tests(&connection, project_id) {
         Ok(tests) => {
             output.entry("unit_tests").or_insert(json!(tests));
         }
         Err(err) => println!("{}", err),
     }
 
-    match get_e2e_tests(&connection, &project_id) {
+    match get_e2e_tests(&connection, project_id) {
         Ok(tests) => {
             output.entry("e2e_tests").or_insert(json!(tests));
         }
@@ -174,7 +170,7 @@ fn get_output_file(output_dir: &Path, format: OutputFormat) -> Option<PathBuf> {
 fn run_inspectors(
     config: &Config,
     connection: &Connection,
-    project_id: &Uuid,
+    project_id: i64,
     inspectors: Vec<Box<dyn FileInspector>>,
     map: &mut Map<String, Value>,
     verbose: bool,
@@ -211,7 +207,7 @@ fn run_inspectors(
                     };
 
                     let options = FileInspectorOptions {
-                        project_id: project_id.to_owned(),
+                        project_id,
                         path: entry_path.to_path_buf(),
                         relative_path: rel_path.to_owned(),
                         url,
@@ -247,7 +243,7 @@ struct CodeWarning {
     url: String,
 }
 
-fn get_warnings(conn: &Connection, project_id: &Uuid) -> Result<Vec<CodeWarning>> {
+fn get_warnings(conn: &Connection, project_id: i64) -> Result<Vec<CodeWarning>> {
     let mut stmt =
         conn.prepare("SELECT path, message, url FROM warnings WHERE project_id=:project_id;")?;
     let rows = stmt.query_map(named_params! { ":project_id": project_id }, |row| {
@@ -277,7 +273,7 @@ struct PackageDependency {
     url: String,
 }
 
-fn get_packages(conn: &Connection, project_id: &Uuid) -> Result<Vec<PackageFile>> {
+fn get_packages(conn: &Connection, project_id: i64) -> Result<Vec<PackageFile>> {
     let mut stmt = conn.prepare("SELECT path, url FROM packages WHERE project_id=:project_id")?;
     let rows = stmt.query_map(named_params! {":project_id": project_id}, |row| {
         Ok(PackageFile {
@@ -290,11 +286,11 @@ fn get_packages(conn: &Connection, project_id: &Uuid) -> Result<Vec<PackageFile>
     Ok(entries)
 }
 
-fn get_dependencies(conn: &Connection, project_id: &Uuid) -> Result<Vec<PackageDependency>> {
+fn get_dependencies(conn: &Connection, project_id: i64) -> Result<Vec<PackageDependency>> {
     let mut stmt = conn.prepare(
         r#"
         SELECT d.name, d.version, d.dev, p.path as package, p.url as url from dependencies d
-        LEFT JOIN packages p on d.package_id = p.id
+        LEFT JOIN packages p on d.package_id = p.OID
         WHERE d.project_id=:project_id
         ORDER BY d.name
         "#,
@@ -330,7 +326,7 @@ pub struct AngularFile {
 }
 
 // todo: return urls
-fn get_angular_report(conn: &Connection, project_id: &Uuid) -> Result<Value> {
+fn get_angular_report(conn: &Connection, project_id: i64) -> Result<Value> {
     let mut stmt = conn.prepare("SELECT path FROM ng_modules WHERE project_id=:project_id;")?;
     let rows = stmt.query_map(named_params! { ":project_id": project_id }, |row| {
         Ok(AngularFile {
@@ -403,11 +399,11 @@ struct TestEntry {
     cases: i64,
 }
 
-fn get_unit_tests(conn: &Connection, project_id: &Uuid) -> Result<Vec<TestEntry>> {
+fn get_unit_tests(conn: &Connection, project_id: i64) -> Result<Vec<TestEntry>> {
     let mut stmt = conn.prepare(
         r#"
         SELECT ut.path, COUNT(DISTINCT tc.name) as cases FROM unit_tests ut
-          LEFT JOIN test_cases tc on ut.id = tc.test_id
+          LEFT JOIN test_cases tc on ut.OID = tc.test_id
         WHERE ut.project_id=:project_id
         GROUP BY ut.path
     "#,
@@ -424,11 +420,11 @@ fn get_unit_tests(conn: &Connection, project_id: &Uuid) -> Result<Vec<TestEntry>
     Ok(entries)
 }
 
-fn get_e2e_tests(conn: &Connection, project_id: &Uuid) -> Result<Vec<TestEntry>> {
+fn get_e2e_tests(conn: &Connection, project_id: i64) -> Result<Vec<TestEntry>> {
     let mut stmt = conn.prepare(
         r#"
         SELECT ut.path, COUNT(DISTINCT tc.name) as cases FROM e2e_tests ut
-          LEFT JOIN test_cases tc on ut.id = tc.test_id
+          LEFT JOIN test_cases tc on ut.OID = tc.test_id
         WHERE ut.project_id=:project_id
         GROUP BY ut.path
     "#,

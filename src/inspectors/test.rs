@@ -40,7 +40,7 @@ impl FileInspector for TestInspector {
 
         if !test_cases.is_empty() {
             let path = &opts.relative_path;
-            let project_id = &opts.project_id;
+            let project_id = opts.project_id;
 
             if path.ends_with(".spec.ts") {
                 db::create_unit_test(conn, project_id, path, test_cases)?;

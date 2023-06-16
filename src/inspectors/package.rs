@@ -19,7 +19,7 @@ impl FileInspector for PackageJsonInspector {
             .unwrap_or_else(|_| panic!("Error reading {}", &opts.path.display()));
 
         let path = &opts.relative_path;
-        let project_id = &opts.project_id;
+        let project_id = opts.project_id;
         let url = &opts.url;
 
         if package.name.is_none() {
