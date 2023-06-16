@@ -68,12 +68,10 @@ pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
         output.insert("git".to_owned(), json!(repo));
     }
 
-    connection
-        .execute(
-            "INSERT INTO projects (id, name, version, created_on) VALUES (?1, ?2, ?3, ?4)",
-            params![project_id, package.name, package.version, Utc::now()],
-        )
-        .unwrap();
+    connection.execute(
+        "INSERT INTO projects (id, name, version, created_on) VALUES (?1, ?2, ?3, ?4)",
+        params![project_id, package.name, package.version, Utc::now()],
+    )?;
 
     let mut inspectors: Vec<Box<dyn FileInspector>> = Vec::new();
 
@@ -203,23 +201,36 @@ fn run_inspectors(
     {
         // let f_name = entry.file_name().to_string_lossy();
         let entry_path = entry.path();
+        let rel_path = entry_path.strip_prefix(working_dir)?.display().to_string();
         let mut processed = false;
-
-        let options = FileInspectorOptions {
-            working_dir: working_dir.to_owned(),
-            path: entry_path.to_path_buf(),
-            relative_path: entry_path.strip_prefix(working_dir)?.to_owned(),
-        };
 
         for inspector in inspectors.iter() {
             if entry_path.is_file() {
-                if let Some(ext) = options.relative_path.extension().and_then(OsStr::to_str) {
+                if let Some(ext) = entry_path.extension().and_then(OsStr::to_str) {
                     let entry = types.entry(ext.to_owned()).or_insert(0);
                     *entry += 1;
                 }
 
                 if inspector.supports_file(entry_path) {
-                    inspector.inspect_file(connection, project_id, &options, repo)?;
+                    let url = match &repo {
+                        None => None,
+                        Some(repo) => {
+                            let remote = &repo.remote;
+                            let target = &repo.target;
+                            let result = format!("{remote}/blob/{target}/{rel_path}");
+                            Some(result)
+                        }
+                    };
+
+                    let options = FileInspectorOptions {
+                        project_id: project_id.to_owned(),
+                        working_dir: working_dir.to_owned(),
+                        path: entry_path.to_path_buf(),
+                        relative_path: rel_path.to_owned(),
+                        url,
+                    };
+
+                    inspector.inspect_file(connection, &options)?;
                     processed = true;
                 }
             }
@@ -261,18 +272,20 @@ fn save_file_types(
 struct CodeWarning {
     path: String,
     message: String,
+    url: String,
 }
 
 fn get_warnings(
     connection: &Connection,
     project_id: &Uuid,
 ) -> Result<Vec<CodeWarning>, Box<dyn Error>> {
-    let mut stmt =
-        connection.prepare("SELECT path, message FROM warnings WHERE project_id=:project_id;")?;
+    let mut stmt = connection
+        .prepare("SELECT path, message, url FROM warnings WHERE project_id=:project_id;")?;
     let rows = stmt.query_map(named_params! { ":project_id": project_id }, |row| {
         Ok(CodeWarning {
             path: row.get(0)?,
             message: row.get(1)?,
+            url: row.get(2)?,
         })
     })?;
     let warnings: Vec<CodeWarning> = rows.filter_map(|entry| entry.ok()).collect();
@@ -347,6 +360,7 @@ pub struct AngularFile {
     path: String,
 }
 
+// todo: return urls
 fn get_angular_report(connection: &Connection, project_id: &Uuid) -> Result<Value, Box<dyn Error>> {
     let mut stmt =
         connection.prepare("SELECT path FROM ng_modules WHERE project_id=:project_id;")?;

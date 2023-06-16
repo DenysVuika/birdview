@@ -1,5 +1,4 @@
 use super::FileInspector;
-use crate::git::RepositoryInfo;
 use crate::inspectors::FileInspectorOptions;
 use crate::models::PackageJsonFile;
 use rusqlite::{params, Connection};
@@ -30,37 +29,27 @@ impl FileInspector for PackageJsonInspector {
     fn inspect_file(
         &self,
         connection: &Connection,
-        project_id: &Uuid,
         options: &FileInspectorOptions,
-        repo: &Option<RepositoryInfo>,
     ) -> Result<(), Box<dyn Error>> {
         let package = PackageJsonFile::from_file(&options.path)
             // todo: convert to db warning instead
             .unwrap_or_else(|_| panic!("Error reading {}", &options.path.display()));
 
-        let workspace_path = options.relative_path.display().to_string();
-
-        let url = match &repo {
-            None => None,
-            Some(repo) => {
-                let remote = &repo.remote;
-                let target = &repo.target;
-                let result = format!("{remote}/blob/{target}/{workspace_path}");
-                Some(result)
-            }
-        };
+        let workspace_path = &options.relative_path;
+        let project_id = &options.project_id;
+        let url = &options.url;
 
         if package.name.is_none() {
             connection.execute(
-                "INSERT INTO warnings (project_id, path, message) VALUES (?1, ?2, ?3)",
-                params![project_id, workspace_path, "Missing name attribute"],
+                "INSERT INTO warnings (project_id, path, message, url) VALUES (?1, ?2, ?3, ?4)",
+                params![project_id, workspace_path, "Missing name attribute", url],
             )?;
         }
 
         if package.version.is_none() {
             connection.execute(
-                "INSERT INTO warnings (project_id, path, message) VALUES (?1, ?2, ?3)",
-                params![project_id, workspace_path, "Missing version attribute"],
+                "INSERT INTO warnings (project_id, path, message, url) VALUES (?1, ?2, ?3, ?4)",
+                params![project_id, workspace_path, "Missing version attribute", url],
             )?;
         }
 

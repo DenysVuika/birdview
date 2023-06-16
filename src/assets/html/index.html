@@ -79,12 +79,7 @@
 
             componentDidMount() {
                 const data = this.props.data;
-                const git = data.git;
-                const warnings = (data.warnings || [])
-                    .map(entry => ({
-                        ...entry,
-                        url: !!git ? `${git.remote}/blob/${git.target}/${entry.path}`: ''
-                    }));
+                const warnings = data.warnings || [];
                 const packages = data.packages || [];
                 const dependencies = this.getDependencies(data, false);
                 const devDependencies = this.getDependencies(data, true);

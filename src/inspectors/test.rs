@@ -1,5 +1,4 @@
 use super::FileInspector;
-use crate::git::RepositoryInfo;
 use crate::inspectors::FileInspectorOptions;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -49,16 +48,15 @@ impl FileInspector for TestInspector {
     fn inspect_file(
         &self,
         connection: &Connection,
-        project_id: &Uuid,
         options: &FileInspectorOptions,
-        repo: &Option<RepositoryInfo>,
     ) -> Result<(), Box<dyn Error>> {
         let contents = options.read_content();
         let test_names = TestInspector::extract_test_names(&contents);
 
         if !test_names.is_empty() {
             let test_id = Uuid::new_v4();
-            let workspace_path = options.relative_path.display().to_string();
+            let workspace_path = &options.relative_path;
+            let project_id = &options.project_id;
 
             if workspace_path.ends_with(".spec.ts") {
                 connection.execute(

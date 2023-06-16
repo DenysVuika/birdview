@@ -1,5 +1,4 @@
 use super::FileInspector;
-use crate::git::RepositoryInfo;
 use crate::inspectors::FileInspectorOptions;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -63,28 +62,28 @@ impl FileInspector for AngularInspector {
                 || display_path.ends_with(".dialog.ts"))
     }
 
+    // todo: generate url in the walker loop, and pass here as a param
     fn inspect_file(
         &self,
         connection: &Connection,
-        project_id: &Uuid,
         options: &FileInspectorOptions,
-        repo: &Option<RepositoryInfo>,
     ) -> Result<(), Box<dyn Error>> {
-        let workspace_path = options.relative_path.display().to_string();
+        let workspace_path = &options.relative_path;
+        let project_id = &options.project_id;
         let content = options.read_content();
 
         if workspace_path.ends_with(".module.ts") {
             connection.execute(
-                "INSERT INTO ng_modules (id, project_id, path) VALUES (?1, ?2, ?3)",
-                params![Uuid::new_v4(), project_id, workspace_path],
+                "INSERT INTO ng_modules (project_id, path, url) VALUES (?1, ?2, ?3)",
+                params![project_id, workspace_path, &options.url],
             )?;
         } else if workspace_path.ends_with(".component.ts") {
             if content.contains("@Component(") {
                 let standalone = AngularInspector::is_standalone(&content);
 
                 connection.execute(
-                "INSERT INTO ng_components (id, project_id, path, standalone) VALUES (?1, ?2, ?3, ?4)",
-                params![Uuid::new_v4(), project_id, workspace_path, standalone],
+                "INSERT INTO ng_components (project_id, path, standalone, url) VALUES (?1, ?2, ?3, ?4)",
+                params![project_id, workspace_path, standalone, &options.url],
                 )?;
             }
         } else if workspace_path.ends_with(".directive.ts") {

@@ -21,7 +21,13 @@ pub mod test_utils {
         FileInspectorOptions {
             working_dir: parent.to_path_buf(),
             path: file.path().to_path_buf(),
-            relative_path: file.path().strip_prefix(parent).unwrap().to_path_buf(),
+            relative_path: file
+                .path()
+                .strip_prefix(parent)
+                .unwrap()
+                .display()
+                .to_string(),
+            url: None,
         }
     }
 }

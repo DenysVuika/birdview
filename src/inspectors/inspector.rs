@@ -1,4 +1,3 @@
-use crate::git::RepositoryInfo;
 use rusqlite::Connection;
 use std::error::Error;
 use std::path::{Path, PathBuf};
@@ -12,16 +11,16 @@ pub trait FileInspector {
     fn inspect_file(
         &self,
         connection: &Connection,
-        project_id: &Uuid,
         options: &FileInspectorOptions,
-        repo: &Option<RepositoryInfo>,
     ) -> Result<(), Box<dyn Error>>;
 }
 
 pub struct FileInspectorOptions {
+    pub project_id: Uuid,
     pub working_dir: PathBuf,
     pub path: PathBuf,
-    pub relative_path: PathBuf,
+    pub relative_path: String,
+    pub url: Option<String>,
 }
 
 impl FileInspectorOptions {
