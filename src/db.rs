@@ -1,8 +1,10 @@
 use crate::models::PackageJsonFile;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use rusqlite::{params, Connection};
+use rusqlite::{named_params, params, Connection};
+use serde::Serialize;
 use std::collections::HashMap;
+use std::path::Path;
 
 pub struct ProjectInfo {
     pub id: i64,
@@ -10,6 +12,44 @@ pub struct ProjectInfo {
     pub version: String,
     pub created_on: DateTime<Utc>,
     pub origin: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CodeWarning {
+    pub path: String,
+    pub message: String,
+    pub url: String,
+}
+
+#[derive(Serialize)]
+pub struct PackageFile {
+    pub path: String,
+    pub url: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct PackageDependency {
+    pub name: String,
+    pub version: String,
+    pub dev: bool,
+    pub npm_url: String,
+    pub package: String,
+    pub url: String,
+}
+
+#[derive(Serialize)]
+pub struct TestEntry {
+    pub path: String,
+    pub cases: i64,
+    pub url: String,
+}
+
+pub fn create_connection(working_dir: &Path) -> Result<Connection> {
+    let db_path = working_dir.join("birdview.db");
+    let conn = Connection::open(db_path)?;
+
+    conn.execute_batch(include_str!("assets/sql/schema.sql"))?;
+    Ok(conn)
 }
 
 pub fn create_project(
@@ -234,4 +274,122 @@ pub fn create_file_types(
     }
 
     Ok(())
+}
+
+pub fn get_file_types(conn: &Connection, project_id: i64) -> Result<HashMap<String, i64>> {
+    let mut stmt = conn.prepare(
+        "SELECT name, count FROM file_types WHERE project_id=:project_id ORDER BY count DESC",
+    )?;
+    let file_types: HashMap<String, i64> = stmt
+        .query_map(named_params! { ":project_id": project_id }, |x| {
+            Ok((x.get(0)?, x.get(1)?))
+        })?
+        .flatten()
+        .collect();
+    Ok(file_types)
+}
+
+pub fn get_warnings(conn: &Connection, project_id: i64) -> Result<Vec<CodeWarning>> {
+    let mut stmt =
+        conn.prepare("SELECT path, message, url FROM warnings WHERE project_id=:project_id;")?;
+    let rows = stmt
+        .query_map(named_params! { ":project_id": project_id }, |row| {
+            Ok(CodeWarning {
+                path: row.get(0)?,
+                message: row.get(1)?,
+                url: row.get(2)?,
+            })
+        })?
+        .filter_map(|entry| entry.ok())
+        .collect();
+    Ok(rows)
+}
+
+pub fn get_packages(conn: &Connection, project_id: i64) -> Result<Vec<PackageFile>> {
+    let mut stmt = conn.prepare("SELECT path, url FROM packages WHERE project_id=:project_id")?;
+    let rows = stmt
+        .query_map(named_params! {":project_id": project_id}, |row| {
+            Ok(PackageFile {
+                path: row.get(0)?,
+                url: row.get(1)?,
+            })
+        })?
+        .filter_map(|entry| entry.ok())
+        .collect();
+    Ok(rows)
+}
+
+pub fn get_dependencies(conn: &Connection, project_id: i64) -> Result<Vec<PackageDependency>> {
+    let mut stmt = conn.prepare(
+        r#"
+        SELECT d.name, d.version, d.dev, p.path as package, p.url as url from dependencies d
+        LEFT JOIN packages p on d.package_id = p.OID
+        WHERE d.project_id=:project_id
+        ORDER BY d.name
+        "#,
+    )?;
+
+    let rows = stmt
+        .query_map(named_params! {":project_id": project_id}, |row| {
+            let name: String = row.get(0)?;
+            let npm_url = format!("https://www.npmjs.com/package/{name}");
+
+            Ok(PackageDependency {
+                name,
+                version: row.get(1)?,
+                dev: row.get(2)?,
+                npm_url,
+                package: row.get(3)?,
+                url: row.get(4)?,
+            })
+        })?
+        .filter_map(|entry| entry.ok())
+        .collect();
+    Ok(rows)
+}
+
+pub fn get_unit_tests(conn: &Connection, project_id: i64) -> Result<Vec<TestEntry>> {
+    let mut stmt = conn.prepare(
+        r#"
+        SELECT ut.path, COUNT(DISTINCT tc.name) as cases FROM unit_tests ut
+          LEFT JOIN test_cases tc on ut.OID = tc.test_id
+        WHERE ut.project_id=:project_id
+        GROUP BY ut.path
+    "#,
+    )?;
+
+    let rows = stmt
+        .query_map(named_params! {":project_id": project_id}, |row| {
+            Ok(TestEntry {
+                path: row.get(0)?,
+                cases: row.get(1)?,
+                url: String::new(),
+            })
+        })?
+        .filter_map(|entry| entry.ok())
+        .collect();
+    Ok(rows)
+}
+
+pub fn get_e2e_tests(conn: &Connection, project_id: i64) -> Result<Vec<TestEntry>> {
+    let mut stmt = conn.prepare(
+        r#"
+        SELECT ut.path, COUNT(DISTINCT tc.name) as cases FROM e2e_tests ut
+          LEFT JOIN test_cases tc on ut.OID = tc.test_id
+        WHERE ut.project_id=:project_id
+        GROUP BY ut.path
+    "#,
+    )?;
+
+    let rows = stmt
+        .query_map(named_params! {":project_id": project_id}, |row| {
+            Ok(TestEntry {
+                path: row.get(0)?,
+                cases: row.get(1)?,
+                url: String::new(),
+            })
+        })?
+        .filter_map(|entry| entry.ok())
+        .collect();
+    Ok(rows)
 }
