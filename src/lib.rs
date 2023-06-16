@@ -80,10 +80,10 @@ pub fn run(config: &Config) -> Result<()> {
         inspectors.push(Box::new(PackageJsonInspector {}));
     }
     if config.inspect_tests {
-        inspectors.push(Box::new(TestInspector::new()));
+        inspectors.push(Box::new(TestInspector {}));
     }
     if config.inspect_angular {
-        inspectors.push(Box::new(AngularInspector::new()));
+        inspectors.push(Box::new(AngularInspector {}));
     }
 
     if inspectors.is_empty() {

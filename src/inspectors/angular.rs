@@ -10,10 +10,6 @@ use std::path::Path;
 pub struct AngularInspector {}
 
 impl AngularInspector {
-    pub fn new() -> Self {
-        AngularInspector {}
-    }
-
     fn extract_metadata(contents: &str) -> Vec<&str> {
         // @(?:Component|Directive|Injectable)\((?P<metadata>[^\)]+)\)
         // https://rustexp.lpil.uk/
@@ -41,12 +37,6 @@ impl AngularInspector {
         }
 
         standalone
-    }
-}
-
-impl Default for AngularInspector {
-    fn default() -> Self {
-        AngularInspector::new()
     }
 }
 

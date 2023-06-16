@@ -10,12 +10,7 @@ use uuid::Uuid;
 pub struct TestInspector {}
 
 impl TestInspector {
-    /// Creates a new instance of the inspector
-    pub fn new() -> Self {
-        TestInspector {}
-    }
-
-    pub fn extract_test_names(contents: &str) -> Vec<String> {
+    pub fn extract_test_cases(contents: &str) -> Vec<String> {
         // (\b(?:it|test)\b\(['"])(?P<name>.*?)(['"])
         // https://rustexp.lpil.uk/
         lazy_static! {
@@ -30,12 +25,6 @@ impl TestInspector {
     }
 }
 
-impl Default for TestInspector {
-    fn default() -> Self {
-        TestInspector::new()
-    }
-}
-
 impl FileInspector for TestInspector {
     fn supports_file(&self, path: &Path) -> bool {
         let display_path = path.display().to_string();
@@ -47,17 +36,17 @@ impl FileInspector for TestInspector {
 
     fn inspect_file(&self, conn: &Connection, opts: &FileInspectorOptions) -> Result<()> {
         let contents = opts.read_content();
-        let test_names = TestInspector::extract_test_names(&contents);
+        let test_names = TestInspector::extract_test_cases(&contents);
 
         if !test_names.is_empty() {
             let test_id = Uuid::new_v4();
-            let workspace_path = &opts.relative_path;
+            let path = &opts.relative_path;
             let project_id = &opts.project_id;
 
-            if workspace_path.ends_with(".spec.ts") {
+            if path.ends_with(".spec.ts") {
                 conn.execute(
                     "INSERT INTO unit_tests (id, project_id, path) VALUES (?1, ?2, ?3)",
-                    params![test_id, project_id, workspace_path],
+                    params![test_id, project_id, path],
                 )?;
 
                 let mut stmt =
@@ -67,10 +56,10 @@ impl FileInspector for TestInspector {
                 for name in test_names {
                     stmt.execute(params![test_id, name])?;
                 }
-            } else if workspace_path.ends_with(".test.ts") || workspace_path.ends_with(".e2e.ts") {
+            } else if path.ends_with(".test.ts") || path.ends_with(".e2e.ts") {
                 conn.execute(
                     "INSERT INTO e2e_tests (id, project_id, path) VALUES (?1, ?2, ?3)",
-                    params![test_id, project_id, workspace_path],
+                    params![test_id, project_id, path],
                 )?;
 
                 let mut stmt =
@@ -99,7 +88,7 @@ mod tests {
         let input = "it('should reset selected nodes from store', () => {";
         assert_eq!(
             vec!["should reset selected nodes from store"],
-            TestInspector::extract_test_names(input)
+            TestInspector::extract_test_cases(input)
         );
     }
 
@@ -114,7 +103,7 @@ mod tests {
                 "should reset selected nodes from store",
                 "should return false when entry is not shared"
             ],
-            TestInspector::extract_test_names(input)
+            TestInspector::extract_test_cases(input)
         );
     }
 
@@ -123,14 +112,14 @@ mod tests {
         let input = "test('Create a rule with condition', async ({ personalFiles, nodesPage })";
         assert_eq!(
             vec!["Create a rule with condition"],
-            TestInspector::extract_test_names(input)
+            TestInspector::extract_test_cases(input)
         );
     }
 
     #[test]
     fn requires_spec_file_to_exist() {
         let path = Path::new("missing/test.spec.ts");
-        let inspector = TestInspector::new();
+        let inspector = TestInspector {};
         assert!(!inspector.supports_file(path));
     }
 
