@@ -100,9 +100,8 @@ pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
         &repo,
     )?;
 
-    if let Ok(warnings) = get_warnings(&connection, &project_id) {
-        output.insert("warnings".to_owned(), json!(warnings));
-    }
+    let warnings = get_warnings(&connection, &project_id).unwrap_or(vec![]);
+    output.insert("warnings".to_owned(), json!(warnings));
 
     match get_dependencies(&connection, &project_id) {
         Ok(dependencies) => {
@@ -224,7 +223,6 @@ fn run_inspectors(
 
                     let options = FileInspectorOptions {
                         project_id: project_id.to_owned(),
-                        working_dir: working_dir.to_owned(),
                         path: entry_path.to_path_buf(),
                         relative_path: rel_path.to_owned(),
                         url,
@@ -331,7 +329,7 @@ fn get_dependencies(
 ) -> Result<Vec<PackageDependency>, Box<dyn Error>> {
     let mut stmt = connection.prepare(
         r#"
-        SELECT d.name, d.version, d.dev, d.npm_url, p.path as package, p.url as url from dependencies d
+        SELECT d.name, d.version, d.dev, p.path as package, p.url as url from dependencies d
         LEFT JOIN packages p on d.package_id = p.id
         WHERE d.project_id=:project_id
         ORDER BY d.name
@@ -339,13 +337,16 @@ fn get_dependencies(
     )?;
 
     let rows = stmt.query_map(named_params! {":project_id": project_id}, |row| {
+        let name: String = row.get(0)?;
+        let npm_url = format!("https://www.npmjs.com/package/{name}");
+
         Ok(PackageDependency {
-            name: row.get(0)?,
+            name,
             version: row.get(1)?,
             dev: row.get(2)?,
-            npm_url: row.get(3)?,
-            package: row.get(4)?,
-            url: row.get(5)?,
+            npm_url,
+            package: row.get(3)?,
+            url: row.get(4)?,
         })
     })?;
 
