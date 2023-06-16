@@ -1,7 +1,32 @@
 use crate::models::PackageJsonFile;
 use anyhow::Result;
+use chrono::Utc;
 use rusqlite::{params, Connection};
+use std::collections::HashMap;
 use uuid::Uuid;
+
+pub fn create_project(
+    conn: &Connection,
+    project_id: &Uuid,
+    name: &str,
+    version: &str,
+) -> Result<()> {
+    conn.execute(
+        "INSERT INTO projects (id, name, version, created_on) VALUES (?1, ?2, ?3, ?4)",
+        params![project_id, name, version, Utc::now()],
+    )?;
+
+    Ok(())
+}
+
+pub fn create_ng_version(conn: &Connection, project_id: &Uuid, version: &str) -> Result<()> {
+    conn.execute(
+        "INSERT INTO angular (project_id, version) VALUES (?1, ?2)",
+        params![project_id, version],
+    )?;
+
+    Ok(())
+}
 
 pub fn create_warning(
     conn: &Connection,
@@ -164,6 +189,21 @@ pub fn create_e2e_test(
 
     for name in test_cases {
         stmt.execute(params![test_id, name])?;
+    }
+
+    Ok(())
+}
+
+pub fn create_file_types(
+    conn: &Connection,
+    project_id: &Uuid,
+    types: &HashMap<String, i64>,
+) -> Result<()> {
+    let mut stmt =
+        conn.prepare("INSERT INTO file_types (project_id, name, count) VALUES (?1, ?2, ?3)")?;
+
+    for (key, value) in types {
+        stmt.execute(params![project_id, key, value])?;
     }
 
     Ok(())

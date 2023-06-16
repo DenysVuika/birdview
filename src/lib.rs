@@ -47,10 +47,7 @@ pub fn run(config: &Config) -> Result<()> {
 
     if let Some(dependencies) = package.dependencies {
         if let Some(version) = dependencies.get("@angular/core") {
-            connection.execute(
-                "INSERT INTO angular (project_id, version) VALUES (?1, ?2)",
-                params![project_id, version],
-            )?;
+            db::create_ng_version(&connection, &project_id, version)?;
             output.insert("angular_version".to_owned(), json!(version));
         }
     }
@@ -69,27 +66,18 @@ pub fn run(config: &Config) -> Result<()> {
         output.insert("git".to_owned(), json!(repo));
     }
 
-    connection.execute(
-        "INSERT INTO projects (id, name, version, created_on) VALUES (?1, ?2, ?3, ?4)",
-        params![project_id, package.name, package.version, Utc::now()],
+    db::create_project(
+        &connection,
+        &project_id,
+        &package.name.unwrap(),
+        &package.version.unwrap(),
     )?;
 
-    let mut inspectors: Vec<Box<dyn FileInspector>> = Vec::new();
-
-    if config.inspect_packages {
-        inspectors.push(Box::new(PackageJsonInspector {}));
-    }
-    if config.inspect_tests {
-        inspectors.push(Box::new(TestInspector {}));
-    }
-    if config.inspect_angular {
-        inspectors.push(Box::new(AngularInspector {}));
-    }
-
-    if inspectors.is_empty() {
-        println!("No inspectors defined.\nRun 'birdview inspect --help' for available options.");
-        return Ok(());
-    }
+    let inspectors: Vec<Box<dyn FileInspector>> = vec![
+        Box::new(PackageJsonInspector {}),
+        Box::new(TestInspector {}),
+        Box::new(AngularInspector {}),
+    ];
 
     run_inspectors(
         config,
@@ -244,24 +232,9 @@ fn run_inspectors(
         }
     }
 
-    if config.inspect_types && !types.is_empty() {
-        save_file_types(connection, project_id, &types)?;
+    if !types.is_empty() {
+        db::create_file_types(connection, project_id, &types)?;
         map.entry("types").or_insert(json!(types));
-    }
-
-    Ok(())
-}
-
-fn save_file_types(
-    conn: &Connection,
-    project_id: &Uuid,
-    types: &HashMap<String, i64>,
-) -> Result<()> {
-    let mut stmt =
-        conn.prepare("INSERT INTO file_types (project_id, name, count) VALUES (?1, ?2, ?3)")?;
-
-    for (key, value) in types {
-        stmt.execute(params![project_id, key, value])?;
     }
 
     Ok(())

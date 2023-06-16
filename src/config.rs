@@ -11,10 +11,6 @@ pub enum OutputFormat {
 pub struct Config {
     pub working_dir: PathBuf,
     pub output_dir: PathBuf,
-    pub inspect_tests: bool,
-    pub inspect_packages: bool,
-    pub inspect_angular: bool,
-    pub inspect_types: bool,
     pub verbose: bool,
     pub open: bool,
     pub format: OutputFormat,

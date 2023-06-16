@@ -27,26 +27,6 @@ enum Commands {
         /// Workspace directory
         working_dir: String,
 
-        /// Run all inspections
-        #[arg(long)]
-        all: bool,
-
-        /// Inspect test files
-        #[arg(short, long)]
-        tests: bool,
-
-        /// Inspect dependencies
-        #[arg(short, long)]
-        packages: bool,
-
-        /// Inspect angular elements
-        #[arg(short, long)]
-        angular: bool,
-
-        /// Inspect file types
-        #[arg(long)]
-        types: bool,
-
         /// Verbose output
         #[arg(long)]
         verbose: bool,
@@ -77,11 +57,6 @@ fn main() -> Result<()> {
     match &cli.command {
         Some(Commands::Inspect {
             working_dir,
-            tests,
-            packages,
-            angular,
-            types,
-            all,
             verbose,
             output_dir,
             open,
@@ -99,7 +74,7 @@ fn main() -> Result<()> {
                 let repo = match Repository::clone(url, &repo_dir) {
                     Ok(repo) => repo,
                     Err(e) => {
-                        repo_dir.close().unwrap();
+                        repo_dir.close()?;
                         panic!("failed to clone: {}", e)
                     }
                 };
@@ -109,12 +84,8 @@ fn main() -> Result<()> {
                     working_dir: repo_dir.path().to_owned(),
                     output_dir: match output_dir {
                         Some(value) => value.to_owned(),
-                        None => std::env::current_dir().unwrap(),
+                        None => std::env::current_dir()?,
                     },
-                    inspect_tests: *all | *tests,
-                    inspect_packages: *all | *packages,
-                    inspect_angular: *all | *angular,
-                    inspect_types: *all | *types,
                     verbose: *verbose,
                     open: *open,
                     format: *format,
@@ -122,10 +93,10 @@ fn main() -> Result<()> {
 
                 if let Err(e) = run(&config) {
                     eprintln!("Application error {e}");
-                    repo_dir.close().unwrap();
+                    repo_dir.close()?;
                     process::exit(1);
                 } else {
-                    repo_dir.close().unwrap();
+                    repo_dir.close()?;
                 }
             } else {
                 let config = Config {
@@ -134,10 +105,6 @@ fn main() -> Result<()> {
                         Some(dir) => dir.to_owned(),
                         None => PathBuf::from(working_dir),
                     },
-                    inspect_tests: *all | *tests,
-                    inspect_packages: *all | *packages,
-                    inspect_angular: *all | *angular,
-                    inspect_types: *all | *types,
                     verbose: *verbose,
                     open: *open,
                     format: *format,
