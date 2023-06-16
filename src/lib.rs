@@ -303,7 +303,9 @@ struct PackageDependency {
     name: String,
     version: String,
     dev: bool,
+    npm_url: String,
     package: String,
+    url: String,
 }
 
 fn get_packages(
@@ -329,7 +331,7 @@ fn get_dependencies(
 ) -> Result<Vec<PackageDependency>, Box<dyn Error>> {
     let mut stmt = connection.prepare(
         r#"
-        SELECT d.name, d.version, d.dev, p.path as package from dependencies d
+        SELECT d.name, d.version, d.dev, d.npm_url, p.path as package, p.url as url from dependencies d
         LEFT JOIN packages p on d.package_id = p.id
         WHERE d.project_id=:project_id
         ORDER BY d.name
@@ -341,7 +343,9 @@ fn get_dependencies(
             name: row.get(0)?,
             version: row.get(1)?,
             dev: row.get(2)?,
-            package: row.get(3)?,
+            npm_url: row.get(3)?,
+            package: row.get(4)?,
+            url: row.get(5)?,
         })
     })?;
 

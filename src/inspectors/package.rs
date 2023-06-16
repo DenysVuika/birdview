@@ -60,18 +60,24 @@ impl FileInspector for PackageJsonInspector {
         )?;
 
         let mut stmt = connection.prepare(
-            "INSERT INTO dependencies (project_id, package_id, name, version, dev) VALUES (?1, ?2, ?3, ?4, ?5)"
+            "INSERT INTO dependencies (project_id, package_id, name, version, dev, npm_url) VALUES (?1, ?2, ?3, ?4, ?5, ?6)"
         )?;
 
         if let Some(data) = package.dependencies {
             for (name, version) in data {
-                stmt.execute(params![project_id, package_id, name, version, false])?;
+                let npm_url = format!("https://www.npmjs.com/package/{name}");
+                stmt.execute(params![
+                    project_id, package_id, name, version, false, npm_url
+                ])?;
             }
         }
 
         if let Some(data) = package.dev_dependencies {
             for (name, version) in data {
-                stmt.execute(params![project_id, package_id, name, version, true])?;
+                let npm_url = format!("https://www.npmjs.com/package/{name}");
+                stmt.execute(params![
+                    project_id, package_id, name, version, true, npm_url
+                ])?;
             }
         }
 

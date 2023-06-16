@@ -49,9 +49,9 @@
                       <span class="tag is-info mb-0">${entry.version}</span>
                     </a>
                     <span class="pl-4">
-                        ${entry.pkg_url
-                            ? html`<a href="${entry.pkg_url}" target="_blank">${entry.pkg}</a>`
-                            : html`<span>${entry.pkg}</span>`
+                        ${entry.url
+                            ? html`<a href="${entry.url}" target="_blank">${entry.package}</a>`
+                            : html`<span>${entry.package}</span>`
                         }
                     </span>
                 </div>
@@ -81,23 +81,10 @@
                 const data = this.props.data;
                 const warnings = data.warnings || [];
                 const packages = data.packages || [];
-                const dependencies = this.getDependencies(data, false);
-                const devDependencies = this.getDependencies(data, true);
+                const dependencies = (data.dependencies || []).filter(dep => dep.dev === false)
+                const devDependencies = (data.dependencies || []).filter(dep => dep.dev === true)
 
                 this.setState({ warnings, packages, dependencies, devDependencies });
-            }
-
-            getDependencies(data, dev) {
-                const git = data.git;
-                return (data.dependencies || [])
-                    .filter(dep => dep.dev === dev)
-                    .map(dep => ({
-                        name: dep.name,
-                        version: dep.version,
-                        pkg: dep.package,
-                        pkg_url: !!git ? `${git.remote}/blob/${git.target}/${dep.package}`: '',
-                        npm_url: `https://www.npmjs.com/package/${dep.name}`
-                    }));
             }
 
             render({ data }, { activeTab, warnings, packages, dependencies, devDependencies }) {
