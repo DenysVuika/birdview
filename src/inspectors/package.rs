@@ -1,25 +1,12 @@
 use super::FileInspector;
+use crate::db;
 use crate::inspectors::FileInspectorOptions;
 use crate::models::PackageJsonFile;
 use anyhow::Result;
-use rusqlite::{params, Connection};
+use rusqlite::Connection;
 use std::path::Path;
-use uuid::Uuid;
 
 pub struct PackageJsonInspector {}
-
-impl PackageJsonInspector {
-    /// Creates a new instance of the inspector
-    pub fn new() -> Self {
-        PackageJsonInspector {}
-    }
-}
-
-impl Default for PackageJsonInspector {
-    fn default() -> Self {
-        PackageJsonInspector::new()
-    }
-}
 
 impl FileInspector for PackageJsonInspector {
     fn supports_file(&self, path: &Path) -> bool {
@@ -31,46 +18,19 @@ impl FileInspector for PackageJsonInspector {
             // todo: convert to db warning instead
             .unwrap_or_else(|_| panic!("Error reading {}", &opts.path.display()));
 
-        let workspace_path = &opts.relative_path;
+        let path = &opts.relative_path;
         let project_id = &opts.project_id;
         let url = &opts.url;
 
         if package.name.is_none() {
-            conn.execute(
-                "INSERT INTO warnings (project_id, path, message, url) VALUES (?1, ?2, ?3, ?4)",
-                params![project_id, workspace_path, "Missing name attribute", url],
-            )?;
+            db::create_warning(conn, project_id, path, "Missing [name] attribute", url)?;
         }
 
         if package.version.is_none() {
-            conn.execute(
-                "INSERT INTO warnings (project_id, path, message, url) VALUES (?1, ?2, ?3, ?4)",
-                params![project_id, workspace_path, "Missing version attribute", url],
-            )?;
+            db::create_warning(conn, project_id, path, "Missing [version] attribute", url)?;
         }
 
-        let package_id = Uuid::new_v4();
-        conn.execute(
-            "INSERT INTO packages (id, project_id, path, url) VALUES (?1, ?2, ?3, ?4)",
-            params![package_id, project_id, workspace_path, url],
-        )?;
-
-        let mut stmt = conn.prepare(
-            "INSERT INTO dependencies (project_id, package_id, name, version, dev) VALUES (?1, ?2, ?3, ?4, ?5)"
-        )?;
-
-        if let Some(data) = package.dependencies {
-            for (name, version) in data {
-                stmt.execute(params![project_id, package_id, name, version, false])?;
-            }
-        }
-
-        if let Some(data) = package.dev_dependencies {
-            for (name, version) in data {
-                stmt.execute(params![project_id, package_id, name, version, true])?;
-            }
-        }
-
+        db::create_package(conn, project_id, path, url, &package)?;
         Ok(())
     }
 }
@@ -86,7 +46,7 @@ mod tests {
     fn supports_json_file() -> Result<(), Box<dyn Error>> {
         let file = NamedTempFile::new("package.json")?;
         file.touch()?;
-        let inspector = PackageJsonInspector::new();
+        let inspector = PackageJsonInspector {};
         assert!(inspector.supports_file(file.path()));
 
         file.close()?;
@@ -96,7 +56,7 @@ mod tests {
     #[test]
     fn requires_json_file_to_exist() {
         let path = Path::new("missing/package.json");
-        let inspector = PackageJsonInspector::new();
+        let inspector = PackageJsonInspector {};
         assert!(!inspector.supports_file(path));
     }
 

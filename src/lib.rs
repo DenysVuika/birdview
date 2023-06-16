@@ -48,7 +48,7 @@ pub fn run(config: &Config) -> Result<()> {
     if let Some(dependencies) = package.dependencies {
         if let Some(version) = dependencies.get("@angular/core") {
             connection.execute(
-                "INSERT INTO angular (project_id, version) VALUES (?1, ?2, ?3)",
+                "INSERT INTO angular (project_id, version) VALUES (?1, ?2)",
                 params![project_id, version],
             )?;
             output.insert("angular_version".to_owned(), json!(version));
@@ -77,7 +77,7 @@ pub fn run(config: &Config) -> Result<()> {
     let mut inspectors: Vec<Box<dyn FileInspector>> = Vec::new();
 
     if config.inspect_packages {
-        inspectors.push(Box::new(PackageJsonInspector::new()));
+        inspectors.push(Box::new(PackageJsonInspector {}));
     }
     if config.inspect_tests {
         inspectors.push(Box::new(TestInspector::new()));

@@ -1,6 +1,21 @@
+use crate::models::PackageJsonFile;
 use anyhow::Result;
 use rusqlite::{params, Connection};
 use uuid::Uuid;
+
+pub fn create_warning(
+    conn: &Connection,
+    project_id: &Uuid,
+    path: &str,
+    message: &str,
+    url: &Option<String>,
+) -> Result<()> {
+    conn.execute(
+        "INSERT INTO warnings (project_id, path, message, url) VALUES (?1, ?2, ?3, ?4)",
+        params![project_id, path, message, url],
+    )?;
+    Ok(())
+}
 
 pub fn create_ng_module(
     conn: &Connection,
@@ -75,4 +90,37 @@ pub fn create_ng_dialog(
         params![project_id, path, standalone],
     )?;
     Ok(())
+}
+
+pub fn create_package(
+    conn: &Connection,
+    project_id: &Uuid,
+    path: &str,
+    url: &Option<String>,
+    package: &PackageJsonFile,
+) -> Result<Uuid> {
+    let package_id = Uuid::new_v4();
+
+    conn.execute(
+        "INSERT INTO packages (id, project_id, path, url) VALUES (?1, ?2, ?3, ?4)",
+        params![package_id, project_id, path, url],
+    )?;
+
+    let mut stmt = conn.prepare(
+        "INSERT INTO dependencies (project_id, package_id, name, version, dev) VALUES (?1, ?2, ?3, ?4, ?5)"
+    )?;
+
+    if let Some(data) = &package.dependencies {
+        for (name, version) in data {
+            stmt.execute(params![project_id, package_id, name, version, false])?;
+        }
+    }
+
+    if let Some(data) = &package.dev_dependencies {
+        for (name, version) in data {
+            stmt.execute(params![project_id, package_id, name, version, true])?;
+        }
+    }
+
+    Ok(package_id)
 }
