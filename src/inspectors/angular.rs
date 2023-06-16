@@ -1,11 +1,11 @@
 use super::FileInspector;
+use crate::db;
 use crate::inspectors::FileInspectorOptions;
 use lazy_static::lazy_static;
 use regex::Regex;
-use rusqlite::{params, Connection};
+use rusqlite::Connection;
 use std::error::Error;
 use std::path::Path;
-use uuid::Uuid;
 
 pub struct AngularInspector {}
 
@@ -70,52 +70,31 @@ impl FileInspector for AngularInspector {
     ) -> Result<(), Box<dyn Error>> {
         let workspace_path = &options.relative_path;
         let project_id = &options.project_id;
+        let url = &options.url;
         let content = options.read_content();
 
         if workspace_path.ends_with(".module.ts") {
-            connection.execute(
-                "INSERT INTO ng_modules (project_id, path, url) VALUES (?1, ?2, ?3)",
-                params![project_id, workspace_path, &options.url],
-            )?;
+            db::create_ng_module(connection, project_id, workspace_path, url)?;
         } else if workspace_path.ends_with(".component.ts") {
             if content.contains("@Component(") {
                 let standalone = AngularInspector::is_standalone(&content);
-
-                connection.execute(
-                "INSERT INTO ng_components (project_id, path, standalone, url) VALUES (?1, ?2, ?3, ?4)",
-                params![project_id, workspace_path, standalone, &options.url],
-                )?;
+                db::create_ng_component(connection, project_id, workspace_path, standalone, url)?;
             }
         } else if workspace_path.ends_with(".directive.ts") {
             if content.contains("@Directive(") {
                 let standalone = AngularInspector::is_standalone(&content);
-
-                connection.execute(
-                    "INSERT INTO ng_directives (id, project_id, path, standalone) VALUES (?1, ?2, ?3, ?4)",
-                    params![Uuid::new_v4(), project_id, workspace_path, standalone],
-                )?;
+                db::create_ng_directive(connection, project_id, workspace_path, standalone)?;
             }
         } else if workspace_path.ends_with(".service.ts") {
-            connection.execute(
-                "INSERT INTO ng_services (id, project_id, path) VALUES (?1, ?2, ?3)",
-                params![Uuid::new_v4(), project_id, workspace_path],
-            )?;
+            db::create_ng_service(connection, project_id, workspace_path)?;
         } else if workspace_path.ends_with(".pipe.ts") {
             if content.contains("@Pipe(") {
                 let standalone = AngularInspector::is_standalone(&content);
-
-                connection.execute(
-                    "INSERT INTO ng_pipes (id, project_id, path, standalone) VALUES (?1, ?2, ?3, ?4)",
-                    params![Uuid::new_v4(), project_id, workspace_path, standalone],
-                )?;
+                db::create_ng_pipe(connection, project_id, workspace_path, standalone)?;
             }
         } else if workspace_path.ends_with(".dialog.ts") && content.contains("@Component(") {
             let standalone = AngularInspector::is_standalone(&content);
-
-            connection.execute(
-                "INSERT INTO ng_dialogs (id, project_id, path, standalone) VALUES (?1, ?2, ?3, ?4)",
-                params![Uuid::new_v4(), project_id, workspace_path, standalone],
-            )?;
+            db::create_ng_dialog(connection, project_id, workspace_path, standalone)?;
         }
 
         Ok(())

@@ -1,4 +1,5 @@
 pub mod config;
+pub mod db;
 pub mod git;
 pub mod inspectors;
 pub mod models;
@@ -47,8 +48,8 @@ pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
     if let Some(dependencies) = package.dependencies {
         if let Some(version) = dependencies.get("@angular/core") {
             connection.execute(
-                "INSERT INTO angular (id, project_id, version) VALUES (?1, ?2, ?3)",
-                params![Uuid::new_v4(), project_id, version],
+                "INSERT INTO angular (project_id, version) VALUES (?1, ?2, ?3)",
+                params![project_id, version],
             )?;
             output.insert("angular_version".to_owned(), json!(version));
         }
