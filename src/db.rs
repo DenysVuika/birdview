@@ -50,6 +50,14 @@ pub fn create_ng_version(conn: &Connection, project_id: i64, version: &str) -> R
     Ok(conn.last_insert_rowid())
 }
 
+pub fn get_ng_version(conn: &Connection, project_id: i64) -> rusqlite::Result<String> {
+    conn.query_row(
+        "SELECT version from angular WHERE project_id=:project_id",
+        params![project_id],
+        |row| row.get(0),
+    )
+}
+
 pub fn create_warning(
     conn: &Connection,
     project_id: i64,

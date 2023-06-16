@@ -9,7 +9,6 @@ use crate::git::{get_repository_info, RepositoryInfo};
 use crate::inspectors::*;
 use crate::models::PackageJsonFile;
 use anyhow::Result;
-use chrono::Utc;
 use ignore::WalkBuilder;
 use rusqlite::{named_params, Connection};
 use serde::Serialize;
@@ -35,10 +34,10 @@ pub fn run(config: &Config) -> Result<()> {
     }
 
     let mut output = Map::new();
-    output.insert(
-        "report_date".to_owned(),
-        Value::String(Utc::now().to_string()),
-    );
+    // output.insert(
+    //     "report_date".to_owned(),
+    //     Value::String(Utc::now().to_string()),
+    // );
 
     let repo = get_repository_info(&config.working_dir);
     let connection = create_connection(&config.output_dir)?;
@@ -55,7 +54,6 @@ pub fn run(config: &Config) -> Result<()> {
     if let Some(dependencies) = package.dependencies {
         if let Some(version) = dependencies.get("@angular/core") {
             db::create_ng_version(&connection, project_id, version)?;
-            output.insert("angular_version".to_owned(), json!(version));
         }
     }
 
@@ -74,41 +72,6 @@ pub fn run(config: &Config) -> Result<()> {
         config.verbose,
         &repo,
     )?;
-
-    match get_dependencies(&connection, project_id) {
-        Ok(dependencies) => {
-            output.insert("dependencies".to_owned(), json!(dependencies));
-        }
-        Err(err) => println!("{}", err),
-    }
-
-    match get_packages(&connection, project_id) {
-        Ok(packages) => {
-            output.insert("packages".to_owned(), json!(packages));
-        }
-        Err(err) => println!("{}", err),
-    }
-
-    match get_angular_report(&connection, project_id) {
-        Ok(angular) => {
-            output.entry("angular").or_insert(angular);
-        }
-        Err(err) => println!("{}", err),
-    };
-
-    match get_unit_tests(&connection, project_id) {
-        Ok(tests) => {
-            output.entry("unit_tests").or_insert(json!(tests));
-        }
-        Err(err) => println!("{}", err),
-    }
-
-    match get_e2e_tests(&connection, project_id) {
-        Ok(tests) => {
-            output.entry("e2e_tests").or_insert(json!(tests));
-        }
-        Err(err) => println!("{}", err),
-    }
 
     generate_report(&connection, project_id, &mut output)?;
 
@@ -146,6 +109,9 @@ fn generate_report(
 ) -> Result<()> {
     let project = db::get_project_by_id(conn, project_id)?;
 
+    let ng_version = db::get_ng_version(conn, project_id)?;
+    output.insert("angular_version".to_owned(), json!(ng_version));
+
     output.insert(
         "project".to_owned(),
         json!({
@@ -158,6 +124,41 @@ fn generate_report(
 
     let warnings = get_warnings(conn, project_id).unwrap_or(vec![]);
     output.insert("warnings".to_owned(), json!(warnings));
+
+    match get_dependencies(conn, project_id) {
+        Ok(dependencies) => {
+            output.insert("dependencies".to_owned(), json!(dependencies));
+        }
+        Err(err) => println!("{}", err),
+    }
+
+    match get_packages(conn, project_id) {
+        Ok(packages) => {
+            output.insert("packages".to_owned(), json!(packages));
+        }
+        Err(err) => println!("{}", err),
+    }
+
+    match get_angular_report(conn, project_id) {
+        Ok(angular) => {
+            output.entry("angular").or_insert(angular);
+        }
+        Err(err) => println!("{}", err),
+    };
+
+    match get_unit_tests(conn, project_id) {
+        Ok(tests) => {
+            output.entry("unit_tests").or_insert(json!(tests));
+        }
+        Err(err) => println!("{}", err),
+    }
+
+    match get_e2e_tests(conn, project_id) {
+        Ok(tests) => {
+            output.entry("e2e_tests").or_insert(json!(tests));
+        }
+        Err(err) => println!("{}", err),
+    }
 
     Ok(())
 }
