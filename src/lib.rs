@@ -8,20 +8,20 @@ use crate::config::{Config, OutputFormat};
 use crate::git::{get_repository_info, RepositoryInfo};
 use crate::inspectors::*;
 use crate::models::PackageJsonFile;
+use anyhow::Result;
 use chrono::Utc;
 use ignore::WalkBuilder;
 use rusqlite::{named_params, params, Connection};
 use serde::Serialize;
 use serde_json::{json, Map, Value};
 use std::collections::HashMap;
-use std::error::Error;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
-fn create_connection(working_dir: &Path) -> Result<Connection, Box<dyn Error>> {
+fn create_connection(working_dir: &Path) -> Result<Connection> {
     let db_path = working_dir.join("birdview.db");
     let conn = Connection::open(db_path)?;
 
@@ -29,7 +29,7 @@ fn create_connection(working_dir: &Path) -> Result<Connection, Box<dyn Error>> {
     Ok(conn)
 }
 
-pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
+pub fn run(config: &Config) -> Result<()> {
     let package_json_path = &config.working_dir.join("package.json");
     if !package_json_path.exists() {
         panic!("Cannot find package.json file");
@@ -191,7 +191,7 @@ fn run_inspectors(
     map: &mut Map<String, Value>,
     verbose: bool,
     repo: &Option<RepositoryInfo>,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<()> {
     let working_dir = &config.working_dir;
     let mut types: HashMap<String, i64> = HashMap::new();
 
@@ -253,12 +253,12 @@ fn run_inspectors(
 }
 
 fn save_file_types(
-    connection: &Connection,
+    conn: &Connection,
     project_id: &Uuid,
     types: &HashMap<String, i64>,
-) -> Result<(), Box<dyn Error>> {
-    let mut stmt = connection
-        .prepare("INSERT INTO file_types (project_id, name, count) VALUES (?1, ?2, ?3)")?;
+) -> Result<()> {
+    let mut stmt =
+        conn.prepare("INSERT INTO file_types (project_id, name, count) VALUES (?1, ?2, ?3)")?;
 
     for (key, value) in types {
         stmt.execute(params![project_id, key, value])?;
@@ -274,12 +274,9 @@ struct CodeWarning {
     url: String,
 }
 
-fn get_warnings(
-    connection: &Connection,
-    project_id: &Uuid,
-) -> Result<Vec<CodeWarning>, Box<dyn Error>> {
-    let mut stmt = connection
-        .prepare("SELECT path, message, url FROM warnings WHERE project_id=:project_id;")?;
+fn get_warnings(conn: &Connection, project_id: &Uuid) -> Result<Vec<CodeWarning>> {
+    let mut stmt =
+        conn.prepare("SELECT path, message, url FROM warnings WHERE project_id=:project_id;")?;
     let rows = stmt.query_map(named_params! { ":project_id": project_id }, |row| {
         Ok(CodeWarning {
             path: row.get(0)?,
@@ -307,12 +304,8 @@ struct PackageDependency {
     url: String,
 }
 
-fn get_packages(
-    connection: &Connection,
-    project_id: &Uuid,
-) -> Result<Vec<PackageFile>, Box<dyn Error>> {
-    let mut stmt =
-        connection.prepare("SELECT path, url FROM packages WHERE project_id=:project_id")?;
+fn get_packages(conn: &Connection, project_id: &Uuid) -> Result<Vec<PackageFile>> {
+    let mut stmt = conn.prepare("SELECT path, url FROM packages WHERE project_id=:project_id")?;
     let rows = stmt.query_map(named_params! {":project_id": project_id}, |row| {
         Ok(PackageFile {
             path: row.get(0)?,
@@ -324,11 +317,8 @@ fn get_packages(
     Ok(entries)
 }
 
-fn get_dependencies(
-    connection: &Connection,
-    project_id: &Uuid,
-) -> Result<Vec<PackageDependency>, Box<dyn Error>> {
-    let mut stmt = connection.prepare(
+fn get_dependencies(conn: &Connection, project_id: &Uuid) -> Result<Vec<PackageDependency>> {
+    let mut stmt = conn.prepare(
         r#"
         SELECT d.name, d.version, d.dev, p.path as package, p.url as url from dependencies d
         LEFT JOIN packages p on d.package_id = p.id
@@ -367,9 +357,8 @@ pub struct AngularFile {
 }
 
 // todo: return urls
-fn get_angular_report(connection: &Connection, project_id: &Uuid) -> Result<Value, Box<dyn Error>> {
-    let mut stmt =
-        connection.prepare("SELECT path FROM ng_modules WHERE project_id=:project_id;")?;
+fn get_angular_report(conn: &Connection, project_id: &Uuid) -> Result<Value> {
+    let mut stmt = conn.prepare("SELECT path FROM ng_modules WHERE project_id=:project_id;")?;
     let rows = stmt.query_map(named_params! { ":project_id": project_id }, |row| {
         Ok(AngularFile {
             path: row.get(0).unwrap(),
@@ -377,8 +366,8 @@ fn get_angular_report(connection: &Connection, project_id: &Uuid) -> Result<Valu
     })?;
     let modules: Vec<AngularFile> = rows.filter_map(|entry| entry.ok()).collect();
 
-    let mut stmt = connection
-        .prepare("SELECT path, standalone FROM ng_components WHERE project_id=:project_id;")?;
+    let mut stmt =
+        conn.prepare("SELECT path, standalone FROM ng_components WHERE project_id=:project_id;")?;
     let rows = stmt.query_map(named_params! { ":project_id": project_id }, |row| {
         Ok(AngularDirective {
             path: row.get(0)?,
@@ -387,8 +376,8 @@ fn get_angular_report(connection: &Connection, project_id: &Uuid) -> Result<Valu
     })?;
     let components: Vec<AngularDirective> = rows.filter_map(|entry| entry.ok()).collect();
 
-    let mut stmt = connection
-        .prepare("SELECT path, standalone FROM ng_directives WHERE project_id=:project_id;")?;
+    let mut stmt =
+        conn.prepare("SELECT path, standalone FROM ng_directives WHERE project_id=:project_id;")?;
     let rows = stmt.query_map(named_params! { ":project_id": project_id }, |row| {
         Ok(AngularDirective {
             path: row.get(0)?,
@@ -397,8 +386,7 @@ fn get_angular_report(connection: &Connection, project_id: &Uuid) -> Result<Valu
     })?;
     let directives: Vec<AngularDirective> = rows.filter_map(|entry| entry.ok()).collect();
 
-    let mut stmt =
-        connection.prepare("SELECT path FROM ng_services WHERE project_id=:project_id;")?;
+    let mut stmt = conn.prepare("SELECT path FROM ng_services WHERE project_id=:project_id;")?;
     let rows = stmt.query_map(named_params! { ":project_id": project_id }, |row| {
         Ok(AngularFile {
             path: row.get(0).unwrap(),
@@ -406,8 +394,8 @@ fn get_angular_report(connection: &Connection, project_id: &Uuid) -> Result<Valu
     })?;
     let services: Vec<AngularFile> = rows.filter_map(|entry| entry.ok()).collect();
 
-    let mut stmt = connection
-        .prepare("SELECT path, standalone FROM ng_pipes WHERE project_id=:project_id;")?;
+    let mut stmt =
+        conn.prepare("SELECT path, standalone FROM ng_pipes WHERE project_id=:project_id;")?;
     let rows = stmt.query_map(named_params! { ":project_id": project_id }, |row| {
         Ok(AngularDirective {
             path: row.get(0)?,
@@ -416,8 +404,8 @@ fn get_angular_report(connection: &Connection, project_id: &Uuid) -> Result<Valu
     })?;
     let pipes: Vec<AngularDirective> = rows.filter_map(|entry| entry.ok()).collect();
 
-    let mut stmt = connection
-        .prepare("SELECT path, standalone FROM ng_dialogs WHERE project_id=:project_id;")?;
+    let mut stmt =
+        conn.prepare("SELECT path, standalone FROM ng_dialogs WHERE project_id=:project_id;")?;
     let rows = stmt.query_map(named_params! { ":project_id": project_id }, |row| {
         Ok(AngularDirective {
             path: row.get(0)?,
@@ -442,11 +430,8 @@ struct TestEntry {
     cases: i64,
 }
 
-fn get_unit_tests(
-    connection: &Connection,
-    project_id: &Uuid,
-) -> Result<Vec<TestEntry>, Box<dyn Error>> {
-    let mut stmt = connection.prepare(
+fn get_unit_tests(conn: &Connection, project_id: &Uuid) -> Result<Vec<TestEntry>> {
+    let mut stmt = conn.prepare(
         r#"
         SELECT ut.path, COUNT(DISTINCT tc.name) as cases FROM unit_tests ut
           LEFT JOIN test_cases tc on ut.id = tc.test_id
@@ -466,11 +451,8 @@ fn get_unit_tests(
     Ok(entries)
 }
 
-fn get_e2e_tests(
-    connection: &Connection,
-    project_id: &Uuid,
-) -> Result<Vec<TestEntry>, Box<dyn Error>> {
-    let mut stmt = connection.prepare(
+fn get_e2e_tests(conn: &Connection, project_id: &Uuid) -> Result<Vec<TestEntry>> {
+    let mut stmt = conn.prepare(
         r#"
         SELECT ut.path, COUNT(DISTINCT tc.name) as cases FROM e2e_tests ut
           LEFT JOIN test_cases tc on ut.id = tc.test_id

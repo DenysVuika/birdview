@@ -1,9 +1,9 @@
 use super::FileInspector;
 use crate::inspectors::FileInspectorOptions;
+use anyhow::Result;
 use lazy_static::lazy_static;
 use regex::Regex;
 use rusqlite::{params, Connection};
-use std::error::Error;
 use std::path::Path;
 use uuid::Uuid;
 
@@ -45,40 +45,36 @@ impl FileInspector for TestInspector {
                 || display_path.ends_with(".e2e.ts"))
     }
 
-    fn inspect_file(
-        &self,
-        connection: &Connection,
-        options: &FileInspectorOptions,
-    ) -> Result<(), Box<dyn Error>> {
-        let contents = options.read_content();
+    fn inspect_file(&self, conn: &Connection, opts: &FileInspectorOptions) -> Result<()> {
+        let contents = opts.read_content();
         let test_names = TestInspector::extract_test_names(&contents);
 
         if !test_names.is_empty() {
             let test_id = Uuid::new_v4();
-            let workspace_path = &options.relative_path;
-            let project_id = &options.project_id;
+            let workspace_path = &opts.relative_path;
+            let project_id = &opts.project_id;
 
             if workspace_path.ends_with(".spec.ts") {
-                connection.execute(
+                conn.execute(
                     "INSERT INTO unit_tests (id, project_id, path) VALUES (?1, ?2, ?3)",
                     params![test_id, project_id, workspace_path],
                 )?;
 
                 let mut stmt =
-                    connection.prepare("INSERT INTO test_cases (test_id, name) VALUES (?1, ?2)")?;
+                    conn.prepare("INSERT INTO test_cases (test_id, name) VALUES (?1, ?2)")?;
 
                 // todo: slow
                 for name in test_names {
                     stmt.execute(params![test_id, name])?;
                 }
             } else if workspace_path.ends_with(".test.ts") || workspace_path.ends_with(".e2e.ts") {
-                connection.execute(
+                conn.execute(
                     "INSERT INTO e2e_tests (id, project_id, path) VALUES (?1, ?2, ?3)",
                     params![test_id, project_id, workspace_path],
                 )?;
 
                 let mut stmt =
-                    connection.prepare("INSERT INTO test_cases (test_id, name) VALUES (?1, ?2)")?;
+                    conn.prepare("INSERT INTO test_cases (test_id, name) VALUES (?1, ?2)")?;
 
                 // todo: slow
                 for name in test_names {

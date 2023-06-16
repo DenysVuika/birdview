@@ -1,5 +1,5 @@
+use anyhow::Result;
 use rusqlite::Connection;
-use std::error::Error;
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
@@ -8,11 +8,7 @@ pub trait FileInspector {
     fn supports_file(&self, path: &Path) -> bool;
 
     /// Run inspections for the file
-    fn inspect_file(
-        &self,
-        connection: &Connection,
-        options: &FileInspectorOptions,
-    ) -> Result<(), Box<dyn Error>>;
+    fn inspect_file(&self, conn: &Connection, opts: &FileInspectorOptions) -> Result<()>;
 }
 
 pub struct FileInspectorOptions {

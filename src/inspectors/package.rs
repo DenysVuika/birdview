@@ -1,8 +1,8 @@
 use super::FileInspector;
 use crate::inspectors::FileInspectorOptions;
 use crate::models::PackageJsonFile;
+use anyhow::Result;
 use rusqlite::{params, Connection};
-use std::error::Error;
 use std::path::Path;
 use uuid::Uuid;
 
@@ -26,40 +26,36 @@ impl FileInspector for PackageJsonInspector {
         path.is_file() && path.ends_with("package.json")
     }
 
-    fn inspect_file(
-        &self,
-        connection: &Connection,
-        options: &FileInspectorOptions,
-    ) -> Result<(), Box<dyn Error>> {
-        let package = PackageJsonFile::from_file(&options.path)
+    fn inspect_file(&self, conn: &Connection, opts: &FileInspectorOptions) -> Result<()> {
+        let package = PackageJsonFile::from_file(&opts.path)
             // todo: convert to db warning instead
-            .unwrap_or_else(|_| panic!("Error reading {}", &options.path.display()));
+            .unwrap_or_else(|_| panic!("Error reading {}", &opts.path.display()));
 
-        let workspace_path = &options.relative_path;
-        let project_id = &options.project_id;
-        let url = &options.url;
+        let workspace_path = &opts.relative_path;
+        let project_id = &opts.project_id;
+        let url = &opts.url;
 
         if package.name.is_none() {
-            connection.execute(
+            conn.execute(
                 "INSERT INTO warnings (project_id, path, message, url) VALUES (?1, ?2, ?3, ?4)",
                 params![project_id, workspace_path, "Missing name attribute", url],
             )?;
         }
 
         if package.version.is_none() {
-            connection.execute(
+            conn.execute(
                 "INSERT INTO warnings (project_id, path, message, url) VALUES (?1, ?2, ?3, ?4)",
                 params![project_id, workspace_path, "Missing version attribute", url],
             )?;
         }
 
         let package_id = Uuid::new_v4();
-        connection.execute(
+        conn.execute(
             "INSERT INTO packages (id, project_id, path, url) VALUES (?1, ?2, ?3, ?4)",
             params![package_id, project_id, workspace_path, url],
         )?;
 
-        let mut stmt = connection.prepare(
+        let mut stmt = conn.prepare(
             "INSERT INTO dependencies (project_id, package_id, name, version, dev) VALUES (?1, ?2, ?3, ?4, ?5)"
         )?;
 

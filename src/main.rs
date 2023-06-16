@@ -1,8 +1,8 @@
+use anyhow::Result;
 use birdview::config::{Config, OutputFormat};
 use birdview::run;
 use clap::{Parser, Subcommand};
 use git2::Repository;
-use std::error::Error;
 use std::path::PathBuf;
 use std::process;
 use tempfile::tempdir;
@@ -67,7 +67,7 @@ enum Commands {
     },
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<()> {
     let cli = Cli::parse();
 
     if let Some(config_path) = cli.config.as_deref() {

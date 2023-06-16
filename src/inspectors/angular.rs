@@ -1,10 +1,10 @@
 use super::FileInspector;
 use crate::db;
 use crate::inspectors::FileInspectorOptions;
+use anyhow::Result;
 use lazy_static::lazy_static;
 use regex::Regex;
 use rusqlite::Connection;
-use std::error::Error;
 use std::path::Path;
 
 pub struct AngularInspector {}
@@ -63,38 +63,34 @@ impl FileInspector for AngularInspector {
     }
 
     // todo: generate url in the walker loop, and pass here as a param
-    fn inspect_file(
-        &self,
-        connection: &Connection,
-        options: &FileInspectorOptions,
-    ) -> Result<(), Box<dyn Error>> {
-        let workspace_path = &options.relative_path;
-        let project_id = &options.project_id;
-        let url = &options.url;
-        let content = options.read_content();
+    fn inspect_file(&self, conn: &Connection, opts: &FileInspectorOptions) -> Result<()> {
+        let workspace_path = &opts.relative_path;
+        let project_id = &opts.project_id;
+        let url = &opts.url;
+        let content = opts.read_content();
 
         if workspace_path.ends_with(".module.ts") {
-            db::create_ng_module(connection, project_id, workspace_path, url)?;
+            db::create_ng_module(conn, project_id, workspace_path, url)?;
         } else if workspace_path.ends_with(".component.ts") {
             if content.contains("@Component(") {
                 let standalone = AngularInspector::is_standalone(&content);
-                db::create_ng_component(connection, project_id, workspace_path, standalone, url)?;
+                db::create_ng_component(conn, project_id, workspace_path, standalone, url)?;
             }
         } else if workspace_path.ends_with(".directive.ts") {
             if content.contains("@Directive(") {
                 let standalone = AngularInspector::is_standalone(&content);
-                db::create_ng_directive(connection, project_id, workspace_path, standalone)?;
+                db::create_ng_directive(conn, project_id, workspace_path, standalone)?;
             }
         } else if workspace_path.ends_with(".service.ts") {
-            db::create_ng_service(connection, project_id, workspace_path)?;
+            db::create_ng_service(conn, project_id, workspace_path)?;
         } else if workspace_path.ends_with(".pipe.ts") {
             if content.contains("@Pipe(") {
                 let standalone = AngularInspector::is_standalone(&content);
-                db::create_ng_pipe(connection, project_id, workspace_path, standalone)?;
+                db::create_ng_pipe(conn, project_id, workspace_path, standalone)?;
             }
         } else if workspace_path.ends_with(".dialog.ts") && content.contains("@Component(") {
             let standalone = AngularInspector::is_standalone(&content);
-            db::create_ng_dialog(connection, project_id, workspace_path, standalone)?;
+            db::create_ng_dialog(conn, project_id, workspace_path, standalone)?;
         }
 
         Ok(())
