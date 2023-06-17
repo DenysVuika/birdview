@@ -44,6 +44,19 @@ pub struct TestEntry {
     pub url: String,
 }
 
+#[derive(Serialize)]
+pub struct AngularDirective {
+    pub path: String,
+    pub standalone: bool,
+    pub url: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct AngularFile {
+    pub path: String,
+    pub url: Option<String>,
+}
+
 pub fn create_connection(working_dir: &Path) -> Result<Connection> {
     let db_path = working_dir.join("birdview.db");
     let conn = Connection::open(db_path)?;
@@ -146,18 +159,24 @@ pub fn create_ng_directive(
     project_id: i64,
     path: &str,
     standalone: bool,
+    url: &Option<String>,
 ) -> Result<i64> {
     conn.execute(
-        "INSERT INTO ng_directives (project_id, path, standalone) VALUES (?1, ?2, ?3)",
-        params![project_id, path, standalone],
+        "INSERT INTO ng_directives (project_id, path, standalone, url) VALUES (?1, ?2, ?3, ?4)",
+        params![project_id, path, standalone, url],
     )?;
     Ok(conn.last_insert_rowid())
 }
 
-pub fn create_ng_service(conn: &Connection, project_id: i64, path: &str) -> Result<i64> {
+pub fn create_ng_service(
+    conn: &Connection,
+    project_id: i64,
+    path: &str,
+    url: &Option<String>,
+) -> Result<i64> {
     conn.execute(
-        "INSERT INTO ng_services (project_id, path) VALUES (?1, ?2)",
-        params![project_id, path],
+        "INSERT INTO ng_services (project_id, path, url) VALUES (?1, ?2, ?3)",
+        params![project_id, path, url],
     )?;
     Ok(conn.last_insert_rowid())
 }
@@ -167,10 +186,11 @@ pub fn create_ng_pipe(
     project_id: i64,
     path: &str,
     standalone: bool,
+    url: &Option<String>,
 ) -> Result<i64> {
     conn.execute(
-        "INSERT INTO ng_pipes (project_id, path, standalone) VALUES (?1, ?2, ?3)",
-        params![project_id, path, standalone],
+        "INSERT INTO ng_pipes (project_id, path, standalone, url) VALUES (?1, ?2, ?3, ?4)",
+        params![project_id, path, standalone, url],
     )?;
     Ok(conn.last_insert_rowid())
 }
@@ -180,10 +200,11 @@ pub fn create_ng_dialog(
     project_id: i64,
     path: &str,
     standalone: bool,
+    url: &Option<String>,
 ) -> Result<i64> {
     conn.execute(
-        "INSERT INTO ng_dialogs (project_id, path, standalone) VALUES (?1, ?2, ?3)",
-        params![project_id, path, standalone],
+        "INSERT INTO ng_dialogs (project_id, path, standalone, url) VALUES (?1, ?2, ?3, ?4)",
+        params![project_id, path, standalone, url],
     )?;
     Ok(conn.last_insert_rowid())
 }
@@ -226,10 +247,11 @@ pub fn create_unit_test(
     project_id: i64,
     path: &str,
     test_cases: Vec<String>,
+    url: &Option<String>,
 ) -> Result<i64> {
     conn.execute(
-        "INSERT INTO unit_tests (project_id, path) VALUES (?1, ?2)",
-        params![project_id, path],
+        "INSERT INTO unit_tests (project_id, path, url) VALUES (?1, ?2, ?3)",
+        params![project_id, path, url],
     )?;
     let test_id = conn.last_insert_rowid();
     let mut stmt = conn.prepare("INSERT INTO test_cases (test_id, name) VALUES (?1, ?2)")?;
@@ -246,10 +268,11 @@ pub fn create_e2e_test(
     project_id: i64,
     path: &str,
     test_cases: Vec<String>,
+    url: &Option<String>,
 ) -> Result<()> {
     conn.execute(
-        "INSERT INTO e2e_tests (project_id, path) VALUES (?1, ?2)",
-        params![project_id, path],
+        "INSERT INTO e2e_tests (project_id, path, values) VALUES (?1, ?2, ?3)",
+        params![project_id, path, url],
     )?;
     let test_id = conn.last_insert_rowid();
     let mut stmt = conn.prepare("INSERT INTO test_cases (test_id, name) VALUES (?1, ?2)")?;
@@ -351,7 +374,7 @@ pub fn get_dependencies(conn: &Connection, project_id: i64) -> Result<Vec<Packag
 pub fn get_unit_tests(conn: &Connection, project_id: i64) -> Result<Vec<TestEntry>> {
     let mut stmt = conn.prepare(
         r#"
-        SELECT ut.path, COUNT(DISTINCT tc.name) as cases FROM unit_tests ut
+        SELECT ut.path, COUNT(DISTINCT tc.name) as cases, ut.url FROM unit_tests ut
           LEFT JOIN test_cases tc on ut.OID = tc.test_id
         WHERE ut.project_id=:project_id
         GROUP BY ut.path
@@ -363,7 +386,7 @@ pub fn get_unit_tests(conn: &Connection, project_id: i64) -> Result<Vec<TestEntr
             Ok(TestEntry {
                 path: row.get(0)?,
                 cases: row.get(1)?,
-                url: String::new(),
+                url: row.get(2)?,
             })
         })?
         .filter_map(|entry| entry.ok())
@@ -374,7 +397,7 @@ pub fn get_unit_tests(conn: &Connection, project_id: i64) -> Result<Vec<TestEntr
 pub fn get_e2e_tests(conn: &Connection, project_id: i64) -> Result<Vec<TestEntry>> {
     let mut stmt = conn.prepare(
         r#"
-        SELECT ut.path, COUNT(DISTINCT tc.name) as cases FROM e2e_tests ut
+        SELECT ut.path, COUNT(DISTINCT tc.name) as cases, ut.url FROM e2e_tests ut
           LEFT JOIN test_cases tc on ut.OID = tc.test_id
         WHERE ut.project_id=:project_id
         GROUP BY ut.path
@@ -386,7 +409,101 @@ pub fn get_e2e_tests(conn: &Connection, project_id: i64) -> Result<Vec<TestEntry
             Ok(TestEntry {
                 path: row.get(0)?,
                 cases: row.get(1)?,
-                url: String::new(),
+                url: row.get(2)?,
+            })
+        })?
+        .filter_map(|entry| entry.ok())
+        .collect();
+    Ok(rows)
+}
+
+pub fn get_ng_modules(conn: &Connection, project_id: i64) -> Result<Vec<AngularFile>> {
+    let mut stmt =
+        conn.prepare("SELECT path, url FROM ng_modules WHERE project_id=:project_id;")?;
+    let rows = stmt
+        .query_map(named_params! { ":project_id": project_id }, |row| {
+            Ok(AngularFile {
+                path: row.get(0)?,
+                url: row.get(1)?,
+            })
+        })?
+        .filter_map(|entry| entry.ok())
+        .collect();
+    Ok(rows)
+}
+
+pub fn get_ng_components(conn: &Connection, project_id: i64) -> Result<Vec<AngularDirective>> {
+    let mut stmt = conn
+        .prepare("SELECT path, standalone, url FROM ng_components WHERE project_id=:project_id;")?;
+    let rows = stmt
+        .query_map(named_params! { ":project_id": project_id }, |row| {
+            Ok(AngularDirective {
+                path: row.get(0)?,
+                standalone: row.get(1)?,
+                url: row.get(2)?,
+            })
+        })?
+        .filter_map(|entry| entry.ok())
+        .collect();
+    Ok(rows)
+}
+
+pub fn get_ng_directives(conn: &Connection, project_id: i64) -> Result<Vec<AngularDirective>> {
+    let mut stmt = conn
+        .prepare("SELECT path, standalone, url FROM ng_directives WHERE project_id=:project_id;")?;
+    let rows = stmt
+        .query_map(named_params! { ":project_id": project_id }, |row| {
+            Ok(AngularDirective {
+                path: row.get(0)?,
+                standalone: row.get(1)?,
+                url: row.get(2)?,
+            })
+        })?
+        .filter_map(|entry| entry.ok())
+        .collect();
+    Ok(rows)
+}
+
+pub fn get_ng_services(conn: &Connection, project_id: i64) -> Result<Vec<AngularFile>> {
+    let mut stmt =
+        conn.prepare("SELECT path, url FROM ng_services WHERE project_id=:project_id;")?;
+    let rows = stmt
+        .query_map(named_params! { ":project_id": project_id }, |row| {
+            Ok(AngularFile {
+                path: row.get(0)?,
+                url: row.get(1)?,
+            })
+        })?
+        .filter_map(|entry| entry.ok())
+        .collect();
+    Ok(rows)
+}
+
+pub fn get_ng_pipes(conn: &Connection, project_id: i64) -> Result<Vec<AngularDirective>> {
+    let mut stmt =
+        conn.prepare("SELECT path, standalone, url FROM ng_pipes WHERE project_id=:project_id;")?;
+    let rows = stmt
+        .query_map(named_params! { ":project_id": project_id }, |row| {
+            Ok(AngularDirective {
+                path: row.get(0)?,
+                standalone: row.get(1)?,
+                url: row.get(2)?,
+            })
+        })?
+        .filter_map(|entry| entry.ok())
+        .collect();
+    Ok(rows)
+}
+
+pub fn get_ng_dialogs(conn: &Connection, project_id: i64) -> Result<Vec<AngularDirective>> {
+    let mut stmt =
+        conn.prepare("SELECT path, standalone, url FROM ng_dialogs WHERE project_id=:project_id;")?;
+    let rows = stmt
+        .query_map(named_params! { ":project_id": project_id }, |row| {
+            Ok(AngularDirective {
+                path: row.get(0)?,
+                standalone: row.get(1)?,
+                url: row.get(2)?,
             })
         })?
         .filter_map(|entry| entry.ok())

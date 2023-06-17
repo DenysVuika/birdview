@@ -37,15 +37,16 @@ impl FileInspector for TestInspector {
     fn inspect_file(&self, conn: &Connection, opts: &FileInspectorOptions) -> Result<()> {
         let contents = opts.read_content();
         let test_cases = TestInspector::extract_test_cases(&contents);
+        let url = &opts.url;
 
         if !test_cases.is_empty() {
             let path = &opts.relative_path;
             let project_id = opts.project_id;
 
             if path.ends_with(".spec.ts") {
-                db::create_unit_test(conn, project_id, path, test_cases)?;
+                db::create_unit_test(conn, project_id, path, test_cases, url)?;
             } else if path.ends_with(".test.ts") || path.ends_with(".e2e.ts") {
-                db::create_e2e_test(conn, project_id, path, test_cases)?;
+                db::create_e2e_test(conn, project_id, path, test_cases, url)?;
             }
         }
 

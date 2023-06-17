@@ -69,18 +69,18 @@ impl FileInspector for AngularInspector {
         } else if path.ends_with(".directive.ts") {
             if content.contains("@Directive(") {
                 let standalone = AngularInspector::is_standalone(&content);
-                db::create_ng_directive(conn, project_id, path, standalone)?;
+                db::create_ng_directive(conn, project_id, path, standalone, url)?;
             }
         } else if path.ends_with(".service.ts") {
-            db::create_ng_service(conn, project_id, path)?;
+            db::create_ng_service(conn, project_id, path, url)?;
         } else if path.ends_with(".pipe.ts") {
             if content.contains("@Pipe(") {
                 let standalone = AngularInspector::is_standalone(&content);
-                db::create_ng_pipe(conn, project_id, path, standalone)?;
+                db::create_ng_pipe(conn, project_id, path, standalone, url)?;
             }
         } else if path.ends_with(".dialog.ts") && content.contains("@Component(") {
             let standalone = AngularInspector::is_standalone(&content);
-            db::create_ng_dialog(conn, project_id, path, standalone)?;
+            db::create_ng_dialog(conn, project_id, path, standalone, url)?;
         }
 
         Ok(())
