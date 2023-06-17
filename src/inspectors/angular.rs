@@ -52,7 +52,6 @@ impl FileInspector for AngularInspector {
                 || display_path.ends_with(".dialog.ts"))
     }
 
-    // todo: generate url in the walker loop, and pass here as a param
     fn inspect_file(&self, conn: &Connection, opts: &FileInspectorOptions) -> Result<()> {
         let path = &opts.relative_path;
         let project_id = opts.project_id;

@@ -21,44 +21,13 @@ The commands generate an HTML report and opens in the system default browser:
 
 ```shell
 cd <path-to-project>
-birdview inspect . --all --open
+birdview inspect . --open
 ```
 
 You can also use GitHub repository URLs:
 
 ```shell
-birdview inspect https://github.com/<account>/<repository> --all --open
-```
-
-In addition, you should get the console output similar to the one below:
-
-```text
-Packages
- ├── Files: 32
- ├── Dependencies: 145
- └── Dev dependencies: 104
-Unit Tests
- ├── Cases: 5635
- └── Files: 452
-E2E Tests
- ├── Cases: 928
- └── Files: 168
-Angular
- ├── Module: 149
- ├── Component: 415 (standalone: 0)
- ├── Directive: 58
- ├── Service: 181
- ├── Pipe: 23
- └── Dialog: 8
-Project Files
- ├── HTML: 379
- ├── SCSS: 536
- ├── CSS: 33
- ├── TypeScript: 5125
- ├── JavaScript: 301
- ├── JSON: 548
- └── Markdown: 497
-Inspection complete
+birdview inspect https://github.com/<account>/<repository> --open
 ```
 
 ## Code Inspection
@@ -74,26 +43,10 @@ birdview inspect --help
 - angular elements (`--angular`)
 - markdown files (`--markdown`)
 
-### Examples:
-
-```shell
-# run all available inspections
-birdview inspect --all <dir>
-
-# inspect tests
-birdview inspect --tests <dir>
-
-# inspect packages
-birdview inspect --packages <dir>
-
-# inspect tests and packages
-birdview inspect --tests --packages <dir>
-```
-
 ## Generating Reports
 
 ```shell
-birdview inspect <dir> --all --format=<html|json>
+birdview inspect <dir> --format=<html|json>
 ```
 
 You can generate reports using multiple templates:
@@ -107,7 +60,7 @@ By default, the reports are placed in the working directory.
 You can change the report output folder using the `-o` or `--output-dir` parameter.
 
 ```shell
-birdview inspect . --all --output-dir=reports --open
+birdview inspect <dir> --output-dir=reports --open
 ```
 
 > The output directory should exist prior to running the command
@@ -118,13 +71,13 @@ The HTML format is the default one.
 
 ```shell
 # generate HTML report and place to the working dir
-birdview inspect <dir> --all
+birdview inspect <dir>
 
 # generate HTML report and place it to the "reports" folder
-birdview inspect <dir> --all --output-dir=reports
+birdview inspect <dir> --output-dir=reports
 
 # generate HTML report and open with the default browser
-birdview inspect <dir> --all --open
+birdview inspect <dir> --open
 ```
 
 #### Angular
