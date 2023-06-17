@@ -271,7 +271,7 @@ pub fn create_e2e_test(
     url: &Option<String>,
 ) -> Result<()> {
     conn.execute(
-        "INSERT INTO e2e_tests (project_id, path, values) VALUES (?1, ?2, ?3)",
+        "INSERT INTO e2e_tests (project_id, path, url) VALUES (?1, ?2, ?3)",
         params![project_id, path, url],
     )?;
     let test_id = conn.last_insert_rowid();

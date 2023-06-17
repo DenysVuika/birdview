@@ -176,8 +176,8 @@
 
             componentDidMount() {
                 const data = this.props.data;
-                const unitTests = this.getEntries(data, 'unit_tests');
-                const e2eTests = this.getEntries(data, 'e2e_tests');
+                const unitTests = data.unit_tests || [];
+                const e2eTests = data.e2e_tests || [];
 
                 const unit_test_cases = unitTests
                     .map(entry => entry.cases)
@@ -196,16 +196,6 @@
                     e2e_test_cases,
                     totalCases
                 });
-            }
-
-            getEntries(data, key) {
-                const tests = data[key] || [];
-                const git = data.git;
-
-                return tests.map(entry => ({
-                    ...entry,
-                    url: !!git ? `${git.remote_url}/blob/${git.sha}/${entry.path}`: ''
-                }));
             }
 
             setupChart() {
@@ -302,18 +292,18 @@
 
             componentDidMount() {
                 const data = this.props.data;
-                const modules = this.getEntities(data, 'modules');
-                const components = this.getEntities(data, 'components');
-                const directives = this.getEntities(data, 'directives');
-                const services = this.getEntities(data, 'services');
-                const pipes = this.getEntities(data, 'pipes');
-                const dialogs = this.getEntities(data, 'dialogs');
-                this.setState({ modules, components, directives, services, pipes, dialogs });
+                this.setState({
+                    modules: data.modules || [],
+                    components: data.components || [],
+                    directives: data.directives || [],
+                    services: data.services || [],
+                    pipes: data.pipes || [],
+                    dialogs: data.dialogs || []
+                });
             }
 
             setupChart() {
                 const ctx = document.getElementById('angular-chart');
-                const angular = window.data.angular;
 
                 const existing = Chart.getChart('angular-chart');
                 if (existing) {
@@ -327,12 +317,12 @@
                         datasets: [{
                             label: '# of elements',
                             data: [
-                                angular.modules.length,
-                                angular.components.length,
-                                angular.directives.length,
-                                angular.services.length,
-                                angular.pipes.length,
-                                angular.dialogs.length
+                                this.state.modules.length,
+                                this.state.components.length,
+                                this.state.directives.length,
+                                this.state.services.length,
+                                this.state.pipes.length,
+                                this.state.dialogs.length
                             ],
                             backgroundColor: [
                                 'rgba(255, 99, 132, 0.2)',
@@ -365,17 +355,7 @@
                 });
             }
 
-            getEntities(data, key) {
-                const entities = data.angular[key] || [];
-                const git = data.git;
-
-                return entities.map(entry => ({
-                    ...entry,
-                    url: !!git ? `${git.remote_url}/blob/${git.sha}/${entry.path}` : ''
-                }));
-            }
-
-            render({ data }, { activeTab, modules, components, directives, services, pipes, dialogs }) {
+            render({ data, version }, { activeTab, modules, components, directives, services, pipes, dialogs }) {
                 setTimeout(() => {
                     if (activeTab === 0) {
                         this.setupChart();
@@ -385,11 +365,9 @@
                     <a class="${ activeTab === index ? 'is-active' : null}" onClick="${() => this.setActiveTab(index)}">${title}</a>
                 `;
 
-                const ngVersion = data.angular_version;
-
                 return html`
                     <nav class="panel is-link">
-                        <p class="panel-heading">Angular (${ngVersion})</p>
+                        <p class="panel-heading">Angular (${version})</p>
 
                         <p class="panel-tabs">
                             <${TabHeader} index=${0} title="Stats" />
@@ -568,7 +546,7 @@
                     <section class="section">
                         ${hasGit && html`<${GitReport} data=${data.git}/>`}
                         ${hasPackages && html`<${Packages} data=${data}/>`}
-                        ${hasAngular && html`<${Angular} data=${data}/>`}
+                        ${hasAngular && html`<${Angular} data=${data.angular} version="${data.angular_version}"/>`}
                         ${hasTests && html`<${Tests} data=${data}/>`}
                         ${hasTypes && html`<${FileTypes} data=${data.types}></FileTypes>`}
                     </section>
