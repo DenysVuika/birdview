@@ -1,10 +1,49 @@
 use crate::models::PackageJsonFile;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use rusqlite::{named_params, params, Connection};
-use serde::Serialize;
+use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ToSqlOutput, ValueRef};
+use rusqlite::{named_params, params, Connection, ToSql};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fmt;
 use std::path::Path;
+
+#[derive(Serialize, Deserialize, PartialEq, Clone)]
+pub enum TestKind {
+    #[serde(rename = "unit")]
+    Unit,
+    #[serde(rename = "e2e")]
+    EndToEnd,
+}
+
+impl fmt::Display for TestKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match *self {
+                TestKind::Unit => "unit",
+                TestKind::EndToEnd => "e2e",
+            }
+        )
+    }
+}
+
+impl ToSql for TestKind {
+    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
+        Ok(self.to_string().into())
+    }
+}
+
+impl FromSql for TestKind {
+    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+        value.as_str().map(|role| match role {
+            "unit" => Ok(TestKind::Unit),
+            "e2e" => Ok(TestKind::EndToEnd),
+            _ => Err(FromSqlError::Other("Invalid role found in db".into())),
+        })?
+    }
+}
 
 pub struct ProjectInfo {
     pub id: i64,
@@ -242,16 +281,17 @@ pub fn create_package(
     Ok(package_id)
 }
 
-pub fn create_unit_test(
+pub fn create_test(
     conn: &Connection,
     project_id: i64,
     path: &str,
     test_cases: Vec<String>,
     url: &Option<String>,
+    kind: TestKind,
 ) -> Result<i64> {
     conn.execute(
-        "INSERT INTO unit_tests (project_id, path, url) VALUES (?1, ?2, ?3)",
-        params![project_id, path, url],
+        "INSERT INTO tests (project_id, path, url, kind) VALUES (?1, ?2, ?3, ?4)",
+        params![project_id, path, url, kind],
     )?;
     let test_id = conn.last_insert_rowid();
     let mut stmt = conn.prepare("INSERT INTO test_cases (test_id, name) VALUES (?1, ?2)")?;
@@ -261,27 +301,6 @@ pub fn create_unit_test(
     }
 
     Ok(test_id)
-}
-
-pub fn create_e2e_test(
-    conn: &Connection,
-    project_id: i64,
-    path: &str,
-    test_cases: Vec<String>,
-    url: &Option<String>,
-) -> Result<()> {
-    conn.execute(
-        "INSERT INTO e2e_tests (project_id, path, url) VALUES (?1, ?2, ?3)",
-        params![project_id, path, url],
-    )?;
-    let test_id = conn.last_insert_rowid();
-    let mut stmt = conn.prepare("INSERT INTO test_cases (test_id, name) VALUES (?1, ?2)")?;
-
-    for name in test_cases {
-        stmt.execute(params![test_id, name])?;
-    }
-
-    Ok(())
 }
 
 pub fn create_file_types(
@@ -371,47 +390,27 @@ pub fn get_dependencies(conn: &Connection, project_id: i64) -> Result<Vec<Packag
     Ok(rows)
 }
 
-pub fn get_unit_tests(conn: &Connection, project_id: i64) -> Result<Vec<TestEntry>> {
+pub fn get_tests(conn: &Connection, project_id: i64, kind: TestKind) -> Result<Vec<TestEntry>> {
     let mut stmt = conn.prepare(
         r#"
-        SELECT ut.path, COUNT(DISTINCT tc.name) as cases, ut.url FROM unit_tests ut
-          LEFT JOIN test_cases tc on ut.OID = tc.test_id
-        WHERE ut.project_id=:project_id
-        GROUP BY ut.path
+        SELECT t.path, COUNT(DISTINCT tc.name) as cases, t.url FROM tests t
+          LEFT JOIN test_cases tc on t.OID = tc.test_id
+        WHERE t.project_id=:project_id AND t.kind=:kind
+        GROUP BY t.path
     "#,
     )?;
 
     let rows = stmt
-        .query_map(named_params! {":project_id": project_id}, |row| {
-            Ok(TestEntry {
-                path: row.get(0)?,
-                cases: row.get(1)?,
-                url: row.get(2)?,
-            })
-        })?
-        .filter_map(|entry| entry.ok())
-        .collect();
-    Ok(rows)
-}
-
-pub fn get_e2e_tests(conn: &Connection, project_id: i64) -> Result<Vec<TestEntry>> {
-    let mut stmt = conn.prepare(
-        r#"
-        SELECT ut.path, COUNT(DISTINCT tc.name) as cases, ut.url FROM e2e_tests ut
-          LEFT JOIN test_cases tc on ut.OID = tc.test_id
-        WHERE ut.project_id=:project_id
-        GROUP BY ut.path
-    "#,
-    )?;
-
-    let rows = stmt
-        .query_map(named_params! {":project_id": project_id}, |row| {
-            Ok(TestEntry {
-                path: row.get(0)?,
-                cases: row.get(1)?,
-                url: row.get(2)?,
-            })
-        })?
+        .query_map(
+            named_params! {":project_id": project_id, ":kind": kind},
+            |row| {
+                Ok(TestEntry {
+                    path: row.get(0)?,
+                    cases: row.get(1)?,
+                    url: row.get(2)?,
+                })
+            },
+        )?
         .filter_map(|entry| entry.ok())
         .collect();
     Ok(rows)

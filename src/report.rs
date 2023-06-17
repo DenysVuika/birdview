@@ -1,5 +1,6 @@
 use crate::config::{Config, OutputFormat};
 use crate::db;
+use crate::db::TestKind;
 use crate::git::RepositoryInfo;
 use anyhow::Result;
 use rusqlite::Connection;
@@ -57,14 +58,14 @@ pub fn generate_report(
         Err(err) => println!("{}", err),
     };
 
-    match db::get_unit_tests(conn, project_id) {
+    match db::get_tests(conn, project_id, TestKind::Unit) {
         Ok(tests) => {
             output.entry("unit_tests").or_insert(json!(tests));
         }
         Err(err) => println!("{}", err),
     }
 
-    match db::get_e2e_tests(conn, project_id) {
+    match db::get_tests(conn, project_id, TestKind::EndToEnd) {
         Ok(tests) => {
             output.entry("e2e_tests").or_insert(json!(tests));
         }

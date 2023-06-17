@@ -1,5 +1,6 @@
 use super::FileInspector;
 use crate::db;
+use crate::db::TestKind;
 use crate::inspectors::FileInspectorOptions;
 use anyhow::Result;
 use lazy_static::lazy_static;
@@ -44,9 +45,9 @@ impl FileInspector for TestInspector {
             let project_id = opts.project_id;
 
             if path.ends_with(".spec.ts") {
-                db::create_unit_test(conn, project_id, path, test_cases, url)?;
+                db::create_test(conn, project_id, path, test_cases, url, TestKind::Unit)?;
             } else if path.ends_with(".test.ts") || path.ends_with(".e2e.ts") {
-                db::create_e2e_test(conn, project_id, path, test_cases, url)?;
+                db::create_test(conn, project_id, path, test_cases, url, TestKind::EndToEnd)?;
             }
         }
 
