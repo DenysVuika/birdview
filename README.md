@@ -132,10 +132,10 @@ Provides insights on the file types used in the project
 
 ```shell
 # run all inspections and generate JSON report
-birdview inspect <dir> --all --format=json
+birdview inspect <dir> --format=json
 
 # generate JSON report and place it to the "reports" folder
-birdview inspect <dir> --all --format=json --output-dir=reports
+birdview inspect <dir> --format=json --output-dir=reports
 ```
 
 The format of the output is similar to the following example:
@@ -148,7 +148,7 @@ The format of the output is similar to the following example:
     "name": "<package.json>/name",
     "version": "<package.json>/version",
     "created_on": "<UTC date>",
-    "origin": <URL>
+    "origin": "<URL>"
   },
 
   "git": {
@@ -167,7 +167,7 @@ The format of the output is similar to the following example:
     {
       "path": "<relative/path>",
       "message": "<message>",
-      "url": <URL>
+      "url": "<URL>"
     }
   ],
   
@@ -244,7 +244,7 @@ The format of the output is similar to the following example:
       "package": "<relative/path>",
       "url": "<URL>"
     }
-  ]
+  ],
 
   "types": {
     "html": 379,
