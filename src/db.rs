@@ -3,16 +3,14 @@ use anyhow::Result;
 use chrono::{DateTime, Utc};
 use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ToSqlOutput, ValueRef};
 use rusqlite::{named_params, params, Connection, ToSql};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::collections::HashMap;
 use std::fmt;
 use std::path::Path;
 
-#[derive(Serialize, Deserialize, PartialEq, Clone)]
+#[derive(PartialEq, Clone)]
 pub enum TestKind {
-    #[serde(rename = "unit")]
     Unit,
-    #[serde(rename = "e2e")]
     EndToEnd,
 }
 
@@ -40,6 +38,57 @@ impl FromSql for TestKind {
         value.as_str().map(|role| match role {
             "unit" => Ok(TestKind::Unit),
             "e2e" => Ok(TestKind::EndToEnd),
+            _ => Err(FromSqlError::Other("Invalid role found in db".into())),
+        })?
+    }
+}
+
+/// Angular entity kind
+#[derive(PartialEq, Clone)]
+pub enum NgKind {
+    Unknown,
+    Module,
+    Component,
+    Directive,
+    Service,
+    Pipe,
+    Dialog,
+}
+
+impl fmt::Display for NgKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match *self {
+                NgKind::Unknown => "unknown",
+                NgKind::Module => "module",
+                NgKind::Component => "component",
+                NgKind::Directive => "directive",
+                NgKind::Service => "service",
+                NgKind::Pipe => "pipe",
+                NgKind::Dialog => "dialog",
+            }
+        )
+    }
+}
+
+impl ToSql for NgKind {
+    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
+        Ok(self.to_string().into())
+    }
+}
+
+impl FromSql for NgKind {
+    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+        value.as_str().map(|role| match role {
+            "module" => Ok(NgKind::Module),
+            "component" => Ok(NgKind::Component),
+            "directive" => Ok(NgKind::Directive),
+            "service" => Ok(NgKind::Service),
+            "pipe" => Ok(NgKind::Pipe),
+            "dialog" => Ok(NgKind::Dialog),
+            "unknown" => Ok(NgKind::Unknown),
             _ => Err(FromSqlError::Other("Invalid role found in db".into())),
         })?
     }
@@ -84,15 +133,9 @@ pub struct TestEntry {
 }
 
 #[derive(Serialize)]
-pub struct AngularDirective {
+pub struct NgEntity {
     pub path: String,
     pub standalone: bool,
-    pub url: Option<String>,
-}
-
-#[derive(Serialize)]
-pub struct AngularFile {
-    pub path: String,
     pub url: Option<String>,
 }
 
@@ -136,7 +179,7 @@ pub fn get_project_by_id(conn: &Connection, project_id: i64) -> Result<ProjectIn
 
 pub fn create_ng_version(conn: &Connection, project_id: i64, version: &str) -> Result<i64> {
     conn.execute(
-        "INSERT INTO angular (project_id, version) VALUES (?1, ?2)",
+        "INSERT INTO ng_version (project_id, version) VALUES (?1, ?2)",
         params![project_id, version],
     )?;
     Ok(conn.last_insert_rowid())
@@ -144,7 +187,7 @@ pub fn create_ng_version(conn: &Connection, project_id: i64, version: &str) -> R
 
 pub fn get_ng_version(conn: &Connection, project_id: i64) -> rusqlite::Result<String> {
     conn.query_row(
-        "SELECT version from angular WHERE project_id=:project_id",
+        "SELECT version from ng_version WHERE project_id=:project_id",
         params![project_id],
         |row| row.get(0),
     )
@@ -165,85 +208,31 @@ pub fn create_warning(
     Ok(conn.last_insert_rowid())
 }
 
-pub fn create_ng_module(
+// pub fn create_ng_module(
+//     conn: &Connection,
+//     project_id: i64,
+//     path: &str,
+//     url: &Option<String>,
+// ) -> Result<i64> {
+//     conn.execute(
+//         "INSERT INTO ng_modules (project_id, path, url) VALUES (?1, ?2, ?3)",
+//         params![project_id, path, url],
+//     )?;
+//
+//     Ok(conn.last_insert_rowid())
+// }
+
+pub fn create_ng_entity(
     conn: &Connection,
     project_id: i64,
+    kind: NgKind,
     path: &str,
     url: &Option<String>,
-) -> Result<i64> {
-    conn.execute(
-        "INSERT INTO ng_modules (project_id, path, url) VALUES (?1, ?2, ?3)",
-        params![project_id, path, url],
-    )?;
-
-    Ok(conn.last_insert_rowid())
-}
-
-pub fn create_ng_component(
-    conn: &Connection,
-    project_id: i64,
-    path: &str,
     standalone: bool,
-    url: &Option<String>,
 ) -> Result<i64> {
     conn.execute(
-        "INSERT INTO ng_components (project_id, path, standalone, url) VALUES (?1, ?2, ?3, ?4)",
-        params![project_id, path, standalone, url],
-    )?;
-    Ok(conn.last_insert_rowid())
-}
-
-pub fn create_ng_directive(
-    conn: &Connection,
-    project_id: i64,
-    path: &str,
-    standalone: bool,
-    url: &Option<String>,
-) -> Result<i64> {
-    conn.execute(
-        "INSERT INTO ng_directives (project_id, path, standalone, url) VALUES (?1, ?2, ?3, ?4)",
-        params![project_id, path, standalone, url],
-    )?;
-    Ok(conn.last_insert_rowid())
-}
-
-pub fn create_ng_service(
-    conn: &Connection,
-    project_id: i64,
-    path: &str,
-    url: &Option<String>,
-) -> Result<i64> {
-    conn.execute(
-        "INSERT INTO ng_services (project_id, path, url) VALUES (?1, ?2, ?3)",
-        params![project_id, path, url],
-    )?;
-    Ok(conn.last_insert_rowid())
-}
-
-pub fn create_ng_pipe(
-    conn: &Connection,
-    project_id: i64,
-    path: &str,
-    standalone: bool,
-    url: &Option<String>,
-) -> Result<i64> {
-    conn.execute(
-        "INSERT INTO ng_pipes (project_id, path, standalone, url) VALUES (?1, ?2, ?3, ?4)",
-        params![project_id, path, standalone, url],
-    )?;
-    Ok(conn.last_insert_rowid())
-}
-
-pub fn create_ng_dialog(
-    conn: &Connection,
-    project_id: i64,
-    path: &str,
-    standalone: bool,
-    url: &Option<String>,
-) -> Result<i64> {
-    conn.execute(
-        "INSERT INTO ng_dialogs (project_id, path, standalone, url) VALUES (?1, ?2, ?3, ?4)",
-        params![project_id, path, standalone, url],
+        "INSERT INTO ng_entities (project_id, kind, path, url, standalone) VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![project_id, kind, path, url, standalone],
     )?;
     Ok(conn.last_insert_rowid())
 }
@@ -416,95 +405,20 @@ pub fn get_tests(conn: &Connection, project_id: i64, kind: TestKind) -> Result<V
     Ok(rows)
 }
 
-pub fn get_ng_modules(conn: &Connection, project_id: i64) -> Result<Vec<AngularFile>> {
-    let mut stmt =
-        conn.prepare("SELECT path, url FROM ng_modules WHERE project_id=:project_id;")?;
-    let rows = stmt
-        .query_map(named_params! { ":project_id": project_id }, |row| {
-            Ok(AngularFile {
-                path: row.get(0)?,
-                url: row.get(1)?,
-            })
-        })?
-        .filter_map(|entry| entry.ok())
-        .collect();
-    Ok(rows)
-}
-
-pub fn get_ng_components(conn: &Connection, project_id: i64) -> Result<Vec<AngularDirective>> {
+pub fn get_ng_entities(conn: &Connection, project_id: i64, kind: NgKind) -> Result<Vec<NgEntity>> {
     let mut stmt = conn
-        .prepare("SELECT path, standalone, url FROM ng_components WHERE project_id=:project_id;")?;
+        .prepare("SELECT path, url, standalone FROM ng_entities WHERE project_id=:project_id AND kind=:kind;")?;
     let rows = stmt
-        .query_map(named_params! { ":project_id": project_id }, |row| {
-            Ok(AngularDirective {
-                path: row.get(0)?,
-                standalone: row.get(1)?,
-                url: row.get(2)?,
-            })
-        })?
-        .filter_map(|entry| entry.ok())
-        .collect();
-    Ok(rows)
-}
-
-pub fn get_ng_directives(conn: &Connection, project_id: i64) -> Result<Vec<AngularDirective>> {
-    let mut stmt = conn
-        .prepare("SELECT path, standalone, url FROM ng_directives WHERE project_id=:project_id;")?;
-    let rows = stmt
-        .query_map(named_params! { ":project_id": project_id }, |row| {
-            Ok(AngularDirective {
-                path: row.get(0)?,
-                standalone: row.get(1)?,
-                url: row.get(2)?,
-            })
-        })?
-        .filter_map(|entry| entry.ok())
-        .collect();
-    Ok(rows)
-}
-
-pub fn get_ng_services(conn: &Connection, project_id: i64) -> Result<Vec<AngularFile>> {
-    let mut stmt =
-        conn.prepare("SELECT path, url FROM ng_services WHERE project_id=:project_id;")?;
-    let rows = stmt
-        .query_map(named_params! { ":project_id": project_id }, |row| {
-            Ok(AngularFile {
-                path: row.get(0)?,
-                url: row.get(1)?,
-            })
-        })?
-        .filter_map(|entry| entry.ok())
-        .collect();
-    Ok(rows)
-}
-
-pub fn get_ng_pipes(conn: &Connection, project_id: i64) -> Result<Vec<AngularDirective>> {
-    let mut stmt =
-        conn.prepare("SELECT path, standalone, url FROM ng_pipes WHERE project_id=:project_id;")?;
-    let rows = stmt
-        .query_map(named_params! { ":project_id": project_id }, |row| {
-            Ok(AngularDirective {
-                path: row.get(0)?,
-                standalone: row.get(1)?,
-                url: row.get(2)?,
-            })
-        })?
-        .filter_map(|entry| entry.ok())
-        .collect();
-    Ok(rows)
-}
-
-pub fn get_ng_dialogs(conn: &Connection, project_id: i64) -> Result<Vec<AngularDirective>> {
-    let mut stmt =
-        conn.prepare("SELECT path, standalone, url FROM ng_dialogs WHERE project_id=:project_id;")?;
-    let rows = stmt
-        .query_map(named_params! { ":project_id": project_id }, |row| {
-            Ok(AngularDirective {
-                path: row.get(0)?,
-                standalone: row.get(1)?,
-                url: row.get(2)?,
-            })
-        })?
+        .query_map(
+            named_params! { ":project_id": project_id, ":kind": kind },
+            |row| {
+                Ok(NgEntity {
+                    path: row.get(0)?,
+                    url: row.get(1)?,
+                    standalone: row.get(2)?,
+                })
+            },
+        )?
         .filter_map(|entry| entry.ok())
         .collect();
     Ok(rows)

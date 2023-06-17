@@ -1,6 +1,6 @@
 use crate::config::{Config, OutputFormat};
 use crate::db;
-use crate::db::TestKind;
+use crate::db::{NgKind, TestKind};
 use crate::git::RepositoryInfo;
 use anyhow::Result;
 use rusqlite::Connection;
@@ -127,12 +127,12 @@ fn get_output_file(output_dir: &Path, format: OutputFormat) -> Option<PathBuf> {
 }
 
 fn get_angular_report(conn: &Connection, project_id: i64) -> Result<Value> {
-    let modules = db::get_ng_modules(conn, project_id)?;
-    let components = db::get_ng_components(conn, project_id)?;
-    let directives = db::get_ng_directives(conn, project_id)?;
-    let services = db::get_ng_services(conn, project_id)?;
-    let pipes = db::get_ng_pipes(conn, project_id)?;
-    let dialogs = db::get_ng_dialogs(conn, project_id)?;
+    let modules = db::get_ng_entities(conn, project_id, NgKind::Module)?;
+    let components = db::get_ng_entities(conn, project_id, NgKind::Component)?;
+    let directives = db::get_ng_entities(conn, project_id, NgKind::Directive)?;
+    let services = db::get_ng_entities(conn, project_id, NgKind::Service)?;
+    let pipes = db::get_ng_entities(conn, project_id, NgKind::Pipe)?;
+    let dialogs = db::get_ng_entities(conn, project_id, NgKind::Dialog)?;
 
     Ok(json!({
         "modules": modules,

@@ -1,12 +1,7 @@
 BEGIN;
 CREATE TABLE IF NOT EXISTS projects (name TEXT, version TEXT, created_on TEXT NOT NULL, origin TEXT);
-CREATE TABLE IF NOT EXISTS angular (project_id INTEGER NOT NULL, version TEXT);
-CREATE TABLE IF NOT EXISTS ng_modules (project_id INTEGER NOT NULL, path TEXT NOT NULL, url TEXT);
-CREATE TABLE IF NOT EXISTS ng_components (project_id INTEGER NOT NULL, path TEXT NOT NULL, standalone INTEGER, url TEXT);
-CREATE TABLE IF NOT EXISTS ng_directives (project_id INTEGER NOT NULL, path TEXT NOT NULL, standalone INTEGER, url TEXT);
-CREATE TABLE IF NOT EXISTS ng_services (project_id INTEGER NOT NULL, path TEXT NOT NULL, url TEXT);
-CREATE TABLE IF NOT EXISTS ng_pipes (project_id INTEGER NOT NULL, path TEXT NOT NULL, standalone INTEGER, url TEXT);
-CREATE TABLE IF NOT EXISTS ng_dialogs (project_id INTEGER NOT NULL, path TEXT NOT NULL, standalone INTEGER, url TEXT);
+CREATE TABLE IF NOT EXISTS ng_version (project_id INTEGER NOT NULL, version TEXT);
+CREATE TABLE IF NOT EXISTS ng_entities (project_id INTEGER NOT NULL, kind TEXT, path TEXT NOT NULL, url TEXT, standalone INTEGER);
 CREATE TABLE IF NOT EXISTS warnings (project_id INTEGER NOT NULL, path TEXT NOT NULL, message TEXT NOT NULL, url TEXT);
 CREATE TABLE IF NOT EXISTS packages (project_id INTEGER NOT NULL, path TEXT NOT NULL, url TEXT);
 CREATE TABLE IF NOT EXISTS dependencies (project_id INTEGER NOT NULL, package_id INTEGER NOT NULL, name TEXT NOT NULL, version TEXT NOT NULL, dev INTEGER);
