@@ -115,7 +115,7 @@ mod tests {
     /*
     fn parses_unit_tests() -> Result<(), Box<dyn Error>> {
         let conn = Connection::open_in_memory()?;
-        let project_id = Uuid::new_v4();
+        let project_id = 0;
         let file = NamedTempFile::new("tests.e2e.ts")?;
         let content = r#"
             describe('test suite', () => {
@@ -162,7 +162,7 @@ mod tests {
     /*
     fn parses_e2e_tests() -> Result<(), Box<dyn Error>> {
         let conn = Connection::open_in_memory()?;
-        let project_id = Uuid::new_v4();
+        let project_id = 0;
 
         let file = NamedTempFile::new("tests.spec.ts")?;
         let content = r#"
@@ -178,7 +178,7 @@ mod tests {
         let options = options_from_file(&file);
 
         inspector.inspect_file(&conn, &project_id, &options)?;
-        // inspector.finalize(&conn, &Uuid::new_v4(), &mut map)?;
+        // inspector.finalize(&conn, 0, &mut map)?;
 
         assert_eq!(
             Value::Object(map),

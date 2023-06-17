@@ -63,7 +63,7 @@ mod tests {
     /*
     fn parses_package_dependencies() -> Result<(), Box<dyn Error>> {
         let conn = Connection::open_in_memory()?;
-        let project_id = Uuid::new_v4();
+        let project_id = 0;
         let file = NamedTempFile::new("package.json")?;
         file.write_str(
             r#"
