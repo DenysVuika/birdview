@@ -11,13 +11,13 @@ use std::path::{Path, PathBuf};
 
 pub fn generate_report(
     conn: &Connection,
-    project_id: i64,
+    sid: i64,
     repo: &Option<RepositoryInfo>,
 ) -> Result<Map<String, Value>> {
     let mut output = Map::new();
-    let project = db::get_project_by_id(conn, project_id)?;
+    let project = db::get_project_by_snapshot(conn, sid)?;
 
-    let ng_version = db::get_ng_version(conn, project_id)?;
+    let ng_version = db::get_ng_version(conn, sid)?;
     output.insert("angular_version".to_owned(), json!(ng_version));
 
     if repo.is_some() {
@@ -34,45 +34,45 @@ pub fn generate_report(
         }),
     );
 
-    let warnings = db::get_warnings(conn, project_id).unwrap_or(vec![]);
+    let warnings = db::get_warnings(conn, sid).unwrap_or(vec![]);
     output.insert("warnings".to_owned(), json!(warnings));
 
-    match db::get_dependencies(conn, project_id) {
+    match db::get_dependencies(conn, sid) {
         Ok(dependencies) => {
             output.insert("dependencies".to_owned(), json!(dependencies));
         }
         Err(err) => println!("{}", err),
     }
 
-    match db::get_packages(conn, project_id) {
+    match db::get_packages(conn, sid) {
         Ok(packages) => {
             output.insert("packages".to_owned(), json!(packages));
         }
         Err(err) => println!("{}", err),
     }
 
-    match get_angular_report(conn, project_id) {
+    match get_angular_report(conn, sid) {
         Ok(angular) => {
             output.entry("angular").or_insert(angular);
         }
         Err(err) => println!("{}", err),
     };
 
-    match db::get_tests(conn, project_id, TestKind::Unit) {
+    match db::get_tests(conn, sid, TestKind::Unit) {
         Ok(tests) => {
             output.entry("unit_tests").or_insert(json!(tests));
         }
         Err(err) => println!("{}", err),
     }
 
-    match db::get_tests(conn, project_id, TestKind::EndToEnd) {
+    match db::get_tests(conn, sid, TestKind::EndToEnd) {
         Ok(tests) => {
             output.entry("e2e_tests").or_insert(json!(tests));
         }
         Err(err) => println!("{}", err),
     }
 
-    match db::get_file_types(conn, project_id) {
+    match db::get_file_types(conn, sid) {
         Ok(types) => {
             output.entry("types").or_insert(json!(types));
         }
@@ -126,13 +126,13 @@ fn get_output_file(output_dir: &Path, format: OutputFormat) -> Option<PathBuf> {
     None
 }
 
-fn get_angular_report(conn: &Connection, project_id: i64) -> Result<Value> {
-    let modules = db::get_ng_entities(conn, project_id, NgKind::Module)?;
-    let components = db::get_ng_entities(conn, project_id, NgKind::Component)?;
-    let directives = db::get_ng_entities(conn, project_id, NgKind::Directive)?;
-    let services = db::get_ng_entities(conn, project_id, NgKind::Service)?;
-    let pipes = db::get_ng_entities(conn, project_id, NgKind::Pipe)?;
-    let dialogs = db::get_ng_entities(conn, project_id, NgKind::Dialog)?;
+fn get_angular_report(conn: &Connection, sid: i64) -> Result<Value> {
+    let modules = db::get_ng_entities(conn, sid, NgKind::Module)?;
+    let components = db::get_ng_entities(conn, sid, NgKind::Component)?;
+    let directives = db::get_ng_entities(conn, sid, NgKind::Directive)?;
+    let services = db::get_ng_entities(conn, sid, NgKind::Service)?;
+    let pipes = db::get_ng_entities(conn, sid, NgKind::Pipe)?;
+    let dialogs = db::get_ng_entities(conn, sid, NgKind::Dialog)?;
 
     Ok(json!({
         "modules": modules,

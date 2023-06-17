@@ -94,6 +94,11 @@ impl FromSql for NgKind {
     }
 }
 
+pub struct Snapshot {
+    pub pid: i64,
+    pub created_on: DateTime<Utc>,
+}
+
 pub struct ProjectInfo {
     pub id: i64,
     pub name: String,
@@ -160,13 +165,13 @@ pub fn create_project(
     Ok(conn.last_insert_rowid())
 }
 
-pub fn get_project_by_id(conn: &Connection, project_id: i64) -> Result<ProjectInfo> {
+pub fn get_project_by_id(conn: &Connection, pid: i64) -> Result<ProjectInfo> {
     let project_info = conn.query_row(
-        "SELECT name, version, created_on, origin FROM projects WHERE OID=:project_id",
-        params![project_id],
+        "SELECT name, version, created_on, origin FROM projects WHERE OID=:pid",
+        params![pid],
         |row| {
             Ok(ProjectInfo {
-                id: project_id,
+                id: pid,
                 name: row.get(0)?,
                 version: row.get(1)?,
                 created_on: row.get(2)?,
@@ -177,93 +182,104 @@ pub fn get_project_by_id(conn: &Connection, project_id: i64) -> Result<ProjectIn
     Ok(project_info)
 }
 
-pub fn create_ng_version(conn: &Connection, project_id: i64, version: &str) -> Result<i64> {
+pub fn get_project_by_snapshot(conn: &Connection, sid: i64) -> Result<ProjectInfo> {
+    let project_info = conn.query_row(
+        "SELECT p.OID, p.name, p.version, p.created_on, p.origin FROM snapshots s JOIN projects p ON p.OID = s.pid WHERE s.OID=:sid",
+        params![sid],
+        |row| {
+            Ok(ProjectInfo {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                version: row.get(2)?,
+                created_on: row.get(3)?,
+                origin: row.get(4)?,
+            })
+        },
+    )?;
+    Ok(project_info)
+}
+
+pub fn create_snapshot(conn: &Connection, pid: i64) -> Result<i64> {
     conn.execute(
-        "INSERT INTO ng_version (project_id, version) VALUES (?1, ?2)",
-        params![project_id, version],
+        "INSERT INTO snapshots (pid, created_on) VALUES (?1, ?2)",
+        params![pid, Utc::now()],
     )?;
     Ok(conn.last_insert_rowid())
 }
 
-pub fn get_ng_version(conn: &Connection, project_id: i64) -> rusqlite::Result<String> {
+pub fn create_ng_version(conn: &Connection, sid: i64, version: &str) -> Result<i64> {
+    conn.execute(
+        "INSERT INTO ng_version (sid, version) VALUES (?1, ?2)",
+        params![sid, version],
+    )?;
+    Ok(conn.last_insert_rowid())
+}
+
+pub fn get_ng_version(conn: &Connection, sid: i64) -> rusqlite::Result<String> {
     conn.query_row(
-        "SELECT version from ng_version WHERE project_id=:project_id",
-        params![project_id],
+        "SELECT version from ng_version WHERE sid=:sid",
+        params![sid],
         |row| row.get(0),
     )
 }
 
 pub fn create_warning(
     conn: &Connection,
-    project_id: i64,
+    sid: i64,
     path: &str,
     message: &str,
     url: &Option<String>,
 ) -> Result<i64> {
     conn.execute(
-        "INSERT INTO warnings (project_id, path, message, url) VALUES (?1, ?2, ?3, ?4)",
-        params![project_id, path, message, url],
+        "INSERT INTO warnings (sid, path, message, url) VALUES (?1, ?2, ?3, ?4)",
+        params![sid, path, message, url],
     )?;
 
     Ok(conn.last_insert_rowid())
 }
 
-// pub fn create_ng_module(
-//     conn: &Connection,
-//     project_id: i64,
-//     path: &str,
-//     url: &Option<String>,
-// ) -> Result<i64> {
-//     conn.execute(
-//         "INSERT INTO ng_modules (project_id, path, url) VALUES (?1, ?2, ?3)",
-//         params![project_id, path, url],
-//     )?;
-//
-//     Ok(conn.last_insert_rowid())
-// }
-
 pub fn create_ng_entity(
     conn: &Connection,
-    project_id: i64,
+    sid: i64,
     kind: NgKind,
     path: &str,
     url: &Option<String>,
     standalone: bool,
 ) -> Result<i64> {
     conn.execute(
-        "INSERT INTO ng_entities (project_id, kind, path, url, standalone) VALUES (?1, ?2, ?3, ?4, ?5)",
-        params![project_id, kind, path, url, standalone],
+        "INSERT INTO ng_entities (sid, kind, path, url, standalone) VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![sid, kind, path, url, standalone],
     )?;
     Ok(conn.last_insert_rowid())
 }
 
 pub fn create_package(
     conn: &Connection,
-    project_id: i64,
+    sid: i64,
     path: &str,
     url: &Option<String>,
     package: &PackageJsonFile,
 ) -> Result<i64> {
     conn.execute(
-        "INSERT INTO packages (project_id, path, url) VALUES (?1, ?2, ?3)",
-        params![project_id, path, url],
+        "INSERT INTO packages (sid, path, url) VALUES (?1, ?2, ?3)",
+        params![sid, path, url],
     )?;
 
     let package_id = conn.last_insert_rowid();
 
     let mut stmt = conn.prepare(
-        "INSERT INTO dependencies (project_id, package_id, name, version, dev) VALUES (?1, ?2, ?3, ?4, ?5)"
+        "INSERT INTO dependencies (sid, package_id, name, version, dev) VALUES (?1, ?2, ?3, ?4, ?5)"
     )?;
 
     if let Some(data) = &package.dependencies {
         for (name, version) in data {
-            stmt.execute(params![project_id, package_id, name, version, false])?;
+            stmt.execute(params![sid, package_id, name, version, false])?;
         }
     }
 
     if let Some(data) = &package.dev_dependencies {
         for (name, version) in data {
-            stmt.execute(params![project_id, package_id, name, version, true])?;
+            stmt.execute(params![sid, package_id, name, version, true])?;
         }
     }
 
@@ -272,15 +288,15 @@ pub fn create_package(
 
 pub fn create_test(
     conn: &Connection,
-    project_id: i64,
+    sid: i64,
     path: &str,
     test_cases: Vec<String>,
     url: &Option<String>,
     kind: TestKind,
 ) -> Result<i64> {
     conn.execute(
-        "INSERT INTO tests (project_id, path, url, kind) VALUES (?1, ?2, ?3, ?4)",
-        params![project_id, path, url, kind],
+        "INSERT INTO tests (sid, path, url, kind) VALUES (?1, ?2, ?3, ?4)",
+        params![sid, path, url, kind],
     )?;
     let test_id = conn.last_insert_rowid();
     let mut stmt = conn.prepare("INSERT INTO test_cases (test_id, name) VALUES (?1, ?2)")?;
@@ -292,27 +308,21 @@ pub fn create_test(
     Ok(test_id)
 }
 
-pub fn create_file_types(
-    conn: &Connection,
-    project_id: i64,
-    types: &HashMap<String, i64>,
-) -> Result<()> {
-    let mut stmt =
-        conn.prepare("INSERT INTO file_types (project_id, name, count) VALUES (?1, ?2, ?3)")?;
+pub fn create_file_types(conn: &Connection, sid: i64, types: &HashMap<String, i64>) -> Result<()> {
+    let mut stmt = conn.prepare("INSERT INTO file_types (sid, name, count) VALUES (?1, ?2, ?3)")?;
 
     for (key, value) in types {
-        stmt.execute(params![project_id, key, value])?;
+        stmt.execute(params![sid, key, value])?;
     }
 
     Ok(())
 }
 
-pub fn get_file_types(conn: &Connection, project_id: i64) -> Result<HashMap<String, i64>> {
-    let mut stmt = conn.prepare(
-        "SELECT name, count FROM file_types WHERE project_id=:project_id ORDER BY count DESC",
-    )?;
+pub fn get_file_types(conn: &Connection, sid: i64) -> Result<HashMap<String, i64>> {
+    let mut stmt =
+        conn.prepare("SELECT name, count FROM file_types WHERE sid=:sid ORDER BY count DESC")?;
     let file_types: HashMap<String, i64> = stmt
-        .query_map(named_params! { ":project_id": project_id }, |x| {
+        .query_map(named_params! { ":sid": sid }, |x| {
             Ok((x.get(0)?, x.get(1)?))
         })?
         .flatten()
@@ -320,11 +330,10 @@ pub fn get_file_types(conn: &Connection, project_id: i64) -> Result<HashMap<Stri
     Ok(file_types)
 }
 
-pub fn get_warnings(conn: &Connection, project_id: i64) -> Result<Vec<CodeWarning>> {
-    let mut stmt =
-        conn.prepare("SELECT path, message, url FROM warnings WHERE project_id=:project_id;")?;
+pub fn get_warnings(conn: &Connection, sid: i64) -> Result<Vec<CodeWarning>> {
+    let mut stmt = conn.prepare("SELECT path, message, url FROM warnings WHERE sid=:sid;")?;
     let rows = stmt
-        .query_map(named_params! { ":project_id": project_id }, |row| {
+        .query_map(named_params! { ":sid": sid }, |row| {
             Ok(CodeWarning {
                 path: row.get(0)?,
                 message: row.get(1)?,
@@ -336,10 +345,10 @@ pub fn get_warnings(conn: &Connection, project_id: i64) -> Result<Vec<CodeWarnin
     Ok(rows)
 }
 
-pub fn get_packages(conn: &Connection, project_id: i64) -> Result<Vec<PackageFile>> {
-    let mut stmt = conn.prepare("SELECT path, url FROM packages WHERE project_id=:project_id")?;
+pub fn get_packages(conn: &Connection, sid: i64) -> Result<Vec<PackageFile>> {
+    let mut stmt = conn.prepare("SELECT path, url FROM packages WHERE sid=:sid")?;
     let rows = stmt
-        .query_map(named_params! {":project_id": project_id}, |row| {
+        .query_map(named_params! {":sid": sid}, |row| {
             Ok(PackageFile {
                 path: row.get(0)?,
                 url: row.get(1)?,
@@ -350,18 +359,18 @@ pub fn get_packages(conn: &Connection, project_id: i64) -> Result<Vec<PackageFil
     Ok(rows)
 }
 
-pub fn get_dependencies(conn: &Connection, project_id: i64) -> Result<Vec<PackageDependency>> {
+pub fn get_dependencies(conn: &Connection, sid: i64) -> Result<Vec<PackageDependency>> {
     let mut stmt = conn.prepare(
         r#"
         SELECT d.name, d.version, d.dev, p.path as package, p.url as url from dependencies d
         LEFT JOIN packages p on d.package_id = p.OID
-        WHERE d.project_id=:project_id
+        WHERE d.sid=:sid
         ORDER BY d.name
         "#,
     )?;
 
     let rows = stmt
-        .query_map(named_params! {":project_id": project_id}, |row| {
+        .query_map(named_params! {":sid": sid}, |row| {
             let name: String = row.get(0)?;
             let npm_url = format!("https://www.npmjs.com/package/{name}");
 
@@ -379,46 +388,40 @@ pub fn get_dependencies(conn: &Connection, project_id: i64) -> Result<Vec<Packag
     Ok(rows)
 }
 
-pub fn get_tests(conn: &Connection, project_id: i64, kind: TestKind) -> Result<Vec<TestEntry>> {
+pub fn get_tests(conn: &Connection, sid: i64, kind: TestKind) -> Result<Vec<TestEntry>> {
     let mut stmt = conn.prepare(
         r#"
         SELECT t.path, COUNT(DISTINCT tc.name) as cases, t.url FROM tests t
           LEFT JOIN test_cases tc on t.OID = tc.test_id
-        WHERE t.project_id=:project_id AND t.kind=:kind
+        WHERE t.sid=:sid AND t.kind=:kind
         GROUP BY t.path
     "#,
     )?;
 
     let rows = stmt
-        .query_map(
-            named_params! {":project_id": project_id, ":kind": kind},
-            |row| {
-                Ok(TestEntry {
-                    path: row.get(0)?,
-                    cases: row.get(1)?,
-                    url: row.get(2)?,
-                })
-            },
-        )?
+        .query_map(named_params! {":sid": sid, ":kind": kind}, |row| {
+            Ok(TestEntry {
+                path: row.get(0)?,
+                cases: row.get(1)?,
+                url: row.get(2)?,
+            })
+        })?
         .filter_map(|entry| entry.ok())
         .collect();
     Ok(rows)
 }
 
-pub fn get_ng_entities(conn: &Connection, project_id: i64, kind: NgKind) -> Result<Vec<NgEntity>> {
+pub fn get_ng_entities(conn: &Connection, sid: i64, kind: NgKind) -> Result<Vec<NgEntity>> {
     let mut stmt = conn
-        .prepare("SELECT path, url, standalone FROM ng_entities WHERE project_id=:project_id AND kind=:kind;")?;
+        .prepare("SELECT path, url, standalone FROM ng_entities WHERE sid=:sid AND kind=:kind;")?;
     let rows = stmt
-        .query_map(
-            named_params! { ":project_id": project_id, ":kind": kind },
-            |row| {
-                Ok(NgEntity {
-                    path: row.get(0)?,
-                    url: row.get(1)?,
-                    standalone: row.get(2)?,
-                })
-            },
-        )?
+        .query_map(named_params! { ":sid": sid, ":kind": kind }, |row| {
+            Ok(NgEntity {
+                path: row.get(0)?,
+                url: row.get(1)?,
+                standalone: row.get(2)?,
+            })
+        })?
         .filter_map(|entry| entry.ok())
         .collect();
     Ok(rows)

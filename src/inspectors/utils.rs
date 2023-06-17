@@ -19,7 +19,7 @@ pub mod test_utils {
         let parent = file.parent().unwrap();
 
         FileInspectorOptions {
-            project_id: 0,
+            sid: 0,
             path: file.path().to_path_buf(),
             relative_path: file
                 .path()

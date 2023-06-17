@@ -42,12 +42,12 @@ impl FileInspector for TestInspector {
 
         if !test_cases.is_empty() {
             let path = &opts.relative_path;
-            let project_id = opts.project_id;
+            let sid = opts.sid;
 
             if path.ends_with(".spec.ts") {
-                db::create_test(conn, project_id, path, test_cases, url, TestKind::Unit)?;
+                db::create_test(conn, sid, path, test_cases, url, TestKind::Unit)?;
             } else if path.ends_with(".test.ts") || path.ends_with(".e2e.ts") {
-                db::create_test(conn, project_id, path, test_cases, url, TestKind::EndToEnd)?;
+                db::create_test(conn, sid, path, test_cases, url, TestKind::EndToEnd)?;
             }
         }
 
@@ -116,7 +116,7 @@ mod tests {
     /*
     fn parses_unit_tests() -> Result<(), Box<dyn Error>> {
         let conn = Connection::open_in_memory()?;
-        let project_id = 0;
+        let sid = 0;
         let file = NamedTempFile::new("tests.e2e.ts")?;
         let content = r#"
             describe('test suite', () => {
@@ -128,8 +128,8 @@ mod tests {
 
         let mut inspector = TestInspector::new();
 
-        inspector.inspect_file(&conn, &project_id, &options_from_file(&file))?;
-        // inspector.finalize(&conn, &project_id, &mut map)?;
+        inspector.inspect_file(&conn, sid, &options_from_file(&file))?;
+        // inspector.finalize(&conn, sid, &mut map)?;
 
         assert_eq!(
             Value::Object(map),
@@ -163,7 +163,7 @@ mod tests {
     /*
     fn parses_e2e_tests() -> Result<(), Box<dyn Error>> {
         let conn = Connection::open_in_memory()?;
-        let project_id = 0;
+        let sid = 0;
 
         let file = NamedTempFile::new("tests.spec.ts")?;
         let content = r#"
@@ -178,7 +178,7 @@ mod tests {
 
         let options = options_from_file(&file);
 
-        inspector.inspect_file(&conn, &project_id, &options)?;
+        inspector.inspect_file(&conn, sid, &options)?;
         // inspector.finalize(&conn, 0, &mut map)?;
 
         assert_eq!(

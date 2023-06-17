@@ -22,16 +22,17 @@ pub fn run(config: &Config) -> Result<()> {
     }
 
     let repo = get_repository_info(&config.working_dir);
-    let connection = db::create_connection(&config.output_dir)?;
+    let conn = db::create_connection(&config.output_dir)?;
     let package = PackageJsonFile::from_file(package_json_path)?;
 
     let name = package.name.unwrap();
     let version = package.version.unwrap();
-    let project_id = db::create_project(&connection, &name, &version, None)?;
+    let pid = db::create_project(&conn, &name, &version, None)?;
+    let sid = db::create_snapshot(&conn, pid)?;
 
     if let Some(dependencies) = package.dependencies {
         if let Some(version) = dependencies.get("@angular/core") {
-            db::create_ng_version(&connection, project_id, version)?;
+            db::create_ng_version(&conn, sid, version)?;
         }
     }
 
@@ -41,16 +42,9 @@ pub fn run(config: &Config) -> Result<()> {
         Box::new(AngularInspector {}),
     ];
 
-    run_inspectors(
-        config,
-        &connection,
-        project_id,
-        inspectors,
-        config.verbose,
-        &repo,
-    )?;
+    run_inspectors(config, &conn, sid, inspectors, config.verbose, &repo)?;
 
-    let data = report::generate_report(&connection, project_id, &repo)?;
+    let data = report::generate_report(&conn, sid, &repo)?;
     report::save_report(config, data)?;
 
     println!("Inspection complete");
@@ -60,7 +54,7 @@ pub fn run(config: &Config) -> Result<()> {
 fn run_inspectors(
     config: &Config,
     connection: &Connection,
-    project_id: i64,
+    sid: i64,
     inspectors: Vec<Box<dyn FileInspector>>,
     verbose: bool,
     repo: &Option<RepositoryInfo>,
@@ -96,7 +90,7 @@ fn run_inspectors(
                     };
 
                     let options = FileInspectorOptions {
-                        project_id,
+                        sid,
                         path: entry_path.to_path_buf(),
                         relative_path: rel_path.to_owned(),
                         url,
@@ -118,7 +112,7 @@ fn run_inspectors(
     }
 
     if !types.is_empty() {
-        db::create_file_types(connection, project_id, &types)?;
+        db::create_file_types(connection, sid, &types)?;
     }
 
     Ok(())

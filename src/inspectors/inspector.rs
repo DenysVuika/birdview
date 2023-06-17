@@ -11,7 +11,7 @@ pub trait FileInspector {
 }
 
 pub struct FileInspectorOptions {
-    pub project_id: i64,
+    pub sid: i64,
     pub path: PathBuf,
     pub relative_path: String,
     pub url: Option<String>,

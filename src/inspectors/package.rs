@@ -19,18 +19,18 @@ impl FileInspector for PackageJsonInspector {
             .unwrap_or_else(|_| panic!("Error reading {}", &opts.path.display()));
 
         let path = &opts.relative_path;
-        let project_id = opts.project_id;
+        let sid = opts.sid;
         let url = &opts.url;
 
         if package.name.is_none() {
-            db::create_warning(conn, project_id, path, "Missing [name] attribute", url)?;
+            db::create_warning(conn, sid, path, "Missing [name] attribute", url)?;
         }
 
         if package.version.is_none() {
-            db::create_warning(conn, project_id, path, "Missing [version] attribute", url)?;
+            db::create_warning(conn, sid, path, "Missing [version] attribute", url)?;
         }
 
-        db::create_package(conn, project_id, path, url, &package)?;
+        db::create_package(conn, sid, path, url, &package)?;
         Ok(())
     }
 }
@@ -63,7 +63,7 @@ mod tests {
     /*
     fn parses_package_dependencies() -> Result<(), Box<dyn Error>> {
         let conn = Connection::open_in_memory()?;
-        let project_id = 0;
+        let sid = 0;
         let file = NamedTempFile::new("package.json")?;
         file.write_str(
             r#"
@@ -84,8 +84,8 @@ mod tests {
 
         let options = options_from_file(&file);
 
-        inspector.inspect_file(&conn, &project_id, &options)?;
-        // inspector.finalize(&conn, &project_id, &mut map)?;
+        inspector.inspect_file(&conn, sid, &options)?;
+        // inspector.finalize(&conn, sid, &mut map)?;
 
         assert_eq!(
             Value::Object(map),

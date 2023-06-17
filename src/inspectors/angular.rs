@@ -55,32 +55,32 @@ impl FileInspector for AngularInspector {
 
     fn inspect_file(&self, conn: &Connection, opts: &FileInspectorOptions) -> Result<()> {
         let path = &opts.relative_path;
-        let project_id = opts.project_id;
+        let sid = opts.sid;
         let url = &opts.url;
         let content = opts.read_content();
 
         if path.ends_with(".module.ts") {
-            db::create_ng_entity(conn, project_id, NgKind::Module, path, url, false)?;
+            db::create_ng_entity(conn, sid, NgKind::Module, path, url, false)?;
         } else if path.ends_with(".component.ts") {
             if content.contains("@Component(") {
                 let standalone = AngularInspector::is_standalone(&content);
-                db::create_ng_entity(conn, project_id, NgKind::Component, path, url, standalone)?;
+                db::create_ng_entity(conn, sid, NgKind::Component, path, url, standalone)?;
             }
         } else if path.ends_with(".directive.ts") {
             if content.contains("@Directive(") {
                 let standalone = AngularInspector::is_standalone(&content);
-                db::create_ng_entity(conn, project_id, NgKind::Directive, path, url, standalone)?;
+                db::create_ng_entity(conn, sid, NgKind::Directive, path, url, standalone)?;
             }
         } else if path.ends_with(".service.ts") {
-            db::create_ng_entity(conn, project_id, NgKind::Service, path, url, false)?;
+            db::create_ng_entity(conn, sid, NgKind::Service, path, url, false)?;
         } else if path.ends_with(".pipe.ts") {
             if content.contains("@Pipe(") {
                 let standalone = AngularInspector::is_standalone(&content);
-                db::create_ng_entity(conn, project_id, NgKind::Pipe, path, url, standalone)?;
+                db::create_ng_entity(conn, sid, NgKind::Pipe, path, url, standalone)?;
             }
         } else if path.ends_with(".dialog.ts") && content.contains("@Component(") {
             let standalone = AngularInspector::is_standalone(&content);
-            db::create_ng_entity(conn, project_id, NgKind::Dialog, path, url, standalone)?;
+            db::create_ng_entity(conn, sid, NgKind::Dialog, path, url, standalone)?;
         }
 
         Ok(())
