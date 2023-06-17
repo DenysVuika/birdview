@@ -147,19 +147,14 @@ The format of the output is similar to the following example:
   "project": {
     "name": "<package.json>/name",
     "version": "<package.json>/version",
-
-    "modules": [
-      "packages",
-      "angular-tests",
-      "angular-entities",
-      "file-types"
-    ]
+    "created_on": "<UTC date>",
+    "origin": <URL>
   },
 
   "git": {
-    "remote": "<URL>",
+    "remote_url": "<URL>",
     "branch": "<branch>",
-    "target": "<SHA>",
+    "sha": "<SHA>",
     "authors": [
       {
         "name": "<name>",
@@ -170,77 +165,49 @@ The format of the output is similar to the following example:
   
   "warnings": [
     {
-      "module": "<module>",
       "path": "<relative/path>",
-      "message": "<message>"
+      "message": "<message>",
+      "url": <URL>
     }
   ],
   
-  "stats": {
-    "package": {
-      "files": 32,
-      "prod_deps": 145,
-      "dev_deps": 104
-    },
-
-    "tests": {
-      "unit_test": 452,
-      "unit_test_case": 5635,
-      "e2e_test": 168,
-      "e2e_test_case": 928
-    },
-
-    "angular": {
-      "module": 149,
-      "component": 415,
-      "directive": 58,
-      "service": 181,
-      "pipe": 23,
-      "dialog": 8
-    },
-
-    "types": {
-      "html": 379,
-      "scss": 536,
-      "css": 33,
-      "ts": 5125,
-      "js": 301,
-      "md": 497,
-      "json": 548
-    }
-  },
-
   "angular": {
     "framework": "<angular version>",
     "modules": [
       {
-        "path": "<workspace>/<path>.module.ts"
+        "path": "<workspace>/<path>.module.ts",
+        "url": "<URL>"
       }
     ],
     "components": [
       {
         "path": "<workspace>/<path>.component.ts",
-        "standalone": false
+        "standalone": false,
+        "url": "<URL>"
       }
     ],
     "directives": [
       {
-        "path": "<workspace>/<path>.directive.ts"
+        "path": "<workspace>/<path>.directive.ts",
+        "url": "<URL>"
       }
     ],
     "services": [
       {
-        "path": "<workspace>/<path>.service.ts"
+        "path": "<workspace>/<path>.service.ts",
+        "url": "<URL>"
       }
     ],
     "pipes": [
       {
-        "path": "<workspace>/<path>.pipe.ts"
+        "path": "<workspace>/<path>.pipe.ts",
+        "url": "<URL>"
       }
     ],
     "dialogs": [
       {
-        "path": "<workspace>/<path>.dialog.ts"
+        "path": "<workspace>/<path>.dialog.ts",
+        "url": "<URL>"
       }
     ]
   },
@@ -248,39 +215,45 @@ The format of the output is similar to the following example:
   "unit_tests": [
     {
       "path": "<workspace>/<path>.spec.ts",
-      "cases": [
-        "case name 1",
-        "case name 2"
-      ]
+      "cases": 1,
+      "url": "<URL>"
     }
   ],
   
   "e2e_tests": [
     {
       "path": "<workspace>/<path>.e2e.ts",
-      "cases": [
-        "case name 1",
-        "case name 2"
-      ]
+      "cases": 1,
+      "url": "<URL>"
     }
   ],
   
   "packages": [
     {
       "path": "<workspace>/<path>/package.json",
-      "dependencies": [
-        {
-          "name": "tslib",
-          "version": "^2.0.0",
-          "dev": false
-        },
-        {
-          "name": "typescript",
-          "version": "4.7.4",
-          "dev": true
-        }
-      ]
+      "url": "<URL>"
+    }
+  ],
+
+  "dependencies": [
+    {
+      "name": "typescript",
+      "version": "4.7.4",
+      "dev": true,
+      "npm_url": "<URL>",
+      "package": "<relative/path>",
+      "url": "<URL>"
     }
   ]
+
+  "types": {
+    "html": 379,
+    "scss": 536,
+    "css": 33,
+    "ts": 5125,
+    "js": 301,
+    "md": 497,
+    "json": 548
+  }
 }
 ```
