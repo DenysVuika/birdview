@@ -1,3 +1,4 @@
+use crate::git::RepositoryInfo;
 use crate::models::PackageJsonFile;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
@@ -97,6 +98,8 @@ impl FromSql for NgKind {
 pub struct Snapshot {
     pub pid: i64,
     pub created_on: DateTime<Utc>,
+    pub branch: Option<String>,
+    pub sha: Option<String>,
 }
 
 pub struct ProjectInfo {
@@ -156,7 +159,7 @@ pub fn create_project(
     conn: &Connection,
     name: &String,
     version: &String,
-    origin: Option<String>,
+    origin: Option<&String>,
 ) -> Result<i64> {
     conn.execute(
         "INSERT INTO projects (name, version, created_on, origin) VALUES (?1, ?2, ?3, ?4)",
@@ -165,17 +168,17 @@ pub fn create_project(
     Ok(conn.last_insert_rowid())
 }
 
-pub fn get_project_by_id(conn: &Connection, pid: i64) -> Result<ProjectInfo> {
+pub fn get_project_by_name(conn: &Connection, name: &str) -> Result<ProjectInfo> {
     let project_info = conn.query_row(
-        "SELECT name, version, created_on, origin FROM projects WHERE OID=:pid",
-        params![pid],
+        "SELECT OID, name, version, created_on, origin FROM projects WHERE name=:name",
+        params![name],
         |row| {
             Ok(ProjectInfo {
-                id: pid,
-                name: row.get(0)?,
-                version: row.get(1)?,
-                created_on: row.get(2)?,
-                origin: row.get(3)?,
+                id: row.get(0)?,
+                name: row.get(1)?,
+                version: row.get(2)?,
+                created_on: row.get(3)?,
+                origin: row.get(4)?,
             })
         },
     )?;
@@ -199,12 +202,30 @@ pub fn get_project_by_snapshot(conn: &Connection, sid: i64) -> Result<ProjectInf
     Ok(project_info)
 }
 
-pub fn create_snapshot(conn: &Connection, pid: i64) -> Result<i64> {
+pub fn create_snapshot(conn: &Connection, pid: i64, repo: &Option<RepositoryInfo>) -> Result<i64> {
+    let branch = repo.as_ref().map(|value| &value.branch);
+    let sha = repo.as_ref().map(|value| &value.sha);
+
     conn.execute(
-        "INSERT INTO snapshots (pid, created_on) VALUES (?1, ?2)",
-        params![pid, Utc::now()],
+        "INSERT INTO snapshots (pid, created_on, branch, sha) VALUES (?1, ?2, ?3, ?4)",
+        params![pid, Utc::now(), branch, sha],
     )?;
     Ok(conn.last_insert_rowid())
+}
+
+pub fn get_snapshot(conn: &Connection, sid: i64) -> rusqlite::Result<Snapshot> {
+    conn.query_row(
+        "SELECT pid, created_on, branch, sha from snapshots WHERE OID=:oid",
+        named_params! {":oid": sid },
+        |row| {
+            Ok(Snapshot {
+                pid: row.get(0)?,
+                created_on: row.get(1)?,
+                branch: row.get(2)?,
+                sha: row.get(3)?,
+            })
+        },
+    )
 }
 
 pub fn create_ng_version(conn: &Connection, sid: i64, version: &str) -> Result<i64> {

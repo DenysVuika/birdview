@@ -441,14 +441,13 @@
 
             setupChart() {
                 const ctx = document.getElementById('git-top-contributors');
-                const git = this.props.data;
+                const authors = (this.props.authors || []).slice(0, 20);
 
                 const existing = Chart.getChart('git-top-contributors');
                 if (existing) {
                     existing.destroy();
                 }
 
-                const authors = git.authors.slice(0, 20);
                 const chart_labels = authors.map(entry => entry.name);
                 const chart_data = authors.map(entry => entry.commits);
 
@@ -472,7 +471,7 @@
                 });
             }
 
-            render({ data }, { activeTab }) {
+            render({ project, authors }, { activeTab }) {
                 setTimeout(() => {
                     if (activeTab === 1) {
                         this.setupChart();
@@ -495,9 +494,8 @@
 
                         <div style="max-height: 500px; overflow-y: scroll">
                             ${activeTab === 0 && html`
-                                <${LinkRow} caption="Remote: ${data.remote_url}" url="${data.remote_url}"/>
-                                <${LinkRow} caption="Branch: ${data.branch}"/>
-                                <${LinkRow} caption="Head: ${data.sha}"/>
+                                <${LinkRow} caption="Remote: ${project.origin}" url="${project.origin}"/>
+                                <${LinkRow} caption="Branch: ${project.branch}"/>
                             `}
                             ${activeTab === 1 && html`
                                 <div style="max-height: 400px; padding: 12px">
@@ -505,7 +503,7 @@
                                 </div>
                             `}
                             ${activeTab === 2 && html`
-                                ${data.authors.map(author => html`
+                                ${authors.map(author => html`
                                     <${LinkRow} caption="${author.name} (${author.commits} commits)"/>
                                 `)}
                             `}
@@ -534,7 +532,7 @@
         }
 
         function App({ data }) {
-            const hasGit = !!data.git;
+            const hasAuthors = !!data.authors;
             const hasPackages = !!(data.packages && data.packages.length > 0);
             const hasAngular = !!data.angular;
             const hasTests = !!data.unit_tests || !!data.e2e_tests;
@@ -544,7 +542,7 @@
                 <main>
                     <${Header} data=${data}></Header>
                     <section class="section">
-                        ${hasGit && html`<${GitReport} data=${data.git}/>`}
+                        ${hasAuthors && html`<${GitReport} project=${data.project} authors=${data.authors}/>`}
                         ${hasPackages && html`<${Packages} data=${data}/>`}
                         ${hasAngular && html`<${Angular} data=${data.angular} version="${data.angular_version}"/>`}
                         ${hasTests && html`<${Tests} data=${data}/>`}

@@ -148,21 +148,18 @@ The format of the output is similar to the following example:
     "name": "<package.json>/name",
     "version": "<package.json>/version",
     "created_on": "<UTC date>",
-    "origin": "<URL>"
+    "origin": "<URL>",
+    "branch": "<branch>",
+    "sha": "<SHA>"
   },
 
-  "git": {
-    "remote_url": "<URL>",
-    "branch": "<branch>",
-    "sha": "<SHA>",
-    "authors": [
-      {
-        "name": "<name>",
-        "commits": 1
-      }
-    ]
-  },
-  
+  "authors": [
+    {
+      "name": "<name>",
+      "commits": 1
+    }
+  ],
+
   "warnings": [
     {
       "path": "<relative/path>",

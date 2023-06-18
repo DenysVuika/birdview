@@ -15,13 +15,15 @@ pub fn generate_report(
     repo: &Option<RepositoryInfo>,
 ) -> Result<Map<String, Value>> {
     let mut output = Map::new();
+    let snapshot = db::get_snapshot(conn, sid)?;
     let project = db::get_project_by_snapshot(conn, sid)?;
 
     let ng_version = db::get_ng_version(conn, sid)?;
     output.insert("angular_version".to_owned(), json!(ng_version));
 
     if repo.is_some() {
-        output.insert("git".to_owned(), json!(repo));
+        let authors = &repo.as_ref().unwrap().authors;
+        output.insert("authors".to_owned(), json!(authors));
     }
 
     output.insert(
@@ -29,8 +31,10 @@ pub fn generate_report(
         json!({
             "name": project.name,
             "version": project.version,
-            "created_on": project.created_on,
-            "origin": project.origin
+            "created_on": snapshot.created_on,
+            "origin": project.origin,
+            "branch": snapshot.branch,
+            "sha": snapshot.sha
         }),
     );
 

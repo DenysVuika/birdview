@@ -27,8 +27,20 @@ pub fn run(config: &Config) -> Result<()> {
 
     let name = package.name.unwrap();
     let version = package.version.unwrap();
-    let pid = db::create_project(&conn, &name, &version, None)?;
-    let sid = db::create_snapshot(&conn, pid)?;
+
+    let pid = match db::get_project_by_name(&conn, &name) {
+        Ok(project) => {
+            println!("Found the project. Creating new snapshot.");
+            project.id
+        }
+        Err(_) => {
+            println!("No project found. Creating a new one.");
+            let origin = repo.as_ref().map(|value| &value.remote_url);
+            db::create_project(&conn, &name, &version, origin)?
+        }
+    };
+
+    let sid = db::create_snapshot(&conn, pid, &repo)?;
 
     if let Some(dependencies) = package.dependencies {
         if let Some(version) = dependencies.get("@angular/core") {
