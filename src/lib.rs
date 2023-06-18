@@ -34,12 +34,18 @@ pub fn run(config: &Config) -> Result<()> {
             println!("Found the project `{}`", &name);
             println!("Verifying snapshots...");
 
-            if db::has_snapshot(&conn, &repo.sha) {
+            if let Some(snapshot) = db::get_snapshot_by_sha(&conn, &repo.sha) {
                 println!(
                     "Snapshot for branch `{}` ({}) is already created.",
                     &repo.branch, &repo.sha
                 );
-                process::exit(1);
+
+                println!("Generating report");
+                let data = report::generate_report(&conn, snapshot.oid)?;
+                report::save_report(config, data)?;
+
+                println!("Report complete.");
+                process::exit(0);
             }
 
             project.id

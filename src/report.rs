@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 
 pub fn generate_report(conn: &Connection, sid: i64) -> Result<Map<String, Value>> {
     let mut output = Map::new();
-    let snapshot = db::get_snapshot(conn, sid)?;
+    let snapshot = db::get_snapshot_by_id(conn, sid)?;
     let project = db::get_project_by_snapshot(conn, sid)?;
 
     output.insert(

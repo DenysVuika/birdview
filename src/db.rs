@@ -96,6 +96,7 @@ impl FromSql for NgKind {
 }
 
 pub struct Snapshot {
+    pub oid: i64,
     pub pid: i64,
     pub created_on: DateTime<Utc>,
     pub branch: Option<String>,
@@ -213,12 +214,13 @@ pub fn create_snapshot(conn: &Connection, pid: i64, repo: &RepositoryInfo) -> Re
     Ok(conn.last_insert_rowid())
 }
 
-pub fn get_snapshot(conn: &Connection, sid: i64) -> rusqlite::Result<Snapshot> {
+pub fn get_snapshot_by_id(conn: &Connection, oid: i64) -> rusqlite::Result<Snapshot> {
     conn.query_row(
         "SELECT pid, created_on, branch, sha from snapshots WHERE OID=:oid",
-        named_params! {":oid": sid },
+        named_params! {":oid": oid },
         |row| {
             Ok(Snapshot {
+                oid: oid,
                 pid: row.get(0)?,
                 created_on: row.get(1)?,
                 branch: row.get(2)?,
@@ -226,6 +228,30 @@ pub fn get_snapshot(conn: &Connection, sid: i64) -> rusqlite::Result<Snapshot> {
             })
         },
     )
+}
+
+pub fn get_snapshot_by_sha(conn: &Connection, sha: &str) -> Option<Snapshot> {
+    let result = conn.query_row(
+        "SELECT OID, pid, created_on, branch, sha from snapshots WHERE sha=:sha",
+        named_params! {":sha": sha },
+        |row| {
+            Ok(Snapshot {
+                oid: row.get(0)?,
+                pid: row.get(1)?,
+                created_on: row.get(2)?,
+                branch: row.get(3)?,
+                sha: row.get(4)?,
+            })
+        },
+    );
+
+    match result {
+        Ok(snapshot) => Some(snapshot),
+        Err(err) => {
+            println!("Error {}", err);
+            None
+        }
+    }
 }
 
 pub fn has_snapshot(conn: &Connection, sha: &str) -> bool {
