@@ -1,7 +1,6 @@
 use crate::config::{Config, OutputFormat};
 use crate::db;
 use crate::db::{NgKind, TestKind};
-use crate::git::RepositoryInfo;
 use anyhow::Result;
 use rusqlite::Connection;
 use serde_json::{json, Map, Value};
@@ -9,22 +8,10 @@ use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-pub fn generate_report(
-    conn: &Connection,
-    sid: i64,
-    repo: &Option<RepositoryInfo>,
-) -> Result<Map<String, Value>> {
+pub fn generate_report(conn: &Connection, sid: i64) -> Result<Map<String, Value>> {
     let mut output = Map::new();
     let snapshot = db::get_snapshot(conn, sid)?;
     let project = db::get_project_by_snapshot(conn, sid)?;
-
-    let ng_version = db::get_ng_version(conn, sid)?;
-    output.insert("angular_version".to_owned(), json!(ng_version));
-
-    if repo.is_some() {
-        let authors = &repo.as_ref().unwrap().authors;
-        output.insert("authors".to_owned(), json!(authors));
-    }
 
     output.insert(
         "project".to_owned(),
@@ -37,6 +24,12 @@ pub fn generate_report(
             "sha": snapshot.sha
         }),
     );
+
+    let ng_version = db::get_ng_version(conn, sid)?;
+    output.insert("angular_version".to_owned(), json!(ng_version));
+
+    let authors = db::get_authors(conn, sid)?;
+    output.insert("authors".to_owned(), json!(authors));
 
     let warnings = db::get_warnings(conn, sid).unwrap_or(vec![]);
     output.insert("warnings".to_owned(), json!(warnings));

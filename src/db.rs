@@ -1,4 +1,4 @@
-use crate::git::RepositoryInfo;
+use crate::git::{AuthorInfo, RepositoryInfo};
 use crate::models::PackageJsonFile;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
@@ -305,6 +305,29 @@ pub fn create_package(
     }
 
     Ok(package_id)
+}
+
+pub fn create_authors(conn: &Connection, sid: i64, authors: &Vec<AuthorInfo>) -> Result<()> {
+    let mut stmt = conn.prepare("INSERT INTO authors (sid, name, commits) VALUES (?1, ?2, ?3)")?;
+
+    for author in authors {
+        stmt.execute(params![sid, author.name, author.commits])?;
+    }
+    Ok(())
+}
+
+pub fn get_authors(conn: &Connection, sid: i64) -> Result<Vec<AuthorInfo>> {
+    let mut stmt = conn.prepare("SELECT name, commits FROM authors WHERE sid=:sid;")?;
+    let rows = stmt
+        .query_map(named_params! { ":sid": sid }, |row| {
+            Ok(AuthorInfo {
+                name: row.get(0)?,
+                commits: row.get(1)?,
+            })
+        })?
+        .filter_map(|entry| entry.ok())
+        .collect();
+    Ok(rows)
 }
 
 pub fn create_test(

@@ -42,6 +42,11 @@ pub fn run(config: &Config) -> Result<()> {
 
     let sid = db::create_snapshot(&conn, pid, &repo)?;
 
+    if repo.is_some() {
+        let authors = repo.as_ref().map(|value| &value.authors);
+        db::create_authors(&conn, sid, authors.unwrap())?;
+    }
+
     if let Some(dependencies) = package.dependencies {
         if let Some(version) = dependencies.get("@angular/core") {
             db::create_ng_version(&conn, sid, version)?;
@@ -56,7 +61,7 @@ pub fn run(config: &Config) -> Result<()> {
 
     run_inspectors(config, &conn, sid, inspectors, config.verbose, &repo)?;
 
-    let data = report::generate_report(&conn, sid, &repo)?;
+    let data = report::generate_report(&conn, sid)?;
     report::save_report(config, data)?;
 
     println!("Inspection complete");
