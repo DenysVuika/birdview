@@ -41,8 +41,7 @@ pub fn run(config: &Config) -> Result<()> {
                 );
 
                 println!("Generating report");
-                let data = report::generate_report(&conn, snapshot.oid)?;
-                report::save_report(config, data)?;
+                create_report(&conn, snapshot.oid, config)?;
 
                 println!("Report complete.");
                 process::exit(0);
@@ -78,8 +77,7 @@ pub fn run(config: &Config) -> Result<()> {
 
     run_inspectors(config, &conn, sid, inspectors, config.verbose, &repo)?;
 
-    let data = report::generate_report(&conn, sid)?;
-    report::save_report(config, data)?;
+    create_report(&conn, sid, config)?;
 
     println!("Inspection complete");
     Ok(())
@@ -117,16 +115,6 @@ fn run_inspectors(
                     let target = &repo.sha;
                     let url = Some(format!("{remote}/blob/{target}/{rel_path}"));
 
-                    // let url = match &repo {
-                    //     None => None,
-                    //     Some(repo) => {
-                    //         let remote = &repo.remote_url;
-                    //         let target = &repo.sha;
-                    //         let result = format!("{remote}/blob/{target}/{rel_path}");
-                    //         Some(result)
-                    //     }
-                    // };
-
                     let options = FileInspectorOptions {
                         sid,
                         path: entry_path.to_path_buf(),
@@ -153,5 +141,11 @@ fn run_inspectors(
         db::create_file_types(connection, sid, &types)?;
     }
 
+    Ok(())
+}
+
+fn create_report(conn: &Connection, sid: i64, config: &Config) -> Result<()> {
+    let data = report::generate_report(conn, sid)?;
+    report::save_report(config, data)?;
     Ok(())
 }
