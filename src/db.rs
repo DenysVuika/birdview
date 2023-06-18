@@ -220,7 +220,7 @@ pub fn get_snapshot_by_id(conn: &Connection, oid: i64) -> rusqlite::Result<Snaps
         named_params! {":oid": oid },
         |row| {
             Ok(Snapshot {
-                oid: oid,
+                oid,
                 pid: row.get(0)?,
                 created_on: row.get(1)?,
                 branch: row.get(2)?,
@@ -286,7 +286,7 @@ pub fn create_warning(
     sid: i64,
     path: &str,
     message: &str,
-    url: &Option<String>,
+    url: &str,
 ) -> Result<i64> {
     conn.execute(
         "INSERT INTO warnings (sid, path, message, url) VALUES (?1, ?2, ?3, ?4)",
@@ -301,7 +301,7 @@ pub fn create_ng_entity(
     sid: i64,
     kind: NgKind,
     path: &str,
-    url: &Option<String>,
+    url: &str,
     standalone: bool,
 ) -> Result<i64> {
     conn.execute(
@@ -315,7 +315,7 @@ pub fn create_package(
     conn: &Connection,
     sid: i64,
     path: &str,
-    url: &Option<String>,
+    url: &str,
     package: &PackageJsonFile,
 ) -> Result<i64> {
     conn.execute(
@@ -372,7 +372,7 @@ pub fn create_test(
     sid: i64,
     path: &str,
     test_cases: Vec<String>,
-    url: &Option<String>,
+    url: &str,
     kind: TestKind,
 ) -> Result<i64> {
     conn.execute(

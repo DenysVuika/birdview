@@ -113,7 +113,7 @@ fn run_inspectors(
                 if inspector.supports_file(entry_path) {
                     let remote = &repo.remote_url;
                     let target = &repo.sha;
-                    let url = Some(format!("{remote}/blob/{target}/{rel_path}"));
+                    let url = format!("{remote}/blob/{target}/{rel_path}");
 
                     let options = FileInspectorOptions {
                         sid,

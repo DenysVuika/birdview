@@ -14,7 +14,7 @@ pub struct FileInspectorOptions {
     pub sid: i64,
     pub path: PathBuf,
     pub relative_path: String,
-    pub url: Option<String>,
+    pub url: String,
 }
 
 impl FileInspectorOptions {
