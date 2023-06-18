@@ -159,7 +159,7 @@ pub fn create_project(
     conn: &Connection,
     name: &String,
     version: &String,
-    origin: Option<&String>,
+    origin: &String,
 ) -> Result<i64> {
     conn.execute(
         "INSERT INTO projects (name, version, created_on, origin) VALUES (?1, ?2, ?3, ?4)",

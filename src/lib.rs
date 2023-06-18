@@ -6,7 +6,7 @@ pub mod models;
 pub mod report;
 
 use crate::config::Config;
-use crate::git::{get_repository_info, RepositoryInfo};
+use crate::git::{get_repository_authors, get_repository_info, RepositoryInfo};
 use crate::inspectors::*;
 use crate::models::PackageJsonFile;
 use anyhow::Result;
@@ -35,15 +35,14 @@ pub fn run(config: &Config) -> Result<()> {
         }
         Err(_) => {
             println!("No project found. Creating a new one.");
-            let origin = Some(&repo.remote_url);
-            db::create_project(&conn, &name, &version, origin)?
+            db::create_project(&conn, &name, &version, &repo.remote_url)?
         }
     };
 
     let sid = db::create_snapshot(&conn, pid, &repo)?;
 
-    let authors = &repo.authors;
-    db::create_authors(&conn, sid, authors)?;
+    let authors = get_repository_authors(&config.working_dir)?;
+    db::create_authors(&conn, sid, &authors)?;
 
     if let Some(dependencies) = package.dependencies {
         if let Some(version) = dependencies.get("@angular/core") {

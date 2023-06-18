@@ -15,39 +15,7 @@ pub struct RepositoryInfo {
     pub remote_url: String,
     pub branch: String,
     pub sha: String,
-    pub authors: Vec<AuthorInfo>,
 }
-
-// pub fn get_repository_info(path: &PathBuf) -> Option<RepositoryInfo> {
-//     match Repository::open(path) {
-//         Err(..) => println!("Git repository not found"),
-//         Ok(repo) => match repo.head() {
-//             Err(..) => println!("Head not found"),
-//             Ok(head) => match repo.find_remote("origin") {
-//                 Err(..) => println!("Warning: origin remote not found"),
-//                 Ok(remote) => {
-//                     if let Some(url) = remote.url() {
-//                         let remote_url = match url.strip_suffix(".git") {
-//                             Some(value) => value,
-//                             None => url,
-//                         };
-//
-//                         let authors = get_commit_authors(&repo).unwrap();
-//
-//                         return Some(RepositoryInfo {
-//                             remote_url: remote_url.to_owned(),
-//                             branch: head.shorthand().unwrap().to_owned(),
-//                             sha: head.target().unwrap().to_string(),
-//                             authors,
-//                         });
-//                     }
-//                 }
-//             },
-//         },
-//     }
-//
-//     None
-// }
 
 pub fn get_repository_info(path: &PathBuf) -> Result<RepositoryInfo> {
     let repo = Repository::open(path)?;
@@ -60,17 +28,20 @@ pub fn get_repository_info(path: &PathBuf) -> Result<RepositoryInfo> {
         None => url,
     };
 
-    let authors = get_commit_authors(&repo).unwrap();
-
     Ok(RepositoryInfo {
         remote_url: remote_url.to_owned(),
         branch: head.shorthand().unwrap().to_owned(),
         sha: head.target().unwrap().to_string(),
-        authors,
     })
 }
 
-pub fn get_commit_authors(repo: &Repository) -> Result<Vec<AuthorInfo>> {
+pub fn get_repository_authors(path: &PathBuf) -> Result<Vec<AuthorInfo>> {
+    let repo = Repository::open(path)?;
+    let authors = get_commit_authors(&repo)?;
+    Ok(authors)
+}
+
+fn get_commit_authors(repo: &Repository) -> Result<Vec<AuthorInfo>> {
     let mut rev_walker = repo.revwalk()?;
     rev_walker.push_head()?;
 
