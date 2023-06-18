@@ -1,7 +1,7 @@
+use anyhow::Result;
 use git2::Repository;
 use serde::Serialize;
 use std::collections::HashMap;
-use std::error::Error;
 use std::path::PathBuf;
 
 #[derive(Debug, Serialize)]
@@ -18,38 +18,59 @@ pub struct RepositoryInfo {
     pub authors: Vec<AuthorInfo>,
 }
 
-pub fn get_repository_info(path: &PathBuf) -> Option<RepositoryInfo> {
-    match Repository::open(path) {
-        Err(..) => println!("Git repository not found"),
-        Ok(repo) => match repo.head() {
-            Err(..) => println!("Head not found"),
-            Ok(head) => match repo.find_remote("origin") {
-                Err(..) => println!("Warning: origin remote not found"),
-                Ok(remote) => {
-                    if let Some(url) = remote.url() {
-                        let remote_url = match url.strip_suffix(".git") {
-                            Some(value) => value,
-                            None => url,
-                        };
+// pub fn get_repository_info(path: &PathBuf) -> Option<RepositoryInfo> {
+//     match Repository::open(path) {
+//         Err(..) => println!("Git repository not found"),
+//         Ok(repo) => match repo.head() {
+//             Err(..) => println!("Head not found"),
+//             Ok(head) => match repo.find_remote("origin") {
+//                 Err(..) => println!("Warning: origin remote not found"),
+//                 Ok(remote) => {
+//                     if let Some(url) = remote.url() {
+//                         let remote_url = match url.strip_suffix(".git") {
+//                             Some(value) => value,
+//                             None => url,
+//                         };
+//
+//                         let authors = get_commit_authors(&repo).unwrap();
+//
+//                         return Some(RepositoryInfo {
+//                             remote_url: remote_url.to_owned(),
+//                             branch: head.shorthand().unwrap().to_owned(),
+//                             sha: head.target().unwrap().to_string(),
+//                             authors,
+//                         });
+//                     }
+//                 }
+//             },
+//         },
+//     }
+//
+//     None
+// }
 
-                        let authors = get_commit_authors(&repo).unwrap();
+pub fn get_repository_info(path: &PathBuf) -> Result<RepositoryInfo> {
+    let repo = Repository::open(path)?;
+    let head = repo.head()?;
+    let remote = repo.find_remote("origin")?;
+    let url = remote.url().unwrap();
 
-                        return Some(RepositoryInfo {
-                            remote_url: remote_url.to_owned(),
-                            branch: head.shorthand().unwrap().to_owned(),
-                            sha: head.target().unwrap().to_string(),
-                            authors,
-                        });
-                    }
-                }
-            },
-        },
-    }
+    let remote_url = match url.strip_suffix(".git") {
+        Some(value) => value,
+        None => url,
+    };
 
-    None
+    let authors = get_commit_authors(&repo).unwrap();
+
+    Ok(RepositoryInfo {
+        remote_url: remote_url.to_owned(),
+        branch: head.shorthand().unwrap().to_owned(),
+        sha: head.target().unwrap().to_string(),
+        authors,
+    })
 }
 
-pub fn get_commit_authors(repo: &Repository) -> Result<Vec<AuthorInfo>, Box<dyn Error>> {
+pub fn get_commit_authors(repo: &Repository) -> Result<Vec<AuthorInfo>> {
     let mut rev_walker = repo.revwalk()?;
     rev_walker.push_head()?;
 

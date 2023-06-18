@@ -21,7 +21,7 @@ pub fn run(config: &Config) -> Result<()> {
         panic!("Cannot find package.json file");
     }
 
-    let repo = get_repository_info(&config.working_dir);
+    let repo = get_repository_info(&config.working_dir)?;
     let conn = db::create_connection(&config.output_dir)?;
     let package = PackageJsonFile::from_file(package_json_path)?;
 
@@ -35,17 +35,15 @@ pub fn run(config: &Config) -> Result<()> {
         }
         Err(_) => {
             println!("No project found. Creating a new one.");
-            let origin = repo.as_ref().map(|value| &value.remote_url);
+            let origin = Some(&repo.remote_url);
             db::create_project(&conn, &name, &version, origin)?
         }
     };
 
     let sid = db::create_snapshot(&conn, pid, &repo)?;
 
-    if repo.is_some() {
-        let authors = repo.as_ref().map(|value| &value.authors);
-        db::create_authors(&conn, sid, authors.unwrap())?;
-    }
+    let authors = &repo.authors;
+    db::create_authors(&conn, sid, authors)?;
 
     if let Some(dependencies) = package.dependencies {
         if let Some(version) = dependencies.get("@angular/core") {
@@ -74,7 +72,7 @@ fn run_inspectors(
     sid: i64,
     inspectors: Vec<Box<dyn FileInspector>>,
     verbose: bool,
-    repo: &Option<RepositoryInfo>,
+    repo: &RepositoryInfo,
 ) -> Result<()> {
     let working_dir = &config.working_dir;
     let mut types: HashMap<String, i64> = HashMap::new();
@@ -96,15 +94,19 @@ fn run_inspectors(
                 }
 
                 if inspector.supports_file(entry_path) {
-                    let url = match &repo {
-                        None => None,
-                        Some(repo) => {
-                            let remote = &repo.remote_url;
-                            let target = &repo.sha;
-                            let result = format!("{remote}/blob/{target}/{rel_path}");
-                            Some(result)
-                        }
-                    };
+                    let remote = &repo.remote_url;
+                    let target = &repo.sha;
+                    let url = Some(format!("{remote}/blob/{target}/{rel_path}"));
+
+                    // let url = match &repo {
+                    //     None => None,
+                    //     Some(repo) => {
+                    //         let remote = &repo.remote_url;
+                    //         let target = &repo.sha;
+                    //         let result = format!("{remote}/blob/{target}/{rel_path}");
+                    //         Some(result)
+                    //     }
+                    // };
 
                     let options = FileInspectorOptions {
                         sid,

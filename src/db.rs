@@ -202,9 +202,9 @@ pub fn get_project_by_snapshot(conn: &Connection, sid: i64) -> Result<ProjectInf
     Ok(project_info)
 }
 
-pub fn create_snapshot(conn: &Connection, pid: i64, repo: &Option<RepositoryInfo>) -> Result<i64> {
-    let branch = repo.as_ref().map(|value| &value.branch);
-    let sha = repo.as_ref().map(|value| &value.sha);
+pub fn create_snapshot(conn: &Connection, pid: i64, repo: &RepositoryInfo) -> Result<i64> {
+    let branch = &repo.branch;
+    let sha = &repo.sha;
 
     conn.execute(
         "INSERT INTO snapshots (pid, created_on, branch, sha) VALUES (?1, ?2, ?3, ?4)",
