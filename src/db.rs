@@ -228,6 +228,15 @@ pub fn get_snapshot(conn: &Connection, sid: i64) -> rusqlite::Result<Snapshot> {
     )
 }
 
+pub fn has_snapshot(conn: &Connection, sha: &str) -> Result<bool> {
+    let count: i64 = conn.query_row(
+        "SELECT COUNT(OID) from snapshots WHERE sha=:sha",
+        named_params! {":sha": sha},
+        |row| row.get(0),
+    )?;
+    Ok(count > 0)
+}
+
 pub fn create_ng_version(conn: &Connection, sid: i64, version: &str) -> Result<i64> {
     conn.execute(
         "INSERT INTO ng_version (sid, version) VALUES (?1, ?2)",

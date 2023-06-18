@@ -14,6 +14,7 @@ use ignore::WalkBuilder;
 use rusqlite::Connection;
 use std::collections::HashMap;
 use std::ffi::OsStr;
+use std::process;
 
 pub fn run(config: &Config) -> Result<()> {
     let package_json_path = &config.working_dir.join("package.json");
@@ -30,17 +31,24 @@ pub fn run(config: &Config) -> Result<()> {
 
     let pid = match db::get_project_by_name(&conn, &name) {
         Ok(project) => {
-            println!("Found the project. Creating new snapshot.");
+            println!("Found the project: {}", &name);
+            println!("Verifying snapshots...");
+
+            if db::has_snapshot(&conn, &repo.sha).is_ok() {
+                println!("Snapshot already created.");
+                process::exit(1);
+            }
+
             project.id
         }
         Err(_) => {
-            println!("No project found. Creating a new one.");
+            println!("Creating project: {}", &name);
             db::create_project(&conn, &name, &version, &repo.remote_url)?
         }
     };
 
+    println!("Creating new snapshot");
     let sid = db::create_snapshot(&conn, pid, &repo)?;
-
     let authors = get_repository_authors(&config.working_dir)?;
     db::create_authors(&conn, sid, &authors)?;
 
