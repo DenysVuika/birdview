@@ -31,23 +31,29 @@ pub fn run(config: &Config) -> Result<()> {
 
     let pid = match db::get_project_by_name(&conn, &name) {
         Ok(project) => {
-            println!("Found the project: {}", &name);
+            println!("Found the project `{}`", &name);
             println!("Verifying snapshots...");
 
-            if db::has_snapshot(&conn, &repo.sha).is_ok() {
-                println!("Snapshot already created.");
+            if db::has_snapshot(&conn, &repo.sha) {
+                println!(
+                    "Snapshot for branch `{}` ({}) is already created.",
+                    &repo.branch, &repo.sha
+                );
                 process::exit(1);
             }
 
             project.id
         }
         Err(_) => {
-            println!("Creating project: {}", &name);
+            println!("Creating project `{}`", &name);
             db::create_project(&conn, &name, &version, &repo.remote_url)?
         }
     };
 
-    println!("Creating new snapshot");
+    println!(
+        "Creating new snapshot for branch `{}`({})",
+        &repo.branch, &repo.sha
+    );
     let sid = db::create_snapshot(&conn, pid, &repo)?;
     let authors = get_repository_authors(&config.working_dir)?;
     db::create_authors(&conn, sid, &authors)?;
