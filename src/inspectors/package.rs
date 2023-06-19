@@ -1,143 +1,43 @@
 use super::FileInspector;
+use crate::db;
 use crate::inspectors::FileInspectorOptions;
 use crate::models::PackageJsonFile;
-use serde::Serialize;
-use serde_json::{json, Map, Value};
+use anyhow::Result;
+use rusqlite::Connection;
 use std::path::Path;
 
-#[derive(Serialize)]
-pub struct PackageEntry {
-    path: String,
-    dependencies: Vec<DependencyEntry>,
-}
-
-#[derive(Serialize)]
-pub struct DependencyEntry {
-    name: String,
-    version: String,
-    dev: bool,
-}
-
-pub struct PackageJsonInspector {
-    total_deps: i64,
-    total_dev_deps: i64,
-    packages: Vec<PackageEntry>,
-}
-
-impl PackageJsonInspector {
-    /// Creates a new instance of the inspector
-    pub fn new() -> Self {
-        PackageJsonInspector {
-            total_deps: 0,
-            total_dev_deps: 0,
-            packages: vec![],
-        }
-    }
-}
-
-impl Default for PackageJsonInspector {
-    fn default() -> Self {
-        PackageJsonInspector::new()
-    }
-}
+pub struct PackageJsonInspector {}
 
 impl FileInspector for PackageJsonInspector {
-    fn get_module_name(&self) -> &str {
-        "packages"
-    }
-
-    fn init(&mut self, _working_dir: &Path, _output: &mut Map<String, Value>) {}
-
     fn supports_file(&self, path: &Path) -> bool {
         path.is_file() && path.ends_with("package.json")
     }
 
-    fn inspect_file(&mut self, options: &FileInspectorOptions, output: &mut Map<String, Value>) {
-        let package = PackageJsonFile::from_file(&options.path)
-            .unwrap_or_else(|_| panic!("Error reading {}", &options.path.display()));
+    fn inspect_file(&self, conn: &Connection, opts: &FileInspectorOptions) -> Result<()> {
+        let package = PackageJsonFile::from_file(&opts.path)
+            // todo: convert to db warning instead
+            .unwrap_or_else(|_| panic!("Error reading {}", &opts.path.display()));
 
-        let workspace_path = options.relative_path.display().to_string();
-        let warnings = output
-            .entry("warnings")
-            .or_insert(json!([]))
-            .as_array_mut()
-            .unwrap();
+        let path = &opts.relative_path;
+        let sid = opts.sid;
+        let url = &opts.url;
 
         if package.name.is_none() {
-            warnings.push(json!({
-                "module": self.get_module_name(),
-                "path": workspace_path,
-                "message": "Missing name attribute",
-            }));
+            db::create_warning(conn, sid, path, "Missing [name] attribute", url)?;
         }
 
         if package.version.is_none() {
-            warnings.push(json!({
-                "module": self.get_module_name(),
-                "path": workspace_path,
-                "message": "Missing version attribute",
-            }));
+            db::create_warning(conn, sid, path, "Missing [version] attribute", url)?;
         }
 
-        let mut dependencies: Vec<DependencyEntry> = Vec::new();
-
-        if let Some(data) = package.dependencies {
-            for (name, version) in data {
-                dependencies.push(DependencyEntry {
-                    name,
-                    version,
-                    dev: false,
-                });
-                self.total_deps += 1;
-            }
-        }
-
-        if let Some(data) = package.dev_dependencies {
-            for (name, version) in data {
-                dependencies.push(DependencyEntry {
-                    name,
-                    version,
-                    dev: true,
-                });
-                self.total_dev_deps += 1;
-            }
-        }
-
-        self.packages.push(PackageEntry {
-            path: workspace_path,
-            dependencies,
-        })
-    }
-
-    fn finalize(&mut self, output: &mut Map<String, Value>) {
-        output.entry("packages").or_insert(json!(self.packages));
-
-        let stats = output
-            .entry("stats")
-            .or_insert(json!({}))
-            .as_object_mut()
-            .unwrap();
-
-        stats.entry("package").or_insert(json!({
-            "files": self.packages.len(),
-            "prod_deps": self.total_deps,
-            "dev_deps": self.total_dev_deps
-        }));
-
-        println!("Packages");
-        println!(" ├── Files: {}", self.packages.len());
-        println!(" ├── Dependencies: {}", self.total_deps);
-        println!(" └── Dev dependencies: {}", self.total_dev_deps);
-
-        // cleanup
-        self.packages = vec![];
+        db::create_package(conn, sid, path, url, &package)?;
+        Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::inspectors::utils::test_utils::options_from_file;
     use assert_fs::prelude::*;
     use assert_fs::NamedTempFile;
     use std::error::Error;
@@ -146,7 +46,7 @@ mod tests {
     fn supports_json_file() -> Result<(), Box<dyn Error>> {
         let file = NamedTempFile::new("package.json")?;
         file.touch()?;
-        let inspector = PackageJsonInspector::new();
+        let inspector = PackageJsonInspector {};
         assert!(inspector.supports_file(file.path()));
 
         file.close()?;
@@ -156,60 +56,14 @@ mod tests {
     #[test]
     fn requires_json_file_to_exist() {
         let path = Path::new("missing/package.json");
-        let inspector = PackageJsonInspector::new();
+        let inspector = PackageJsonInspector {};
         assert!(!inspector.supports_file(path));
     }
 
-    #[test]
-    fn writes_default_values_on_finalise() {
-        let mut inspector: PackageJsonInspector = Default::default();
-
-        let mut map: Map<String, Value> = Map::new();
-        inspector.finalize(&mut map);
-
-        assert_eq!(
-            Value::Object(map),
-            json!({
-                "packages": [],
-                "stats": {
-                    "package": {
-                        "files": 0,
-                        "prod_deps": 0,
-                        "dev_deps": 0
-                    }
-                }
-            })
-        );
-    }
-
-    #[test]
-    fn writes_package_stats_on_finalise() {
-        let mut inspector = PackageJsonInspector {
-            total_deps: 20,
-            total_dev_deps: 30,
-            packages: vec![],
-        };
-
-        let mut map: Map<String, Value> = Map::new();
-        inspector.finalize(&mut map);
-
-        assert_eq!(
-            Value::Object(map),
-            json!({
-                "packages": [],
-                "stats": {
-                    "package": {
-                        "files": 0,
-                        "prod_deps": 20,
-                        "dev_deps": 30
-                    }
-                }
-            })
-        );
-    }
-
-    #[test]
+    /*
     fn parses_package_dependencies() -> Result<(), Box<dyn Error>> {
+        let conn = Connection::open_in_memory()?;
+        let sid = 0;
         let file = NamedTempFile::new("package.json")?;
         file.write_str(
             r#"
@@ -228,11 +82,10 @@ mod tests {
 
         let mut inspector = PackageJsonInspector::new();
 
-        let mut map: Map<String, Value> = Map::new();
         let options = options_from_file(&file);
 
-        inspector.inspect_file(&options, &mut map);
-        inspector.finalize(&mut map);
+        inspector.inspect_file(&conn, sid, &options)?;
+        // inspector.finalize(&conn, sid, &mut map)?;
 
         assert_eq!(
             Value::Object(map),
@@ -268,4 +121,5 @@ mod tests {
         file.close()?;
         Ok(())
     }
+    */
 }

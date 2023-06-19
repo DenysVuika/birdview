@@ -1,58 +1,16 @@
 use super::FileInspector;
-use crate::inspectors::utils::load_json_file;
+use crate::db;
+use crate::db::NgKind;
 use crate::inspectors::FileInspectorOptions;
+use anyhow::Result;
 use lazy_static::lazy_static;
 use regex::Regex;
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Map, Value};
+use rusqlite::Connection;
 use std::path::Path;
 
-#[derive(Serialize, Deserialize)]
-pub struct AngularComponent {
-    path: String,
-    standalone: bool,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct AngularPipe {
-    path: String,
-    standalone: bool,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct AngularDirective {
-    path: String,
-    standalone: bool,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct AngularEntity {
-    path: String,
-}
-
-pub struct AngularInspector {
-    framework: Option<String>,
-    modules: Vec<AngularEntity>,
-    components: Vec<AngularComponent>,
-    directives: Vec<AngularDirective>,
-    services: Vec<AngularEntity>,
-    pipes: Vec<AngularPipe>,
-    dialogs: Vec<AngularComponent>,
-}
+pub struct AngularInspector {}
 
 impl AngularInspector {
-    pub fn new() -> Self {
-        AngularInspector {
-            framework: None,
-            modules: vec![],
-            components: vec![],
-            directives: vec![],
-            services: vec![],
-            pipes: vec![],
-            dialogs: vec![],
-        }
-    }
-
     fn extract_metadata(contents: &str) -> Vec<&str> {
         // @(?:Component|Directive|Injectable)\((?P<metadata>[^\)]+)\)
         // https://rustexp.lpil.uk/
@@ -81,39 +39,9 @@ impl AngularInspector {
 
         standalone
     }
-
-    fn get_angular_version(working_dir: &Path) -> Option<String> {
-        let package_path = &working_dir.join("package.json");
-
-        if package_path.exists() {
-            let content = load_json_file(package_path);
-            if let Some(data) = content["dependencies"].as_object() {
-                if let Some(version) = data.get("@angular/core") {
-                    let result: String = version.as_str().unwrap().to_string();
-                    return Some(result);
-                }
-            }
-        }
-
-        None
-    }
-}
-
-impl Default for AngularInspector {
-    fn default() -> Self {
-        AngularInspector::new()
-    }
 }
 
 impl FileInspector for AngularInspector {
-    fn get_module_name(&self) -> &str {
-        "angular-entities"
-    }
-
-    fn init(&mut self, working_dir: &Path, _output: &mut Map<String, Value>) {
-        self.framework = AngularInspector::get_angular_version(working_dir);
-    }
-
     fn supports_file(&self, path: &Path) -> bool {
         let display_path = path.display().to_string();
         path.is_file()
@@ -125,98 +53,37 @@ impl FileInspector for AngularInspector {
                 || display_path.ends_with(".dialog.ts"))
     }
 
-    fn inspect_file(&mut self, options: &FileInspectorOptions, _output: &mut Map<String, Value>) {
-        let workspace_path = options.relative_path.display().to_string();
-        let content = options.read_content();
+    fn inspect_file(&self, conn: &Connection, opts: &FileInspectorOptions) -> Result<()> {
+        let path = &opts.relative_path;
+        let sid = opts.sid;
+        let url = &opts.url;
+        let content = opts.read_content();
 
-        if workspace_path.ends_with(".module.ts") {
-            self.modules.push(AngularEntity {
-                path: workspace_path,
-            });
-        } else if workspace_path.ends_with(".component.ts") {
+        if path.ends_with(".module.ts") {
+            db::create_ng_entity(conn, sid, NgKind::Module, path, url, false)?;
+        } else if path.ends_with(".component.ts") {
             if content.contains("@Component(") {
                 let standalone = AngularInspector::is_standalone(&content);
-                self.components.push(AngularComponent {
-                    path: workspace_path,
-                    standalone,
-                });
+                db::create_ng_entity(conn, sid, NgKind::Component, path, url, standalone)?;
             }
-        } else if workspace_path.ends_with(".directive.ts") {
+        } else if path.ends_with(".directive.ts") {
             if content.contains("@Directive(") {
                 let standalone = AngularInspector::is_standalone(&content);
-                self.directives.push(AngularDirective {
-                    path: workspace_path,
-                    standalone,
-                });
+                db::create_ng_entity(conn, sid, NgKind::Directive, path, url, standalone)?;
             }
-        } else if workspace_path.ends_with(".service.ts") {
-            self.services.push(AngularEntity {
-                path: workspace_path,
-            });
-        } else if workspace_path.ends_with(".pipe.ts") {
+        } else if path.ends_with(".service.ts") {
+            db::create_ng_entity(conn, sid, NgKind::Service, path, url, false)?;
+        } else if path.ends_with(".pipe.ts") {
             if content.contains("@Pipe(") {
                 let standalone = AngularInspector::is_standalone(&content);
-                self.pipes.push(AngularPipe {
-                    path: workspace_path,
-                    standalone,
-                });
+                db::create_ng_entity(conn, sid, NgKind::Pipe, path, url, standalone)?;
             }
-        } else if workspace_path.ends_with(".dialog.ts") && content.contains("@Component(") {
+        } else if path.ends_with(".dialog.ts") && content.contains("@Component(") {
             let standalone = AngularInspector::is_standalone(&content);
-            self.dialogs.push(AngularComponent {
-                path: workspace_path,
-                standalone,
-            });
+            db::create_ng_entity(conn, sid, NgKind::Dialog, path, url, standalone)?;
         }
-    }
 
-    fn finalize(&mut self, output: &mut Map<String, Value>) {
-        let framework = match &self.framework {
-            Some(value) => value,
-            None => "unknown",
-        };
-
-        output.entry("angular").or_insert(json!({
-            "framework": framework,
-            "modules": self.modules,
-            "components": self.components,
-            "directives": self.directives,
-            "services": self.services,
-            "pipes": self.pipes,
-            "dialogs": self.dialogs
-        }));
-
-        let stats = output
-            .entry("stats")
-            .or_insert(json!({}))
-            .as_object_mut()
-            .unwrap();
-
-        stats.entry("angular").or_insert(json!({
-            "module": self.modules.len(),
-            "component": self.components.len(),
-            "directive": self.directives.len(),
-            "service": self.services.len(),
-            "pipe": self.pipes.len(),
-            "dialog": self.dialogs.len()
-        }));
-
-        println!("Angular");
-        println!(" ├── Framework: {}", framework);
-        println!(" ├── Module: {}", self.modules.len());
-        println!(" ├── Component: {}", self.components.len());
-        println!(" ├── Directive: {}", self.directives.len());
-        println!(" ├── Service: {}", self.services.len());
-        println!(" ├── Pipe: {}", self.pipes.len());
-        println!(" └── Dialog: {}", self.dialogs.len());
-
-        // cleanup
-        self.modules = Vec::new();
-        self.components = Vec::new();
-        self.directives = Vec::new();
-        self.services = Vec::new();
-        self.pipes = Vec::new();
-        self.dialogs = Vec::new();
+        Ok(())
     }
 }
 

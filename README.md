@@ -21,44 +21,13 @@ The commands generate an HTML report and opens in the system default browser:
 
 ```shell
 cd <path-to-project>
-birdview inspect . --all --open
+birdview inspect . --open
 ```
 
 You can also use GitHub repository URLs:
 
 ```shell
-birdview inspect https://github.com/<account>/<repository> --all --open
-```
-
-In addition, you should get the console output similar to the one below:
-
-```text
-Packages
- ├── Files: 32
- ├── Dependencies: 145
- └── Dev dependencies: 104
-Unit Tests
- ├── Cases: 5635
- └── Files: 452
-E2E Tests
- ├── Cases: 928
- └── Files: 168
-Angular
- ├── Module: 149
- ├── Component: 415 (standalone: 0)
- ├── Directive: 58
- ├── Service: 181
- ├── Pipe: 23
- └── Dialog: 8
-Project Files
- ├── HTML: 379
- ├── SCSS: 536
- ├── CSS: 33
- ├── TypeScript: 5125
- ├── JavaScript: 301
- ├── JSON: 548
- └── Markdown: 497
-Inspection complete
+birdview inspect https://github.com/<account>/<repository> --open
 ```
 
 ## Code Inspection
@@ -74,26 +43,10 @@ birdview inspect --help
 - angular elements (`--angular`)
 - markdown files (`--markdown`)
 
-### Examples:
-
-```shell
-# run all available inspections
-birdview inspect --all <dir>
-
-# inspect tests
-birdview inspect --tests <dir>
-
-# inspect packages
-birdview inspect --packages <dir>
-
-# inspect tests and packages
-birdview inspect --tests --packages <dir>
-```
-
 ## Generating Reports
 
 ```shell
-birdview inspect <dir> --all --format=<html|json>
+birdview inspect <dir> --format=<html|json>
 ```
 
 You can generate reports using multiple templates:
@@ -107,7 +60,7 @@ By default, the reports are placed in the working directory.
 You can change the report output folder using the `-o` or `--output-dir` parameter.
 
 ```shell
-birdview inspect . --all --output-dir=reports --open
+birdview inspect <dir> --output-dir=reports --open
 ```
 
 > The output directory should exist prior to running the command
@@ -118,13 +71,13 @@ The HTML format is the default one.
 
 ```shell
 # generate HTML report and place to the working dir
-birdview inspect <dir> --all
+birdview inspect <dir>
 
 # generate HTML report and place it to the "reports" folder
-birdview inspect <dir> --all --output-dir=reports
+birdview inspect <dir> --output-dir=reports
 
 # generate HTML report and open with the default browser
-birdview inspect <dir> --all --open
+birdview inspect <dir> --open
 ```
 
 #### Angular
@@ -179,10 +132,10 @@ Provides insights on the file types used in the project
 
 ```shell
 # run all inspections and generate JSON report
-birdview inspect <dir> --all --format=json
+birdview inspect <dir> --format=json
 
 # generate JSON report and place it to the "reports" folder
-birdview inspect <dir> --all --format=json --output-dir=reports
+birdview inspect <dir> --format=json --output-dir=reports
 ```
 
 The format of the output is similar to the following example:
@@ -194,100 +147,64 @@ The format of the output is similar to the following example:
   "project": {
     "name": "<package.json>/name",
     "version": "<package.json>/version",
-
-    "modules": [
-      "packages",
-      "angular-tests",
-      "angular-entities",
-      "file-types"
-    ]
-  },
-
-  "git": {
-    "remote": "<URL>",
+    "created_on": "<UTC date>",
+    "origin": "<URL>",
     "branch": "<branch>",
-    "target": "<SHA>",
-    "authors": [
-      {
-        "name": "<name>",
-        "commits": 1
-      }
-    ]
+    "sha": "<SHA>"
   },
-  
+
+  "authors": [
+    {
+      "name": "<name>",
+      "commits": 1
+    }
+  ],
+
   "warnings": [
     {
-      "module": "<module>",
       "path": "<relative/path>",
-      "message": "<message>"
+      "message": "<message>",
+      "url": "<URL>"
     }
   ],
   
-  "stats": {
-    "package": {
-      "files": 32,
-      "prod_deps": 145,
-      "dev_deps": 104
-    },
-
-    "tests": {
-      "unit_test": 452,
-      "unit_test_case": 5635,
-      "e2e_test": 168,
-      "e2e_test_case": 928
-    },
-
-    "angular": {
-      "module": 149,
-      "component": 415,
-      "directive": 58,
-      "service": 181,
-      "pipe": 23,
-      "dialog": 8
-    },
-
-    "types": {
-      "html": 379,
-      "scss": 536,
-      "css": 33,
-      "ts": 5125,
-      "js": 301,
-      "md": 497,
-      "json": 548
-    }
-  },
-
   "angular": {
     "framework": "<angular version>",
     "modules": [
       {
-        "path": "<workspace>/<path>.module.ts"
+        "path": "<workspace>/<path>.module.ts",
+        "url": "<URL>"
       }
     ],
     "components": [
       {
         "path": "<workspace>/<path>.component.ts",
-        "standalone": false
+        "standalone": false,
+        "url": "<URL>"
       }
     ],
     "directives": [
       {
-        "path": "<workspace>/<path>.directive.ts"
+        "path": "<workspace>/<path>.directive.ts",
+        "url": "<URL>"
       }
     ],
     "services": [
       {
-        "path": "<workspace>/<path>.service.ts"
+        "path": "<workspace>/<path>.service.ts",
+        "url": "<URL>"
       }
     ],
     "pipes": [
       {
-        "path": "<workspace>/<path>.pipe.ts"
+        "path": "<workspace>/<path>.pipe.ts",
+        "url": "<URL>"
       }
     ],
     "dialogs": [
       {
-        "path": "<workspace>/<path>.dialog.ts"
+        "path": "<workspace>/<path>.dialog.ts",
+        "url": "<URL>"
       }
     ]
   },
@@ -295,39 +212,45 @@ The format of the output is similar to the following example:
   "unit_tests": [
     {
       "path": "<workspace>/<path>.spec.ts",
-      "cases": [
-        "case name 1",
-        "case name 2"
-      ]
+      "cases": 1,
+      "url": "<URL>"
     }
   ],
   
   "e2e_tests": [
     {
       "path": "<workspace>/<path>.e2e.ts",
-      "cases": [
-        "case name 1",
-        "case name 2"
-      ]
+      "cases": 1,
+      "url": "<URL>"
     }
   ],
   
   "packages": [
     {
       "path": "<workspace>/<path>/package.json",
-      "dependencies": [
-        {
-          "name": "tslib",
-          "version": "^2.0.0",
-          "dev": false
-        },
-        {
-          "name": "typescript",
-          "version": "4.7.4",
-          "dev": true
-        }
-      ]
+      "url": "<URL>"
     }
-  ]
+  ],
+
+  "dependencies": [
+    {
+      "name": "typescript",
+      "version": "4.7.4",
+      "dev": true,
+      "npm_url": "<URL>",
+      "package": "<relative/path>",
+      "url": "<URL>"
+    }
+  ],
+
+  "types": {
+    "html": 379,
+    "scss": 536,
+    "css": 33,
+    "ts": 5125,
+    "js": 301,
+    "md": 497,
+    "json": 548
+  }
 }
 ```

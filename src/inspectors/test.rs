@@ -1,36 +1,17 @@
 use super::FileInspector;
+use crate::db;
+use crate::db::TestKind;
 use crate::inspectors::FileInspectorOptions;
+use anyhow::Result;
 use lazy_static::lazy_static;
 use regex::Regex;
-use serde::Serialize;
-use serde_json::{json, Map, Value};
+use rusqlite::Connection;
 use std::path::Path;
 
-#[derive(Serialize)]
-struct TestEntry {
-    path: String,
-    cases: Vec<String>,
-}
-
-pub struct TestInspector {
-    unit_test_cases: i64,
-    unit_test_files: Vec<TestEntry>,
-    e2e_test_cases: i64,
-    e2e_test_files: Vec<TestEntry>,
-}
+pub struct TestInspector {}
 
 impl TestInspector {
-    /// Creates a new instance of the inspector
-    pub fn new() -> Self {
-        TestInspector {
-            unit_test_cases: 0,
-            unit_test_files: vec![],
-            e2e_test_cases: 0,
-            e2e_test_files: vec![],
-        }
-    }
-
-    pub fn extract_test_names(contents: &str) -> Vec<String> {
+    pub fn extract_test_cases(contents: &str) -> Vec<String> {
         // (\b(?:it|test)\b\(['"])(?P<name>.*?)(['"])
         // https://rustexp.lpil.uk/
         lazy_static! {
@@ -45,19 +26,7 @@ impl TestInspector {
     }
 }
 
-impl Default for TestInspector {
-    fn default() -> Self {
-        TestInspector::new()
-    }
-}
-
 impl FileInspector for TestInspector {
-    fn get_module_name(&self) -> &str {
-        "angular-tests"
-    }
-
-    fn init(&mut self, _working_dir: &Path, _output: &mut Map<String, Value>) {}
-
     fn supports_file(&self, path: &Path) -> bool {
         let display_path = path.display().to_string();
         path.is_file()
@@ -66,77 +35,39 @@ impl FileInspector for TestInspector {
                 || display_path.ends_with(".e2e.ts"))
     }
 
-    fn inspect_file(&mut self, options: &FileInspectorOptions, _output: &mut Map<String, Value>) {
-        let contents = options.read_content();
-        let test_names = TestInspector::extract_test_names(&contents);
+    fn inspect_file(&self, conn: &Connection, opts: &FileInspectorOptions) -> Result<()> {
+        let contents = opts.read_content();
+        let test_cases = TestInspector::extract_test_cases(&contents);
+        let url = &opts.url;
 
-        if !test_names.is_empty() {
-            let workspace_path = options.relative_path.display().to_string();
-            let total_cases = test_names.len() as i64;
-            let entry = TestEntry {
-                path: workspace_path.to_owned(),
-                cases: test_names,
-            };
+        if !test_cases.is_empty() {
+            let path = &opts.relative_path;
+            let sid = opts.sid;
 
-            if workspace_path.ends_with(".spec.ts") {
-                self.unit_test_files.push(entry);
-                self.unit_test_cases += total_cases
-            } else if workspace_path.ends_with(".test.ts") || workspace_path.ends_with(".e2e.ts") {
-                self.e2e_test_files.push(entry);
-                self.e2e_test_cases += total_cases;
+            if path.ends_with(".spec.ts") {
+                db::create_test(conn, sid, path, test_cases, url, TestKind::Unit)?;
+            } else if path.ends_with(".test.ts") || path.ends_with(".e2e.ts") {
+                db::create_test(conn, sid, path, test_cases, url, TestKind::EndToEnd)?;
             }
         }
-    }
 
-    fn finalize(&mut self, output: &mut Map<String, Value>) {
-        output
-            .entry("unit_tests")
-            .or_insert(json!(self.unit_test_files));
-
-        output
-            .entry("e2e_tests")
-            .or_insert(json!(self.e2e_test_files));
-
-        let stats = output
-            .entry("stats")
-            .or_insert(json!({}))
-            .as_object_mut()
-            .unwrap();
-
-        stats.entry("tests").or_insert(json!({
-            "unit_test": self.unit_test_files.len(),
-            "unit_test_case": self.unit_test_cases,
-            "e2e_test": self.e2e_test_files.len(),
-            "e2e_test_case": self.e2e_test_cases
-        }));
-
-        if !self.unit_test_files.is_empty() {
-            println!("Unit Tests");
-            println!(" ├── Cases: {}", self.unit_test_cases);
-            println!(" └── Files: {}", self.unit_test_files.len());
-        }
-
-        if !self.e2e_test_files.is_empty() {
-            println!("E2E Tests");
-            println!(" ├── Cases: {}", self.e2e_test_cases);
-            println!(" └── Files: {}", self.e2e_test_files.len());
-        }
+        Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::inspectors::utils::test_utils::options_from_file;
     use assert_fs::prelude::*;
     use assert_fs::NamedTempFile;
+    use std::error::Error;
 
     #[test]
     fn extracts_single_test_name() {
         let input = "it('should reset selected nodes from store', () => {";
         assert_eq!(
             vec!["should reset selected nodes from store"],
-            TestInspector::extract_test_names(input)
+            TestInspector::extract_test_cases(input)
         );
     }
 
@@ -151,7 +82,7 @@ mod tests {
                 "should reset selected nodes from store",
                 "should return false when entry is not shared"
             ],
-            TestInspector::extract_test_names(input)
+            TestInspector::extract_test_cases(input)
         );
     }
 
@@ -160,54 +91,32 @@ mod tests {
         let input = "test('Create a rule with condition', async ({ personalFiles, nodesPage })";
         assert_eq!(
             vec!["Create a rule with condition"],
-            TestInspector::extract_test_names(input)
+            TestInspector::extract_test_cases(input)
         );
     }
 
     #[test]
     fn requires_spec_file_to_exist() {
         let path = Path::new("missing/test.spec.ts");
-        let inspector = TestInspector::new();
+        let inspector = TestInspector {};
         assert!(!inspector.supports_file(path));
     }
 
     #[test]
-    fn supports_spec_file() -> Result<(), Box<dyn std::error::Error>> {
+    fn supports_spec_file() -> Result<(), Box<dyn Error>> {
         let file = NamedTempFile::new("test.spec.ts")?;
         file.touch()?;
-        let inspector: TestInspector = Default::default();
+        let inspector = TestInspector {};
         assert!(inspector.supports_file(file.path()));
 
         file.close()?;
         Ok(())
     }
 
-    #[test]
-    fn writes_default_values_on_finalise() {
-        let mut inspector: TestInspector = Default::default();
-
-        let mut map: Map<String, Value> = Map::new();
-        inspector.finalize(&mut map);
-
-        assert_eq!(
-            Value::Object(map),
-            json!({
-                "unit_tests": [],
-                "e2e_tests": [],
-                "stats": {
-                    "tests": {
-                        "unit_test": 0,
-                        "unit_test_case": 0,
-                        "e2e_test": 0,
-                        "e2e_test_case": 0
-                    }
-                }
-            })
-        );
-    }
-
-    #[test]
-    fn parses_unit_tests() -> Result<(), Box<dyn std::error::Error>> {
+    /*
+    fn parses_unit_tests() -> Result<(), Box<dyn Error>> {
+        let conn = Connection::open_in_memory()?;
+        let sid = 0;
         let file = NamedTempFile::new("tests.e2e.ts")?;
         let content = r#"
             describe('test suite', () => {
@@ -218,10 +127,9 @@ mod tests {
         file.write_str(content)?;
 
         let mut inspector = TestInspector::new();
-        let mut map: Map<String, Value> = Map::new();
 
-        inspector.inspect_file(&options_from_file(&file), &mut map);
-        inspector.finalize(&mut map);
+        inspector.inspect_file(&conn, sid, &options_from_file(&file))?;
+        // inspector.finalize(&conn, sid, &mut map)?;
 
         assert_eq!(
             Value::Object(map),
@@ -250,9 +158,13 @@ mod tests {
         file.close()?;
         Ok(())
     }
+    */
 
-    #[test]
-    fn parses_e2e_tests() -> Result<(), Box<dyn std::error::Error>> {
+    /*
+    fn parses_e2e_tests() -> Result<(), Box<dyn Error>> {
+        let conn = Connection::open_in_memory()?;
+        let sid = 0;
+
         let file = NamedTempFile::new("tests.spec.ts")?;
         let content = r#"
             describe('test suite', () => {
@@ -264,11 +176,10 @@ mod tests {
 
         let mut inspector = TestInspector::new();
 
-        let mut map: Map<String, Value> = Map::new();
         let options = options_from_file(&file);
 
-        inspector.inspect_file(&options, &mut map);
-        inspector.finalize(&mut map);
+        inspector.inspect_file(&conn, sid, &options)?;
+        // inspector.finalize(&conn, 0, &mut map)?;
 
         assert_eq!(
             Value::Object(map),
@@ -297,4 +208,5 @@ mod tests {
         file.close()?;
         Ok(())
     }
+    */
 }

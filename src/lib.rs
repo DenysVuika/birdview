@@ -1,130 +1,98 @@
 pub mod config;
+pub mod db;
 pub mod git;
 pub mod inspectors;
 pub mod models;
+pub mod report;
 
-use crate::config::{Config, OutputFormat};
-use crate::git::get_repository_info;
+use crate::config::Config;
+use crate::git::{get_repository_authors, get_repository_info, RepositoryInfo};
 use crate::inspectors::*;
 use crate::models::PackageJsonFile;
-use chrono::Utc;
+use anyhow::Result;
 use ignore::WalkBuilder;
-use serde_json::{json, Map, Value};
-use std::error::Error;
-use std::fs::File;
-use std::io::Write;
-use std::path::{Path, PathBuf};
+use rusqlite::Connection;
+use std::collections::HashMap;
+use std::ffi::OsStr;
+use std::process;
 
-pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
-    let mut inspectors: Vec<Box<dyn FileInspector>> = Vec::new();
-
-    if config.inspect_packages {
-        inspectors.push(Box::new(PackageJsonInspector::new()));
-    }
-    if config.inspect_tests {
-        inspectors.push(Box::new(TestInspector::new()));
-    }
-    if config.inspect_angular {
-        inspectors.push(Box::new(AngularInspector::new()));
-    }
-    if config.inspect_types {
-        inspectors.push(Box::new(FileTypeInspector::new()));
+pub fn run(config: &Config) -> Result<()> {
+    let package_json_path = &config.working_dir.join("package.json");
+    if !package_json_path.exists() {
+        panic!("Cannot find package.json file");
     }
 
-    if inspectors.is_empty() {
-        println!("No inspectors defined.\nRun 'birdview inspect --help' for available options.");
-        return Ok(());
-    }
+    let repo = get_repository_info(&config.working_dir)?;
+    let conn = db::create_connection(&config.output_dir)?;
+    let package = PackageJsonFile::from_file(package_json_path)?;
 
-    let output = inspect(&config.working_dir, inspectors, config.verbose)?;
+    let name = package.name.unwrap();
+    let version = package.version.unwrap();
 
-    let output_file_path = get_output_file(&config.output_dir, config.format).unwrap();
-    let mut output_file = File::create(&output_file_path)?;
-    let json_string = serde_json::to_string_pretty(&output)?;
+    let pid = match db::get_project_by_name(&conn, &name) {
+        Ok(project) => {
+            println!("Found the project `{}`", &name);
+            println!("Verifying snapshots...");
 
-    match &config.format {
-        OutputFormat::Html => {
-            let template = include_str!("assets/html/index.html");
-            let data = format!("window.data = {};", json_string);
-            let template = template.replace("// <birdview:DATA>", &data);
+            if let Some(snapshot) = db::get_snapshot_by_sha(&conn, &repo.sha) {
+                println!(
+                    "Snapshot for branch `{}` ({}) is already created.",
+                    &repo.branch, &repo.sha
+                );
 
-            write!(output_file, "{}", template)?;
-            println!("Saved report to: {}", &output_file_path.display());
+                println!("Generating report");
+                create_report(&conn, snapshot.oid, config)?;
 
-            if config.open {
-                webbrowser::open(&output_file_path.display().to_string())?
+                println!("Report complete.");
+                process::exit(0);
             }
+
+            project.id
         }
-        OutputFormat::Json => {
-            write!(output_file, "{}", json_string)?;
-            println!("Saved report to: {}", &output_file_path.display());
+        Err(_) => {
+            println!("Creating project `{}`", &name);
+            db::create_project(&conn, &name, &version, &repo.remote_url)?
+        }
+    };
+
+    println!(
+        "Creating new snapshot for branch `{}`({})",
+        &repo.branch, &repo.sha
+    );
+    let sid = db::create_snapshot(&conn, pid, &repo)?;
+    let authors = get_repository_authors(&config.working_dir)?;
+    db::create_authors(&conn, sid, &authors)?;
+
+    if let Some(dependencies) = package.dependencies {
+        if let Some(version) = dependencies.get("@angular/core") {
+            db::create_ng_version(&conn, sid, version)?;
         }
     }
+
+    let inspectors: Vec<Box<dyn FileInspector>> = vec![
+        Box::new(PackageJsonInspector {}),
+        Box::new(TestInspector {}),
+        Box::new(AngularInspector {}),
+    ];
+
+    run_inspectors(config, &conn, sid, inspectors, config.verbose, &repo)?;
+
+    create_report(&conn, sid, config)?;
 
     println!("Inspection complete");
     Ok(())
 }
 
-fn get_output_file(output_dir: &Path, format: OutputFormat) -> Option<PathBuf> {
-    let is_dir = output_dir.exists() && output_dir.is_dir();
-
-    if is_dir {
-        let extension = match format {
-            OutputFormat::Html => "html",
-            OutputFormat::Json => "json",
-        };
-        let now = chrono::offset::Local::now();
-        let output_file =
-            output_dir.join(format!("{}.{extension}", now.format("%Y-%m-%d_%H-%M-%S")));
-        return Some(output_file);
-    }
-
-    None
-}
-
-/// Performs the workspace analysis using the registered file inspectors
-fn inspect(
-    working_dir: &PathBuf,
+fn run_inspectors(
+    config: &Config,
+    connection: &Connection,
+    sid: i64,
     inspectors: Vec<Box<dyn FileInspector>>,
     verbose: bool,
-) -> Result<Value, Box<dyn Error>> {
-    if verbose {
-        println!("{}", working_dir.display());
-    }
-
-    let mut map = Map::new();
-
-    map.insert(
-        "report_date".to_owned(),
-        Value::String(Utc::now().to_string()),
-    );
-
-    let modules: Vec<&str> = inspectors
-        .iter()
-        .map(|inspector| inspector.get_module_name())
-        .collect();
-
-    if let Some(project) = get_project_info(working_dir, modules) {
-        map.insert("project".to_owned(), project);
-    }
-
-    if let Some(repo) = get_repository_info(working_dir) {
-        map.insert("git".to_owned(), json!(repo));
-    }
-
-    run_inspectors(working_dir, inspectors, &mut map, verbose);
-    Ok(Value::Object(map))
-}
-
-fn run_inspectors(
-    working_dir: &PathBuf,
-    mut inspectors: Vec<Box<dyn FileInspector>>,
-    map: &mut Map<String, Value>,
-    verbose: bool,
-) {
-    for inspector in inspectors.iter_mut() {
-        inspector.init(working_dir, map);
-    }
+    repo: &RepositoryInfo,
+) -> Result<()> {
+    let working_dir = &config.working_dir;
+    let mut types: HashMap<String, i64> = HashMap::new();
 
     for entry in WalkBuilder::new(working_dir)
         .build()
@@ -132,18 +100,31 @@ fn run_inspectors(
     {
         // let f_name = entry.file_name().to_string_lossy();
         let entry_path = entry.path();
+        let rel_path = entry_path.strip_prefix(working_dir)?.display().to_string();
         let mut processed = false;
 
-        let options = FileInspectorOptions {
-            working_dir: working_dir.to_path_buf(),
-            path: entry_path.to_path_buf(),
-            relative_path: entry_path.strip_prefix(working_dir).unwrap().to_path_buf(),
-        };
+        for inspector in inspectors.iter() {
+            if entry_path.is_file() {
+                if let Some(ext) = entry_path.extension().and_then(OsStr::to_str) {
+                    let entry = types.entry(ext.to_owned()).or_insert(0);
+                    *entry += 1;
+                }
 
-        for inspector in inspectors.iter_mut() {
-            if entry_path.is_file() && inspector.supports_file(entry_path) {
-                inspector.inspect_file(&options, map);
-                processed = true;
+                if inspector.supports_file(entry_path) {
+                    let remote = &repo.remote_url;
+                    let target = &repo.sha;
+                    let url = format!("{remote}/blob/{target}/{rel_path}");
+
+                    let options = FileInspectorOptions {
+                        sid,
+                        path: entry_path.to_path_buf(),
+                        relative_path: rel_path.to_owned(),
+                        url,
+                    };
+
+                    inspector.inspect_file(connection, &options)?;
+                    processed = true;
+                }
             }
         }
 
@@ -156,24 +137,15 @@ fn run_inspectors(
         }
     }
 
-    for inspector in inspectors.iter_mut() {
-        inspector.finalize(map);
+    if !types.is_empty() {
+        db::create_file_types(connection, sid, &types)?;
     }
+
+    Ok(())
 }
 
-fn get_project_info(working_dir: &Path, modules: Vec<&str>) -> Option<Value> {
-    let package_json_path = working_dir.join("package.json");
-    if package_json_path.exists() {
-        let package = PackageJsonFile::from_file(&package_json_path).unwrap();
-
-        return Some(json!({
-            "name": package.name,
-            "version": package.version,
-            "modules": modules
-        }));
-    } else {
-        println!("Warning: no package.json file found in the workspace");
-    }
-
-    None
+fn create_report(conn: &Connection, sid: i64, config: &Config) -> Result<()> {
+    let data = report::generate_report(conn, sid)?;
+    report::save_report(config, data)?;
+    Ok(())
 }

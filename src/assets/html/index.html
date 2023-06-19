@@ -23,7 +23,7 @@
                         <p class="title">
                             ${data.project.name} ${data.project.version}
                         </p>
-                        <p class="subtitle">${data.report_date}</p>
+                        <p class="subtitle">${data.project.created_on}</p>
                     </div>
                 </section>
             `;
@@ -49,9 +49,9 @@
                       <span class="tag is-info mb-0">${entry.version}</span>
                     </a>
                     <span class="pl-4">
-                        ${entry.pkg_url
-                            ? html`<a href="${entry.pkg_url}" target="_blank">${entry.pkg}</a>`
-                            : html`<span>${entry.pkg}</span>`
+                        ${entry.url
+                            ? html`<a href="${entry.url}" target="_blank">${entry.package}</a>`
+                            : html`<span>${entry.package}</span>`
                         }
                     </span>
                 </div>
@@ -79,77 +79,38 @@
 
             componentDidMount() {
                 const data = this.props.data;
-                const git = data.git;
-                const warnings = (data.warnings || [])
-                    .filter(warning => warning.module === 'packages')
-                    .map(entry => ({
-                        ...entry,
-                        url: !!git ? `${git.remote}/blob/${git.target}/${entry.path}`: ''
-                    }));
-                const packages = this.getPackages(data);
-                const dependencies = this.getDependencies(data, false);
-                const devDependencies = this.getDependencies(data, true);
+                const warnings = data.warnings || [];
+                const packages = data.packages || [];
+                const dependencies = (data.dependencies || []).filter(dep => dep.dev === false)
+                const devDependencies = (data.dependencies || []).filter(dep => dep.dev === true)
 
                 this.setState({ warnings, packages, dependencies, devDependencies });
             }
 
-            getPackages(data) {
-                const packages = data.packages || [];
-                const git = data.git;
-
-                return packages.map(entry => ({
-                    path: entry.path,
-                    url: !!git ? `${git.remote}/blob/${git.target}/${entry.path}`: ''
-                }));
-            }
-
-            getDependencies(data, dev) {
-                const git = data.git;
-                const result = [];
-
-                for (const pkg of data.packages) {
-                    if (pkg.dependencies) {
-                        for (const dep of pkg.dependencies.filter(dep => dep.dev === dev)) {
-                            result.push({
-                                name: dep.name,
-                                version: dep.version,
-                                pkg: pkg.path,
-                                pkg_url: !!git ? `${git.remote}/blob/${git.target}/${pkg.path}`: '',
-                                npm_url: `https://www.npmjs.com/package/${dep.name}`
-                            })
-                        }
-                    }
-                }
-                return result.sort((a, b) => a.name.localeCompare(b.name));
-            }
-
-
-
             render({ data }, { activeTab, warnings, packages, dependencies, devDependencies }) {
-                const pkg = data.stats.package;
                 const TabHeader = ({ index, title }) => html`
                     <a class="${ activeTab === index ? 'is-active' : null}" onClick="${() => this.setActiveTab(index)}">${title}</a>
                 `;
 
                 return html`
                     <nav class="panel is-link">
-                        <p class="panel-heading">Packages (${pkg.files})</p>
+                        <p class="panel-heading">Packages (${packages.length})</p>
 
                         <p class="panel-tabs">
                             <${TabHeader} index=${0} title="Stats"/>
                             ${warnings.length > 0 && html`
                                 <${TabHeader} index=${4} title="Warnings (${warnings.length})"/>
                             `}
-                            <${TabHeader} index=${1} title="Packages (${pkg.files})" />
-                            <${TabHeader} index=${2} title="Prod Deps (${pkg.prod_deps})" />
-                            <${TabHeader} index=${3} title="Dev Deps (${pkg.dev_deps})" />
+                            <${TabHeader} index=${1} title="Packages (${packages.length})" />
+                            <${TabHeader} index=${2} title="Prod Deps (${dependencies.length})" />
+                            <${TabHeader} index=${3} title="Dev Deps (${devDependencies.length})" />
                         </p>
 
                         <div style="max-height: 500px; overflow-y: scroll">
                             ${activeTab === 0 && html`
-                                <${LinkRow} caption="Packages: ${pkg.files}"/>
-                                <${LinkRow} caption="Product dependencies: ${pkg.prod_deps}"/>
-                                <${LinkRow} caption="Development dependencies: ${pkg.dev_deps}"/>
+                                <${LinkRow} caption="Packages: ${packages.length}"/>
+                                <${LinkRow} caption="Product dependencies: ${dependencies.length}"/>
+                                <${LinkRow} caption="Development dependencies: ${devDependencies.length}"/>
                             `}
 
                             ${activeTab === 1 && html`
@@ -215,33 +176,31 @@
 
             componentDidMount() {
                 const data = this.props.data;
-                const unitTests = this.getEntries(data, 'unit_tests');
-                const e2eTests = this.getEntries(data, 'e2e_tests');
+                const unitTests = data.unit_tests || [];
+                const e2eTests = data.e2e_tests || [];
 
-                const tests = data.stats.tests;
-                const totalCases = tests.unit_test_case + tests.e2e_test_case;
+                const unit_test_cases = unitTests
+                    .map(entry => entry.cases)
+                    .reduceRight((acc, cur) => acc + cur, 0);
+
+                const e2e_test_cases = e2eTests
+                    .map(entry => entry.cases)
+                    .reduceRight((acc, cur) => acc + cur, 0);
+
+                const totalCases = unit_test_cases + e2e_test_cases;
 
                 this.setState({
                     unitTests,
+                    unit_test_cases,
                     e2eTests,
+                    e2e_test_cases,
                     totalCases
                 });
             }
 
-            getEntries(data, key) {
-                const tests = data[key] || [];
-                const git = data.git;
-
-                return tests.map(entry => ({
-                    path: entry.path,
-                    cases: entry.cases.length,
-                    url: !!git ? `${git.remote}/blob/${git.target}/${entry.path}`: ''
-                }));
-            }
-
             setupChart() {
                 const ctx = document.getElementById('tests-chart');
-                const tests = window.data.stats.tests;
+                const { unit_test_cases, e2e_test_cases } = this.state;
 
                 const existing = Chart.getChart('tests-chart');
                 if (existing) {
@@ -255,8 +214,8 @@
                         datasets: [{
                             label: '# of cases',
                             data: [
-                                tests.unit_test_case,
-                                tests.e2e_test_case,
+                                unit_test_cases,
+                                e2e_test_cases,
                             ],
                             backgroundColor: [
                                 'rgb(255, 99, 132)',
@@ -333,18 +292,18 @@
 
             componentDidMount() {
                 const data = this.props.data;
-                const modules = this.getEntities(data, 'modules');
-                const components = this.getEntities(data, 'components');
-                const directives = this.getEntities(data, 'directives');
-                const services = this.getEntities(data, 'services');
-                const pipes = this.getEntities(data, 'pipes');
-                const dialogs = this.getEntities(data, 'dialogs');
-                this.setState({ modules, components, directives, services, pipes, dialogs });
+                this.setState({
+                    modules: data.modules || [],
+                    components: data.components || [],
+                    directives: data.directives || [],
+                    services: data.services || [],
+                    pipes: data.pipes || [],
+                    dialogs: data.dialogs || []
+                });
             }
 
             setupChart() {
                 const ctx = document.getElementById('angular-chart');
-                const angular = window.data.stats.angular;
 
                 const existing = Chart.getChart('angular-chart');
                 if (existing) {
@@ -358,12 +317,12 @@
                         datasets: [{
                             label: '# of elements',
                             data: [
-                                angular.module,
-                                angular.component,
-                                angular.directive,
-                                angular.service,
-                                angular.pipe,
-                                angular.dialog
+                                this.state.modules.length,
+                                this.state.components.length,
+                                this.state.directives.length,
+                                this.state.services.length,
+                                this.state.pipes.length,
+                                this.state.dialogs.length
                             ],
                             backgroundColor: [
                                 'rgba(255, 99, 132, 0.2)',
@@ -396,17 +355,7 @@
                 });
             }
 
-            getEntities(data, key) {
-                const entities = data.angular[key] || [];
-                const git = data.git;
-
-                return entities.map(entry => ({
-                    ...entry,
-                    url: !!git ? `${git.remote}/blob/${git.target}/${entry.path}` : ''
-                }));
-            }
-
-            render({ data }, { activeTab, modules, components, directives, services, pipes, dialogs }) {
+            render({ data, version }, { activeTab, modules, components, directives, services, pipes, dialogs }) {
                 setTimeout(() => {
                     if (activeTab === 0) {
                         this.setupChart();
@@ -416,11 +365,9 @@
                     <a class="${ activeTab === index ? 'is-active' : null}" onClick="${() => this.setActiveTab(index)}">${title}</a>
                 `;
 
-                const ngVersion = data.angular.framework;
-
                 return html`
                     <nav class="panel is-link">
-                        <p class="panel-heading">Angular (${ngVersion})</p>
+                        <p class="panel-heading">Angular (${version})</p>
 
                         <p class="panel-tabs">
                             <${TabHeader} index=${0} title="Stats" />
@@ -494,14 +441,13 @@
 
             setupChart() {
                 const ctx = document.getElementById('git-top-contributors');
-                const git = this.props.data;
+                const authors = (this.props.authors || []).slice(0, 20);
 
                 const existing = Chart.getChart('git-top-contributors');
                 if (existing) {
                     existing.destroy();
                 }
 
-                const authors = git.authors.slice(0, 20);
                 const chart_labels = authors.map(entry => entry.name);
                 const chart_data = authors.map(entry => entry.commits);
 
@@ -525,7 +471,7 @@
                 });
             }
 
-            render({ data }, { activeTab }) {
+            render({ project, authors }, { activeTab }) {
                 setTimeout(() => {
                     if (activeTab === 1) {
                         this.setupChart();
@@ -548,9 +494,8 @@
 
                         <div style="max-height: 500px; overflow-y: scroll">
                             ${activeTab === 0 && html`
-                                <${LinkRow} caption="Remote: ${data.remote}" url="${data.remote}"/>
-                                <${LinkRow} caption="Branch: ${data.branch}"/>
-                                <${LinkRow} caption="Head: ${data.target}"/>
+                                <${LinkRow} caption="Remote: ${project.origin}" url="${project.origin}"/>
+                                <${LinkRow} caption="Branch: ${project.branch}"/>
                             `}
                             ${activeTab === 1 && html`
                                 <div style="max-height: 400px; padding: 12px">
@@ -558,7 +503,7 @@
                                 </div>
                             `}
                             ${activeTab === 2 && html`
-                                ${data.authors.map(author => html`
+                                ${authors.map(author => html`
                                     <${LinkRow} caption="${author.name} (${author.commits} commits)"/>
                                 `)}
                             `}
@@ -575,7 +520,7 @@
 
             return html`
                 <nav class="panel is-link">
-                    <p class="panel-heading">Files</p>
+                    <p class="panel-heading">File Types</p>
 
                     <div style="max-height: 500px; overflow-y: scroll">
                         ${rows.map(row => html`
@@ -587,18 +532,21 @@
         }
 
         function App({ data }) {
-            const hasModule = (moduleName) => data.project.modules.includes(moduleName);
-            const hasGit = !!data.git;
+            const hasAuthors = !!data.authors;
+            const hasPackages = !!(data.packages && data.packages.length > 0);
+            const hasAngular = !!data.angular;
+            const hasTests = !!data.unit_tests || !!data.e2e_tests;
+            const hasTypes = !!data.types;
 
             return html`
                 <main>
                     <${Header} data=${data}></Header>
                     <section class="section">
-                        ${hasGit && html`<${GitReport} data=${data.git}/>`}
-                        ${hasModule('packages') && html`<${Packages} data=${data}/>`}
-                        ${hasModule('angular-entities') && html`<${Angular} data=${data}/>`}
-                        ${hasModule('angular-tests') && html`<${Tests} data=${data}/>`}
-                        ${hasModule('file-types') && html`<${FileTypes} data=${data.stats.types}></FileTypes>`}
+                        ${hasAuthors && html`<${GitReport} project=${data.project} authors=${data.authors}/>`}
+                        ${hasPackages && html`<${Packages} data=${data}/>`}
+                        ${hasAngular && html`<${Angular} data=${data.angular} version="${data.angular_version}"/>`}
+                        ${hasTests && html`<${Tests} data=${data}/>`}
+                        ${hasTypes && html`<${FileTypes} data=${data.types}></FileTypes>`}
                     </section>
                 </main>
             `;
