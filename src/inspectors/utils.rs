@@ -27,7 +27,7 @@ pub mod test_utils {
                 .unwrap()
                 .display()
                 .to_string(),
-            url: None,
+            url: "".to_owned(),
         }
     }
 }
