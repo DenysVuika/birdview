@@ -4,6 +4,7 @@ pub mod git;
 pub mod inspectors;
 pub mod models;
 pub mod report;
+pub mod server;
 
 use crate::config::Config;
 use crate::git::{get_repository_authors, get_repository_info, RepositoryInfo};

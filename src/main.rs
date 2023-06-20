@@ -1,6 +1,7 @@
 use anyhow::Result;
 use birdview::config::{Config, OutputFormat};
 use birdview::run;
+use birdview::server::run_server;
 use clap::{Parser, Subcommand};
 use git2::Repository;
 use std::path::PathBuf;
@@ -45,9 +46,17 @@ enum Commands {
         #[arg(value_enum, long, default_value_t=OutputFormat::Html)]
         format: OutputFormat,
     },
+    /// Run internal web server
+    Serve {
+        /// Open report in browser where applicable.
+        /// Supported for the output formats: html
+        #[arg(long)]
+        open: bool,
+    },
 }
 
-fn main() -> Result<()> {
+#[actix_web::main]
+async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     if let Some(config_path) = cli.config.as_deref() {
@@ -115,6 +124,11 @@ fn main() -> Result<()> {
                     process::exit(1);
                 }
             }
+        }
+        Some(Commands::Serve { open }) => {
+            run_server(*open)
+                .await
+                .unwrap_or_else(|err| println!("{:?}", err));
         }
         None => {}
     }
