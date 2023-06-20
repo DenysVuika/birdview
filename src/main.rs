@@ -48,6 +48,8 @@ enum Commands {
     },
     /// Run internal web server
     Serve {
+        /// Workspace directory
+        working_dir: String,
         /// Open report in browser where applicable.
         /// Supported for the output formats: html
         #[arg(long)]
@@ -127,8 +129,8 @@ async fn main() -> Result<()> {
                 }
             }
         }
-        Some(Commands::Serve { open }) => {
-            run_server(*open)
+        Some(Commands::Serve { working_dir, open }) => {
+            run_server(PathBuf::from(working_dir), *open)
                 .await
                 .unwrap_or_else(|err| println!("{:?}", err));
         }

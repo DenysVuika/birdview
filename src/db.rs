@@ -103,6 +103,7 @@ pub struct Snapshot {
     pub sha: Option<String>,
 }
 
+#[derive(Serialize)]
 pub struct ProjectInfo {
     pub id: i64,
     pub name: String,
@@ -167,6 +168,23 @@ pub fn create_project(
         params![name, version, Utc::now(), origin],
     )?;
     Ok(conn.last_insert_rowid())
+}
+
+pub fn get_projects(conn: &Connection) -> Result<Vec<ProjectInfo>> {
+    let mut stmt = conn.prepare("SELECT OID, name, version, created_on, origin FROM projects")?;
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(ProjectInfo {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                version: row.get(2)?,
+                created_on: row.get(3)?,
+                origin: row.get(4)?,
+            })
+        })?
+        .filter_map(|entry| entry.ok())
+        .collect();
+    Ok(rows)
 }
 
 pub fn get_project_by_name(conn: &Connection, name: &str) -> Result<ProjectInfo> {
