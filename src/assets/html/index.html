@@ -161,7 +161,8 @@
                 activeTab: 0,
                 unitTests: [],
                 e2eTests: [],
-                totalCases: 0
+                unit_test_cases: 0,
+                e2e_test_cases: 0
             };
 
             setActiveTab(index) {
@@ -175,27 +176,23 @@
             }
 
             componentDidMount() {
-                const data = this.props.data;
-                const unitTests = data.unit_tests || [];
-                const e2eTests = data.e2e_tests || [];
+                fetch(`/api/snapshots/${window.snapshotId}/unit-tests`)
+                    .then(response => response.json())
+                    .then(unitTests => {
+                        const unit_test_cases = unitTests
+                            .map(entry => entry.cases)
+                            .reduceRight((acc, cur) => acc + cur, 0);
+                        this.setState({ unit_test_cases, unitTests });
+                    });
 
-                const unit_test_cases = unitTests
-                    .map(entry => entry.cases)
-                    .reduceRight((acc, cur) => acc + cur, 0);
-
-                const e2e_test_cases = e2eTests
-                    .map(entry => entry.cases)
-                    .reduceRight((acc, cur) => acc + cur, 0);
-
-                const totalCases = unit_test_cases + e2e_test_cases;
-
-                this.setState({
-                    unitTests,
-                    unit_test_cases,
-                    e2eTests,
-                    e2e_test_cases,
-                    totalCases
-                });
+                fetch(`/api/snapshots/${window.snapshotId}/e2e-tests`)
+                    .then(response => response.json())
+                    .then(e2eTests => {
+                        const e2e_test_cases = e2eTests
+                            .map(entry => entry.cases)
+                            .reduceRight((acc, cur) => acc + cur, 0);
+                        this.setState({ e2e_test_cases, e2eTests });
+                    });
             }
 
             setupChart() {
@@ -227,7 +224,7 @@
                 });
             }
 
-            render({ data }, { activeTab, totalCases, unitTests, e2eTests }) {
+            render({ data }, { activeTab,  unit_test_cases, e2e_test_cases, unitTests, e2eTests }) {
                 setTimeout(() => {
                     if (activeTab === 0) {
                         this.setupChart();
@@ -240,7 +237,7 @@
 
                 return html`
                     <nav class="panel is-link">
-                        <p class="panel-heading">Tests (${totalCases})</p>
+                        <p class="panel-heading">Tests (${ unit_test_cases + e2e_test_cases})</p>
 
                         <p class="panel-tabs">
                             <${TabHeader} index=${0} title="Stats" />

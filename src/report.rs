@@ -1,6 +1,6 @@
 use crate::config::{Config, OutputFormat};
 use crate::db;
-use crate::db::{NgKind, TestKind};
+use crate::db::NgKind;
 use anyhow::Result;
 use rusqlite::Connection;
 use serde_json::{json, Map, Value};
@@ -54,20 +54,6 @@ pub fn generate_report(conn: &Connection, sid: i64) -> Result<Map<String, Value>
         }
         Err(err) => println!("{}", err),
     };
-
-    match db::get_tests(conn, sid, TestKind::Unit) {
-        Ok(tests) => {
-            output.entry("unit_tests").or_insert(json!(tests));
-        }
-        Err(err) => println!("{}", err),
-    }
-
-    match db::get_tests(conn, sid, TestKind::EndToEnd) {
-        Ok(tests) => {
-            output.entry("e2e_tests").or_insert(json!(tests));
-        }
-        Err(err) => println!("{}", err),
-    }
 
     match db::get_file_types(conn, sid) {
         Ok(types) => {
