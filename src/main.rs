@@ -1,5 +1,5 @@
 use anyhow::Result;
-use birdview::config::{Config, OutputFormat};
+use birdview::config::Config;
 use birdview::run;
 use birdview::server::run_server;
 use clap::{Parser, Subcommand};
@@ -41,10 +41,6 @@ enum Commands {
         /// Supported for the output formats: html
         #[arg(long)]
         open: bool,
-
-        /// The output format for the report
-        #[arg(value_enum, long, default_value_t=OutputFormat::Html)]
-        format: OutputFormat,
     },
     /// Run internal web server
     Serve {
@@ -73,7 +69,6 @@ async fn main() -> Result<()> {
             verbose,
             output_dir,
             open,
-            format,
         }) => {
             if working_dir.starts_with("https://") {
                 let repo_dir = tempdir().expect("Failed creating temporary dir");
@@ -101,7 +96,6 @@ async fn main() -> Result<()> {
                     },
                     verbose: *verbose,
                     open: *open,
-                    format: *format,
                 };
 
                 if let Err(e) = run(&config) {
@@ -120,7 +114,6 @@ async fn main() -> Result<()> {
                     },
                     verbose: *verbose,
                     open: *open,
-                    format: *format,
                 };
 
                 if let Err(e) = run(&config) {

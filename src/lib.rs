@@ -3,7 +3,6 @@ pub mod db;
 pub mod git;
 pub mod inspectors;
 pub mod models;
-pub mod report;
 pub mod server;
 
 use crate::config::Config;
@@ -37,14 +36,11 @@ pub fn run(config: &Config) -> Result<()> {
 
             if let Some(snapshot) = db::get_snapshot_by_sha(&conn, &repo.sha) {
                 println!(
-                    "Snapshot for branch `{}` ({}) is already created.",
-                    &repo.branch, &repo.sha
+                    "Snapshot {} for branch `{}` ({}) is already created.",
+                    snapshot.oid, &repo.branch, &repo.sha
                 );
 
-                println!("Generating report");
-                create_report(&conn, snapshot.oid, config)?;
-
-                println!("Report complete.");
+                // todo: run server
                 process::exit(0);
             }
 
@@ -77,8 +73,6 @@ pub fn run(config: &Config) -> Result<()> {
     ];
 
     run_inspectors(config, &conn, sid, inspectors, config.verbose, &repo)?;
-
-    create_report(&conn, sid, config)?;
 
     println!("Inspection complete");
     Ok(())
@@ -142,11 +136,5 @@ fn run_inspectors(
         db::create_file_types(connection, sid, &types)?;
     }
 
-    Ok(())
-}
-
-fn create_report(conn: &Connection, sid: i64, config: &Config) -> Result<()> {
-    let data = report::generate_report(conn, sid)?;
-    report::save_report(config, data)?;
     Ok(())
 }

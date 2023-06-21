@@ -57,7 +57,7 @@ async fn list_projects(data: web::Data<AppState>) -> Result<impl Responder> {
 }
 
 #[get("/snapshots/{id}/angular")]
-async fn get_angular(path: web::Path<(i64)>, data: web::Data<AppState>) -> Result<impl Responder> {
+async fn get_angular(path: web::Path<i64>, data: web::Data<AppState>) -> Result<impl Responder> {
     let sid = path.into_inner();
     let conn = &data.connection;
 
@@ -83,7 +83,7 @@ async fn get_angular(path: web::Path<(i64)>, data: web::Data<AppState>) -> Resul
 
 #[get("/snapshots/{id}/project")]
 async fn get_snapshot_project(
-    path: web::Path<(i64)>,
+    path: web::Path<i64>,
     data: web::Data<AppState>,
 ) -> Result<impl Responder> {
     let sid = path.into_inner();
@@ -102,10 +102,7 @@ async fn get_snapshot_project(
 }
 
 #[get("/snapshots/{id}/warnings")]
-async fn list_warnings(
-    path: web::Path<(i64)>,
-    data: web::Data<AppState>,
-) -> Result<impl Responder> {
+async fn list_warnings(path: web::Path<i64>, data: web::Data<AppState>) -> Result<impl Responder> {
     let sid = path.into_inner();
     let conn = &data.connection;
     let result = db::get_warnings(conn, sid).unwrap_or(vec![]);
@@ -113,7 +110,7 @@ async fn list_warnings(
 }
 
 #[get("/snapshots/{id}/authors")]
-async fn list_authors(path: web::Path<(i64)>, data: web::Data<AppState>) -> Result<impl Responder> {
+async fn list_authors(path: web::Path<i64>, data: web::Data<AppState>) -> Result<impl Responder> {
     let sid = path.into_inner();
     let conn = &data.connection;
     let result = db::get_authors(conn, sid).unwrap_or(vec![]);
@@ -122,7 +119,7 @@ async fn list_authors(path: web::Path<(i64)>, data: web::Data<AppState>) -> Resu
 
 #[get("/snapshots/{id}/file-types")]
 async fn list_file_types(
-    path: web::Path<(i64)>,
+    path: web::Path<i64>,
     data: web::Data<AppState>,
 ) -> Result<impl Responder> {
     let sid = path.into_inner();
@@ -132,10 +129,7 @@ async fn list_file_types(
 }
 
 #[get("/snapshots/{id}/packages")]
-async fn list_packages(
-    path: web::Path<(i64)>,
-    data: web::Data<AppState>,
-) -> Result<impl Responder> {
+async fn list_packages(path: web::Path<i64>, data: web::Data<AppState>) -> Result<impl Responder> {
     let sid = path.into_inner();
     let conn = &data.connection;
     let result = db::get_packages(conn, sid).unwrap_or(vec![]);
@@ -144,7 +138,7 @@ async fn list_packages(
 
 #[get("/snapshots/{id}/dependencies")]
 async fn list_dependencies(
-    path: web::Path<(i64)>,
+    path: web::Path<i64>,
     data: web::Data<AppState>,
 ) -> Result<impl Responder> {
     let sid = path.into_inner();
@@ -155,7 +149,7 @@ async fn list_dependencies(
 
 #[get("/snapshots/{id}/unit-tests")]
 async fn list_unit_tests(
-    path: web::Path<(i64)>,
+    path: web::Path<i64>,
     data: web::Data<AppState>,
 ) -> Result<impl Responder> {
     let sid = path.into_inner();
@@ -165,10 +159,7 @@ async fn list_unit_tests(
 }
 
 #[get("/snapshots/{id}/e2e-tests")]
-async fn list_e2e_tests(
-    path: web::Path<(i64)>,
-    data: web::Data<AppState>,
-) -> Result<impl Responder> {
+async fn list_e2e_tests(path: web::Path<i64>, data: web::Data<AppState>) -> Result<impl Responder> {
     let sid = path.into_inner();
     let conn = &data.connection;
     let result = match db::get_tests(conn, sid, TestKind::EndToEnd) {
