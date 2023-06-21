@@ -78,19 +78,24 @@
             };
 
             componentDidMount() {
-                const data = this.props.data;
-                const packages = data.packages || [];
-                const dependencies = (data.dependencies || []).filter(dep => dep.dev === false)
-                const devDependencies = (data.dependencies || []).filter(dep => dep.dev === true)
-
-                this.setState({ packages, dependencies, devDependencies });
+                fetch(`/api/snapshots/${window.snapshotId}/packages`)
+                    .then(response => response.json())
+                    .then(packages => this.setState({ packages }));
 
                 fetch(`/api/snapshots/${window.snapshotId}/warnings`)
                     .then(response => response.json())
                     .then(warnings => this.setState({ warnings }));
+
+                fetch(`/api/snapshots/${window.snapshotId}/dependencies`)
+                    .then(response => response.json())
+                    .then(deps => {
+                        const dependencies = deps.filter(dep => dep.dev === false)
+                        const devDependencies = deps.filter(dep => dep.dev === true)
+                        this.setState({ dependencies, devDependencies });
+                    });
             }
 
-            render({ data }, { activeTab, warnings, packages, dependencies, devDependencies }) {
+            render(props, { activeTab, warnings, packages, dependencies, devDependencies }) {
                 const TabHeader = ({ index, title }) => html`
                     <a class="${ activeTab === index ? 'is-active' : null}" onClick="${() => this.setActiveTab(index)}">${title}</a>
                 `;
@@ -523,38 +528,48 @@
             }
         }
 
-        function FileTypes({ data }) {
-            const rows = Object.keys(data)
-                .map(key => ({ key, value: data[key] }))
-                .sort((a, b) => b.value - a.value);
+        class FileTypes extends Component {
+            state = {
+                rows: []
+            };
+            componentDidMount() {
+                fetch(`/api/snapshots/${window.snapshotId}/file-types`)
+                    .then(response => response.json())
+                    .then(types => {
+                        const rows = Object.keys(types)
+                            .map(key => ({ key, value: types[key] }))
+                            .sort((a, b) => b.value - a.value);
+                        this.setState({ rows });
+                    });
+            }
 
-            return html`
-                <nav class="panel is-link">
-                    <p class="panel-heading">File Types</p>
+            render(props, { rows }) {
+                return html`
+                    <nav class="panel is-link">
+                        <p class="panel-heading">File Types</p>
 
-                    <div style="max-height: 500px; overflow-y: scroll">
-                        ${rows.map(row => html`
-                            <${LinkRow} caption="${row.key}: ${row.value}"/>
-                        `)}
-                    </div>
-                </nav>
-            `;
+                        <div style="max-height: 500px; overflow-y: scroll">
+                            ${rows.map(row => html`
+                                <${LinkRow} caption="${row.key}: ${row.value}"/>
+                            `)}
+                        </div>
+                    </nav>
+                `;
+            }
         }
 
         function App({ data }) {
-            const hasPackages = !!(data.packages && data.packages.length > 0);
             const hasAngular = !!data.angular;
-            const hasTypes = !!data.types;
 
             return html`
                 <main>
                     <${Header} data=${data}></Header>
                     <section class="section">
                         <${GitReport} project=${data.project}/>
-                        ${hasPackages && html`<${Packages} data=${data}/>`}
+                        <${Packages}/>
                         ${hasAngular && html`<${Angular} data=${data.angular} version="${data.angular_version}"/>`}
-                        <${Tests}/>}
-                        ${hasTypes && html`<${FileTypes} data=${data.types}></FileTypes>`}
+                        <${Tests}/>
+                        <${FileTypes}/>
                     </section>
                 </main>
             `;

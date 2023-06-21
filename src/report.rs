@@ -28,33 +28,12 @@ pub fn generate_report(conn: &Connection, sid: i64) -> Result<Map<String, Value>
     let ng_version = db::get_ng_version(conn, sid)?;
     output.insert("angular_version".to_owned(), json!(ng_version));
 
-    match db::get_dependencies(conn, sid) {
-        Ok(dependencies) => {
-            output.insert("dependencies".to_owned(), json!(dependencies));
-        }
-        Err(err) => println!("{}", err),
-    }
-
-    match db::get_packages(conn, sid) {
-        Ok(packages) => {
-            output.insert("packages".to_owned(), json!(packages));
-        }
-        Err(err) => println!("{}", err),
-    }
-
     match get_angular_report(conn, sid) {
         Ok(angular) => {
             output.entry("angular").or_insert(angular);
         }
         Err(err) => println!("{}", err),
     };
-
-    match db::get_file_types(conn, sid) {
-        Ok(types) => {
-            output.entry("types").or_insert(json!(types));
-        }
-        Err(err) => println!("{}", err),
-    }
 
     Ok(output)
 }

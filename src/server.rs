@@ -3,6 +3,8 @@ use crate::{db, report};
 use actix_web::{get, middleware, web, App, HttpResponse, HttpServer, Responder, Result};
 use futures::{join, TryFutureExt};
 use rusqlite::Connection;
+use std::collections::HashMap;
+use std::iter::Map;
 use std::path::PathBuf;
 
 struct AppState {
@@ -24,8 +26,11 @@ pub async fn run_server(working_dir: PathBuf, open: bool) -> Result<()> {
                     .service(list_projects)
                     .service(list_authors)
                     .service(list_warnings)
+                    .service(list_packages)
+                    .service(list_dependencies)
                     .service(list_unit_tests)
-                    .service(list_e2e_tests),
+                    .service(list_e2e_tests)
+                    .service(list_file_types),
             )
             .service(index)
             .service(report_details)
@@ -63,6 +68,39 @@ async fn list_authors(path: web::Path<(i64)>, data: web::Data<AppState>) -> Resu
     let sid = path.into_inner();
     let conn = &data.connection;
     let result = db::get_authors(conn, sid).unwrap_or(vec![]);
+    Ok(web::Json(result))
+}
+
+#[get("/snapshots/{id}/file-types")]
+async fn list_file_types(
+    path: web::Path<(i64)>,
+    data: web::Data<AppState>,
+) -> Result<impl Responder> {
+    let sid = path.into_inner();
+    let conn = &data.connection;
+    let result = db::get_file_types(conn, sid).unwrap_or(HashMap::new());
+    Ok(web::Json(result))
+}
+
+#[get("/snapshots/{id}/packages")]
+async fn list_packages(
+    path: web::Path<(i64)>,
+    data: web::Data<AppState>,
+) -> Result<impl Responder> {
+    let sid = path.into_inner();
+    let conn = &data.connection;
+    let result = db::get_packages(conn, sid).unwrap_or(vec![]);
+    Ok(web::Json(result))
+}
+
+#[get("/snapshots/{id}/dependencies")]
+async fn list_dependencies(
+    path: web::Path<(i64)>,
+    data: web::Data<AppState>,
+) -> Result<impl Responder> {
+    let sid = path.into_inner();
+    let conn = &data.connection;
+    let result = db::get_dependencies(conn, sid).unwrap_or(vec![]);
     Ok(web::Json(result))
 }
 
