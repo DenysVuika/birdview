@@ -1,5 +1,6 @@
 use crate::db;
 use crate::db::{NgKind, TestKind};
+use actix_files::NamedFile;
 use actix_web::{get, middleware, web, App, HttpResponse, HttpServer, Responder, Result};
 use futures::{join, TryFutureExt};
 use rusqlite::Connection;
@@ -34,6 +35,7 @@ pub async fn run_server(working_dir: PathBuf, open: bool) -> Result<()> {
                     .service(list_e2e_tests)
                     .service(list_file_types),
             )
+            .service(favicon)
             .service(index)
             .service(report_details)
     })
@@ -181,11 +183,15 @@ async fn index() -> impl Responder {
     HttpResponse::Ok().body("Hello world!")
 }
 
+#[get("/favicon")]
+async fn favicon() -> Result<impl Responder> {
+    Ok(NamedFile::open("static/favicon.svg")?)
+}
+
 #[get("/projects/{project}/{snapshot}")]
 async fn report_details(path: web::Path<(String, i64)>) -> Result<HttpResponse> {
     let params = path.into_inner();
-    let template = include_str!("assets/html/index.html");
-
+    let template = include_str!("../static/index.html");
     let result_data = format!("window.snapshotId=\"{}\";", params.1);
     let result_template = template.replace("// <birdview:DATA>", &result_data);
 
