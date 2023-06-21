@@ -22,6 +22,7 @@ pub async fn run_server(working_dir: PathBuf, open: bool) -> Result<()> {
             .service(
                 web::scope("/api")
                     .service(list_projects)
+                    .service(list_authors)
                     .service(list_warnings)
                     .service(list_unit_tests)
                     .service(list_e2e_tests),
@@ -54,6 +55,14 @@ async fn list_warnings(
     let sid = path.into_inner();
     let conn = &data.connection;
     let result = db::get_warnings(conn, sid).unwrap_or(vec![]);
+    Ok(web::Json(result))
+}
+
+#[get("/snapshots/{id}/authors")]
+async fn list_authors(path: web::Path<(i64)>, data: web::Data<AppState>) -> Result<impl Responder> {
+    let sid = path.into_inner();
+    let conn = &data.connection;
+    let result = db::get_authors(conn, sid).unwrap_or(vec![]);
     Ok(web::Json(result))
 }
 

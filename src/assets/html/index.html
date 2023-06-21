@@ -227,7 +227,7 @@
                 });
             }
 
-            render({ data }, { activeTab,  unit_test_cases, e2e_test_cases, unitTests, e2eTests }) {
+            render(props, { activeTab,  unit_test_cases, e2e_test_cases, unitTests, e2eTests }) {
                 setTimeout(() => {
                     if (activeTab === 0) {
                         this.setupChart();
@@ -429,6 +429,10 @@
         }
 
         class GitReport extends ReportPanel {
+            state = {
+                activeTab: 0,
+                authors: []
+            };
             setActiveTab(index) {
                 super.setActiveTab(index);
 
@@ -441,7 +445,7 @@
 
             setupChart() {
                 const ctx = document.getElementById('git-top-contributors');
-                const authors = (this.props.authors || []).slice(0, 20);
+                const authors = (this.state.authors || []).slice(0, 20);
 
                 const existing = Chart.getChart('git-top-contributors');
                 if (existing) {
@@ -471,7 +475,13 @@
                 });
             }
 
-            render({ project, authors }, { activeTab }) {
+            componentDidMount() {
+                fetch(`/api/snapshots/${window.snapshotId}/authors`)
+                    .then(response => response.json())
+                    .then(authors => this.setState({ authors }));
+            }
+
+            render({ project }, { activeTab, authors }) {
                 setTimeout(() => {
                     if (activeTab === 1) {
                         this.setupChart();
@@ -532,20 +542,18 @@
         }
 
         function App({ data }) {
-            const hasAuthors = !!data.authors;
             const hasPackages = !!(data.packages && data.packages.length > 0);
             const hasAngular = !!data.angular;
-            // const hasTests = !!data.unit_tests || !!data.e2e_tests;
             const hasTypes = !!data.types;
 
             return html`
                 <main>
                     <${Header} data=${data}></Header>
                     <section class="section">
-                        ${hasAuthors && html`<${GitReport} project=${data.project} authors=${data.authors}/>`}
+                        <${GitReport} project=${data.project}/>
                         ${hasPackages && html`<${Packages} data=${data}/>`}
                         ${hasAngular && html`<${Angular} data=${data.angular} version="${data.angular_version}"/>`}
-                        <${Tests} data=${data}/>}
+                        <${Tests}/>}
                         ${hasTypes && html`<${FileTypes} data=${data.types}></FileTypes>`}
                     </section>
                 </main>

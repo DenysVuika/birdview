@@ -28,9 +28,6 @@ pub fn generate_report(conn: &Connection, sid: i64) -> Result<Map<String, Value>
     let ng_version = db::get_ng_version(conn, sid)?;
     output.insert("angular_version".to_owned(), json!(ng_version));
 
-    let authors = db::get_authors(conn, sid)?;
-    output.insert("authors".to_owned(), json!(authors));
-
     match db::get_dependencies(conn, sid) {
         Ok(dependencies) => {
             output.insert("dependencies".to_owned(), json!(dependencies));
