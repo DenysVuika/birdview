@@ -1,6 +1,5 @@
 use crate::db;
-use crate::db::TestKind;
-use crate::report::get_angular_report;
+use crate::db::{NgKind, TestKind};
 use actix_web::{get, middleware, web, App, HttpResponse, HttpServer, Responder, Result};
 use futures::{join, TryFutureExt};
 use rusqlite::Connection;
@@ -59,7 +58,24 @@ async fn list_projects(data: web::Data<AppState>) -> Result<impl Responder> {
 async fn get_angular(path: web::Path<(i64)>, data: web::Data<AppState>) -> Result<impl Responder> {
     let sid = path.into_inner();
     let conn = &data.connection;
-    let angular = get_angular_report(conn, sid).unwrap();
+
+    let ng_version = db::get_ng_version(conn, sid).unwrap_or(String::new());
+    let modules = db::get_ng_entities(conn, sid, NgKind::Module).unwrap_or(vec![]);
+    let components = db::get_ng_entities(conn, sid, NgKind::Component).unwrap_or(vec![]);
+    let directives = db::get_ng_entities(conn, sid, NgKind::Directive).unwrap_or(vec![]);
+    let services = db::get_ng_entities(conn, sid, NgKind::Service).unwrap_or(vec![]);
+    let pipes = db::get_ng_entities(conn, sid, NgKind::Pipe).unwrap_or(vec![]);
+    let dialogs = db::get_ng_entities(conn, sid, NgKind::Dialog).unwrap_or(vec![]);
+
+    let angular = json!({
+        "version": ng_version,
+        "modules": modules,
+        "components": components,
+        "directives": directives,
+        "services": services,
+        "pipes": pipes,
+        "dialogs": dialogs
+    });
     Ok(web::Json(angular))
 }
 

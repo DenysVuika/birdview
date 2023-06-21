@@ -1,9 +1,7 @@
 use crate::config::{Config, OutputFormat};
-use crate::db;
-use crate::db::NgKind;
 use anyhow::Result;
 use rusqlite::Connection;
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value};
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -55,24 +53,4 @@ fn get_output_file(output_dir: &Path, format: OutputFormat) -> Option<PathBuf> {
     }
 
     None
-}
-
-pub fn get_angular_report(conn: &Connection, sid: i64) -> Result<Value> {
-    let ng_version = db::get_ng_version(conn, sid)?;
-    let modules = db::get_ng_entities(conn, sid, NgKind::Module)?;
-    let components = db::get_ng_entities(conn, sid, NgKind::Component)?;
-    let directives = db::get_ng_entities(conn, sid, NgKind::Directive)?;
-    let services = db::get_ng_entities(conn, sid, NgKind::Service)?;
-    let pipes = db::get_ng_entities(conn, sid, NgKind::Pipe)?;
-    let dialogs = db::get_ng_entities(conn, sid, NgKind::Dialog)?;
-
-    Ok(json!({
-        "version": ng_version,
-        "modules": modules,
-        "components": components,
-        "directives": directives,
-        "services": services,
-        "pipes": pipes,
-        "dialogs": dialogs
-    }))
 }
