@@ -79,12 +79,15 @@
 
             componentDidMount() {
                 const data = this.props.data;
-                const warnings = data.warnings || [];
                 const packages = data.packages || [];
                 const dependencies = (data.dependencies || []).filter(dep => dep.dev === false)
                 const devDependencies = (data.dependencies || []).filter(dep => dep.dev === true)
 
-                this.setState({ warnings, packages, dependencies, devDependencies });
+                this.setState({ packages, dependencies, devDependencies });
+
+                fetch(`/api/snapshots/${window.snapshotId}/warnings`)
+                    .then(response => response.json())
+                    .then(warnings => this.setState({ warnings }));
             }
 
             render({ data }, { activeTab, warnings, packages, dependencies, devDependencies }) {
@@ -532,7 +535,7 @@
             const hasAuthors = !!data.authors;
             const hasPackages = !!(data.packages && data.packages.length > 0);
             const hasAngular = !!data.angular;
-            const hasTests = !!data.unit_tests || !!data.e2e_tests;
+            // const hasTests = !!data.unit_tests || !!data.e2e_tests;
             const hasTypes = !!data.types;
 
             return html`
@@ -542,7 +545,7 @@
                         ${hasAuthors && html`<${GitReport} project=${data.project} authors=${data.authors}/>`}
                         ${hasPackages && html`<${Packages} data=${data}/>`}
                         ${hasAngular && html`<${Angular} data=${data.angular} version="${data.angular_version}"/>`}
-                        ${hasTests && html`<${Tests} data=${data}/>`}
+                        <${Tests} data=${data}/>}
                         ${hasTypes && html`<${FileTypes} data=${data.types}></FileTypes>`}
                     </section>
                 </main>

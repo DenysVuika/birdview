@@ -31,9 +31,6 @@ pub fn generate_report(conn: &Connection, sid: i64) -> Result<Map<String, Value>
     let authors = db::get_authors(conn, sid)?;
     output.insert("authors".to_owned(), json!(authors));
 
-    let warnings = db::get_warnings(conn, sid).unwrap_or(vec![]);
-    output.insert("warnings".to_owned(), json!(warnings));
-
     match db::get_dependencies(conn, sid) {
         Ok(dependencies) => {
             output.insert("dependencies".to_owned(), json!(dependencies));

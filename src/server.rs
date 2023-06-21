@@ -22,6 +22,7 @@ pub async fn run_server(working_dir: PathBuf, open: bool) -> Result<()> {
             .service(
                 web::scope("/api")
                     .service(list_projects)
+                    .service(list_warnings)
                     .service(list_unit_tests)
                     .service(list_e2e_tests),
             )
@@ -45,6 +46,17 @@ async fn list_projects(data: web::Data<AppState>) -> Result<impl Responder> {
     Ok(web::Json(projects))
 }
 
+#[get("/snapshots/{id}/warnings")]
+async fn list_warnings(
+    path: web::Path<(i64)>,
+    data: web::Data<AppState>,
+) -> Result<impl Responder> {
+    let sid = path.into_inner();
+    let conn = &data.connection;
+    let result = db::get_warnings(conn, sid).unwrap_or(vec![]);
+    Ok(web::Json(result))
+}
+
 #[get("/snapshots/{id}/unit-tests")]
 async fn list_unit_tests(
     path: web::Path<(i64)>,
@@ -52,10 +64,7 @@ async fn list_unit_tests(
 ) -> Result<impl Responder> {
     let sid = path.into_inner();
     let conn = &data.connection;
-    let result = match db::get_tests(conn, sid, TestKind::Unit) {
-        Ok(tests) => tests,
-        Err(_) => vec![],
-    };
+    let result = db::get_tests(conn, sid, TestKind::Unit).unwrap_or(vec![]);
     Ok(web::Json(result))
 }
 
