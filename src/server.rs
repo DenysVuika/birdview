@@ -1,10 +1,11 @@
+use crate::db;
 use crate::db::TestKind;
-use crate::{db, report};
+use crate::report::get_angular_report;
 use actix_web::{get, middleware, web, App, HttpResponse, HttpServer, Responder, Result};
 use futures::{join, TryFutureExt};
 use rusqlite::Connection;
+use serde_json::json;
 use std::collections::HashMap;
-use std::iter::Map;
 use std::path::PathBuf;
 
 struct AppState {
@@ -24,6 +25,8 @@ pub async fn run_server(working_dir: PathBuf, open: bool) -> Result<()> {
             .service(
                 web::scope("/api")
                     .service(list_projects)
+                    .service(get_angular)
+                    .service(get_snapshot_project)
                     .service(list_authors)
                     .service(list_warnings)
                     .service(list_packages)
@@ -50,6 +53,34 @@ async fn list_projects(data: web::Data<AppState>) -> Result<impl Responder> {
     let conn = &data.connection;
     let projects = db::get_projects(conn).unwrap();
     Ok(web::Json(projects))
+}
+
+#[get("/snapshots/{id}/angular")]
+async fn get_angular(path: web::Path<(i64)>, data: web::Data<AppState>) -> Result<impl Responder> {
+    let sid = path.into_inner();
+    let conn = &data.connection;
+    let angular = get_angular_report(conn, sid).unwrap();
+    Ok(web::Json(angular))
+}
+
+#[get("/snapshots/{id}/project")]
+async fn get_snapshot_project(
+    path: web::Path<(i64)>,
+    data: web::Data<AppState>,
+) -> Result<impl Responder> {
+    let sid = path.into_inner();
+    let conn = &data.connection;
+    let snapshot = db::get_snapshot_by_id(conn, sid).unwrap();
+    let project = db::get_project_by_snapshot(conn, sid).unwrap();
+    let result = json!({
+        "name": project.name,
+        "version": project.version,
+        "created_on": snapshot.created_on,
+        "origin": project.origin,
+        "branch": snapshot.branch,
+        "sha": snapshot.sha
+    });
+    Ok(web::Json(result))
 }
 
 #[get("/snapshots/{id}/warnings")]
@@ -135,20 +166,11 @@ async fn index() -> impl Responder {
 }
 
 #[get("/projects/{project}/{snapshot}")]
-async fn report_details(
-    path: web::Path<(String, i64)>,
-    data: web::Data<AppState>,
-) -> Result<HttpResponse> {
+async fn report_details(path: web::Path<(String, i64)>) -> Result<HttpResponse> {
     let params = path.into_inner();
-    let conn = &data.connection;
     let template = include_str!("assets/html/index.html");
-    let data = report::generate_report(conn, params.1).unwrap();
-    let json_string = serde_json::to_string_pretty(&data)?;
 
-    let result_data = format!(
-        "window.snapshotId=\"{}\"; window.data = {};",
-        params.1, json_string
-    );
+    let result_data = format!("window.snapshotId=\"{}\";", params.1);
     let result_template = template.replace("// <birdview:DATA>", &result_data);
 
     Ok(HttpResponse::Ok().body(result_template))

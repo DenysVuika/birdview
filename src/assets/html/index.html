@@ -16,17 +16,29 @@
 
         const html = htm.bind(h);
 
-        function Header({ data }) {
-            return html`
-                <section class="hero is-primary">
-                    <div class="hero-body">
-                        <p class="title">
-                            ${data.project.name} ${data.project.version}
-                        </p>
-                        <p class="subtitle">${data.project.created_on}</p>
-                    </div>
-                </section>
-            `;
+        class Header extends Component {
+            state = {
+                project: {}
+            };
+
+            componentDidMount() {
+                fetch(`/api/snapshots/${window.snapshotId}/project`)
+                    .then(response => response.json())
+                    .then(project => this.setState({ project }));
+            }
+
+            render(props, { project }) {
+                return html`
+                    <section class="hero is-primary">
+                        <div class="hero-body">
+                            <p class="title">
+                                ${project.name} ${project.version}
+                            </p>
+                            <p class="subtitle">${project.created_on}</p>
+                        </div>
+                    </section>
+                `;
+            }
         }
 
         function LinkRow({ caption, url, standalone }) {
@@ -279,6 +291,7 @@
 
         class Angular extends ReportPanel {
             state = {
+                version: '',
                 activeTab: 0,
                 modules: [],
                 components: [],
@@ -296,15 +309,9 @@
             }
 
             componentDidMount() {
-                const data = this.props.data;
-                this.setState({
-                    modules: data.modules || [],
-                    components: data.components || [],
-                    directives: data.directives || [],
-                    services: data.services || [],
-                    pipes: data.pipes || [],
-                    dialogs: data.dialogs || []
-                });
+                fetch(`/api/snapshots/${window.snapshotId}/angular`)
+                    .then(response => response.json())
+                    .then(angular => this.setState({ ...angular }));
             }
 
             setupChart() {
@@ -360,7 +367,7 @@
                 });
             }
 
-            render({ data, version }, { activeTab, modules, components, directives, services, pipes, dialogs }) {
+            render(props, { activeTab, modules, components, directives, services, pipes, dialogs, version }) {
                 setTimeout(() => {
                     if (activeTab === 0) {
                         this.setupChart();
@@ -435,6 +442,7 @@
 
         class GitReport extends ReportPanel {
             state = {
+                project: {},
                 activeTab: 0,
                 authors: []
             };
@@ -481,12 +489,16 @@
             }
 
             componentDidMount() {
+                fetch(`/api/snapshots/${window.snapshotId}/project`)
+                    .then(response => response.json())
+                    .then(project => this.setState({ project }));
+
                 fetch(`/api/snapshots/${window.snapshotId}/authors`)
                     .then(response => response.json())
                     .then(authors => this.setState({ authors }));
             }
 
-            render({ project }, { activeTab, authors }) {
+            render(props, { activeTab, project, authors }) {
                 setTimeout(() => {
                     if (activeTab === 1) {
                         this.setupChart();
@@ -558,16 +570,14 @@
             }
         }
 
-        function App({ data }) {
-            const hasAngular = !!data.angular;
-
+        function App() {
             return html`
                 <main>
-                    <${Header} data=${data}></Header>
+                    <${Header}></Header>
                     <section class="section">
-                        <${GitReport} project=${data.project}/>
+                        <${GitReport}/>
                         <${Packages}/>
-                        ${hasAngular && html`<${Angular} data=${data.angular} version="${data.angular_version}"/>`}
+                        <${Angular}/>
                         <${Tests}/>
                         <${FileTypes}/>
                     </section>
@@ -576,7 +586,7 @@
         }
 
         render(html`
-            <${App} data=${window.data}/>`, document.body);
+            <${App}/>`, document.body);
     </script>
     <script>
         window.addEventListener("DOMContentLoaded", (event) => {

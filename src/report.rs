@@ -10,31 +10,6 @@ use std::path::{Path, PathBuf};
 
 pub fn generate_report(conn: &Connection, sid: i64) -> Result<Map<String, Value>> {
     let mut output = Map::new();
-    let snapshot = db::get_snapshot_by_id(conn, sid)?;
-    let project = db::get_project_by_snapshot(conn, sid)?;
-
-    output.insert(
-        "project".to_owned(),
-        json!({
-            "name": project.name,
-            "version": project.version,
-            "created_on": snapshot.created_on,
-            "origin": project.origin,
-            "branch": snapshot.branch,
-            "sha": snapshot.sha
-        }),
-    );
-
-    let ng_version = db::get_ng_version(conn, sid)?;
-    output.insert("angular_version".to_owned(), json!(ng_version));
-
-    match get_angular_report(conn, sid) {
-        Ok(angular) => {
-            output.entry("angular").or_insert(angular);
-        }
-        Err(err) => println!("{}", err),
-    };
-
     Ok(output)
 }
 
@@ -82,7 +57,8 @@ fn get_output_file(output_dir: &Path, format: OutputFormat) -> Option<PathBuf> {
     None
 }
 
-fn get_angular_report(conn: &Connection, sid: i64) -> Result<Value> {
+pub fn get_angular_report(conn: &Connection, sid: i64) -> Result<Value> {
+    let ng_version = db::get_ng_version(conn, sid)?;
     let modules = db::get_ng_entities(conn, sid, NgKind::Module)?;
     let components = db::get_ng_entities(conn, sid, NgKind::Component)?;
     let directives = db::get_ng_entities(conn, sid, NgKind::Directive)?;
@@ -91,6 +67,7 @@ fn get_angular_report(conn: &Connection, sid: i64) -> Result<Value> {
     let dialogs = db::get_ng_entities(conn, sid, NgKind::Dialog)?;
 
     Ok(json!({
+        "version": ng_version,
         "modules": modules,
         "components": components,
         "directives": directives,
