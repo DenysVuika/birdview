@@ -589,6 +589,31 @@
             }
         }
 
+        class ProjectList extends Component {
+            state = {
+                rows: []
+            };
+            componentDidMount() {
+                fetch(`/api/projects`)
+                    .then(response => response.json())
+                    .then(rows => this.setState({rows}));
+            }
+
+            render(props, { rows }) {
+                return html`
+                    <nav class="panel is-link">
+                        <p class="panel-heading">Projects</p>
+
+                        <div style="max-height: 500px; overflow-y: scroll">
+                            ${rows.map(row => html`
+                                <${LinkRow} caption="${row.name}: ${row.version}"/>
+                            `)}
+                        </div>
+                    </nav>
+                `;
+            }
+        }
+
         function App() {
             const sid = window.snapshotId;
             const hasSnapshot = !!sid;
@@ -597,6 +622,7 @@
                 <main>
                     <${Header} sid=${sid}></Header>
                     <section class="section">
+                        <${ProjectList}/>
                         <${GitReport} sid=${sid}/>
                         <${Packages} sid=${sid}/>
                         <${Angular} sid=${sid}/>
