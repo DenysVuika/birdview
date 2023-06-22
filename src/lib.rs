@@ -2,6 +2,7 @@ pub mod config;
 pub mod db;
 pub mod git;
 pub mod inspectors;
+pub mod logger;
 pub mod models;
 pub mod server;
 

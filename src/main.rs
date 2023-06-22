@@ -1,7 +1,7 @@
 use anyhow::Result;
 use birdview::config::Config;
-use birdview::run;
 use birdview::server::run_server;
+use birdview::{logger, run};
 use clap::{Parser, Subcommand};
 use git2::Repository;
 use std::path::PathBuf;
@@ -55,7 +55,8 @@ enum Commands {
 
 #[actix_web::main]
 async fn main() -> Result<()> {
-    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
+    // env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
+    logger::init_logger();
 
     let cli = Cli::parse();
 
