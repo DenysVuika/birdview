@@ -23,9 +23,12 @@
             };
 
             componentDidMount() {
-                fetch(`/api/snapshots/${window.snapshotId}/project`)
-                    .then(response => response.json())
-                    .then(project => this.setState({ project }));
+                const sid = this.props.sid;
+                if (sid) {
+                    fetch(`/api/snapshots/${sid}/project`)
+                        .then(response => response.json())
+                        .then(project => this.setState({project}));
+                }
             }
 
             render(props, { project }) {
@@ -91,21 +94,24 @@
             };
 
             componentDidMount() {
-                fetch(`/api/snapshots/${window.snapshotId}/packages`)
-                    .then(response => response.json())
-                    .then(packages => this.setState({ packages }));
+                const sid = this.props.sid;
+                if (sid) {
+                    fetch(`/api/snapshots/${sid}/packages`)
+                        .then(response => response.json())
+                        .then(packages => this.setState({packages}));
 
-                fetch(`/api/snapshots/${window.snapshotId}/warnings`)
-                    .then(response => response.json())
-                    .then(warnings => this.setState({ warnings }));
+                    fetch(`/api/snapshots/${sid}/warnings`)
+                        .then(response => response.json())
+                        .then(warnings => this.setState({warnings}));
 
-                fetch(`/api/snapshots/${window.snapshotId}/dependencies`)
-                    .then(response => response.json())
-                    .then(deps => {
-                        const dependencies = deps.filter(dep => dep.dev === false)
-                        const devDependencies = deps.filter(dep => dep.dev === true)
-                        this.setState({ dependencies, devDependencies });
-                    });
+                    fetch(`/api/snapshots/${sid}/dependencies`)
+                        .then(response => response.json())
+                        .then(deps => {
+                            const dependencies = deps.filter(dep => dep.dev === false)
+                            const devDependencies = deps.filter(dep => dep.dev === true)
+                            this.setState({dependencies, devDependencies});
+                        });
+                }
             }
 
             render(props, { activeTab, warnings, packages, dependencies, devDependencies }) {
@@ -197,23 +203,26 @@
             }
 
             componentDidMount() {
-                fetch(`/api/snapshots/${window.snapshotId}/unit-tests`)
-                    .then(response => response.json())
-                    .then(unitTests => {
-                        const unit_test_cases = unitTests
-                            .map(entry => entry.cases)
-                            .reduceRight((acc, cur) => acc + cur, 0);
-                        this.setState({ unit_test_cases, unitTests });
-                    });
+                const sid = this.props.sid;
+                if (sid) {
+                    fetch(`/api/snapshots/${sid}/unit-tests`)
+                        .then(response => response.json())
+                        .then(unitTests => {
+                            const unit_test_cases = unitTests
+                                .map(entry => entry.cases)
+                                .reduceRight((acc, cur) => acc + cur, 0);
+                            this.setState({unit_test_cases, unitTests});
+                        });
 
-                fetch(`/api/snapshots/${window.snapshotId}/e2e-tests`)
-                    .then(response => response.json())
-                    .then(e2eTests => {
-                        const e2e_test_cases = e2eTests
-                            .map(entry => entry.cases)
-                            .reduceRight((acc, cur) => acc + cur, 0);
-                        this.setState({ e2e_test_cases, e2eTests });
-                    });
+                    fetch(`/api/snapshots/${sid}/e2e-tests`)
+                        .then(response => response.json())
+                        .then(e2eTests => {
+                            const e2e_test_cases = e2eTests
+                                .map(entry => entry.cases)
+                                .reduceRight((acc, cur) => acc + cur, 0);
+                            this.setState({e2e_test_cases, e2eTests});
+                        });
+                }
             }
 
             setupChart() {
@@ -310,9 +319,12 @@
             }
 
             componentDidMount() {
-                fetch(`/api/snapshots/${window.snapshotId}/angular`)
-                    .then(response => response.json())
-                    .then(angular => this.setState({ ...angular }));
+                const sid = this.props.sid;
+                if (sid) {
+                    fetch(`/api/snapshots/${sid}/angular`)
+                        .then(response => response.json())
+                        .then(angular => this.setState({...angular}));
+                }
             }
 
             setupChart() {
@@ -490,13 +502,16 @@
             }
 
             componentDidMount() {
-                fetch(`/api/snapshots/${window.snapshotId}/project`)
-                    .then(response => response.json())
-                    .then(project => this.setState({ project }));
+                const sid = this.props.sid;
+                if (sid) {
+                    fetch(`/api/snapshots/${sid}/project`)
+                        .then(response => response.json())
+                        .then(project => this.setState({project}));
 
-                fetch(`/api/snapshots/${window.snapshotId}/authors`)
-                    .then(response => response.json())
-                    .then(authors => this.setState({ authors }));
+                    fetch(`/api/snapshots/${sid}/authors`)
+                        .then(response => response.json())
+                        .then(authors => this.setState({authors}));
+                }
             }
 
             render(props, { activeTab, project, authors }) {
@@ -546,14 +561,17 @@
                 rows: []
             };
             componentDidMount() {
-                fetch(`/api/snapshots/${window.snapshotId}/file-types`)
-                    .then(response => response.json())
-                    .then(types => {
-                        const rows = Object.keys(types)
-                            .map(key => ({ key, value: types[key] }))
-                            .sort((a, b) => b.value - a.value);
-                        this.setState({ rows });
-                    });
+                const sid = this.props.sid;
+                if (sid) {
+                    fetch(`/api/snapshots/${sid}/file-types`)
+                        .then(response => response.json())
+                        .then(types => {
+                            const rows = Object.keys(types)
+                                .map(key => ({key, value: types[key]}))
+                                .sort((a, b) => b.value - a.value);
+                            this.setState({rows});
+                        });
+                }
             }
 
             render(props, { rows }) {
@@ -572,15 +590,18 @@
         }
 
         function App() {
+            const sid = window.snapshotId;
+            const hasSnapshot = !!sid;
+
             return html`
                 <main>
-                    <${Header}></Header>
+                    <${Header} sid=${sid}></Header>
                     <section class="section">
-                        <${GitReport}/>
-                        <${Packages}/>
-                        <${Angular}/>
-                        <${Tests}/>
-                        <${FileTypes}/>
+                        <${GitReport} sid=${sid}/>
+                        <${Packages} sid=${sid}/>
+                        <${Angular} sid=${sid}/>
+                        <${Tests} sid=${sid}/>
+                        <${FileTypes} sid=${sid}/>
                     </section>
                 </main>
             `;
