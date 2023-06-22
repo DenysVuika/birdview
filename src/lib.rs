@@ -32,20 +32,21 @@ pub async fn run(config: &Config) -> Result<()> {
 
     let pid = match db::get_project_by_name(&conn, &name) {
         Ok(project) => {
-            println!("Found the project `{}`", &name);
-            println!("Verifying snapshots...");
+            log::info!("Found the project `{}`", &name);
+            log::info!("Verifying snapshots...");
 
             if let Some(snapshot) = db::get_snapshot_by_sha(&conn, &repo.sha) {
-                println!(
+                log::info!(
                     "Snapshot {} for branch `{}` ({}) is already created.",
-                    snapshot.oid, &repo.branch, &repo.sha
+                    snapshot.oid,
+                    &repo.branch,
+                    &repo.sha
                 );
 
-                // todo: run server
                 if config.open {
                     run_server(config.output_dir.to_owned(), true)
                         .await
-                        .unwrap_or_else(|err| println!("{:?}", err));
+                        .unwrap_or_else(|err| log::error!("{err}"));
                 }
 
                 process::exit(0);
@@ -54,14 +55,15 @@ pub async fn run(config: &Config) -> Result<()> {
             project.id
         }
         Err(_) => {
-            println!("Creating project `{}`", &name);
+            log::info!("Creating project `{}`", &name);
             db::create_project(&conn, &name, &version, &repo.remote_url)?
         }
     };
 
-    println!(
+    log::info!(
         "Creating new snapshot for branch `{}`({})",
-        &repo.branch, &repo.sha
+        &repo.branch,
+        &repo.sha
     );
     let sid = db::create_snapshot(&conn, pid, &repo)?;
     let authors = get_repository_authors(&config.working_dir)?;
@@ -81,12 +83,12 @@ pub async fn run(config: &Config) -> Result<()> {
 
     run_inspectors(config, &conn, sid, inspectors, config.verbose, &repo)?;
 
-    println!("Inspection complete");
+    log::info!("Inspection complete");
 
     if config.open {
         run_server(config.output_dir.to_owned(), true)
             .await
-            .unwrap_or_else(|err| println!("{:?}", err));
+            .unwrap_or_else(|err| log::error!("{:?}", err));
     }
 
     Ok(())
@@ -138,7 +140,7 @@ fn run_inspectors(
         }
 
         if verbose {
-            println!(
+            log::info!(
                 "├── {} {}",
                 if processed { '✅' } else { '🔎' },
                 entry_path.strip_prefix(working_dir).unwrap().display()

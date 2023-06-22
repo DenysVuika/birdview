@@ -60,7 +60,7 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     if let Some(config_path) = cli.config.as_deref() {
-        println!("Value for config: {}", config_path.display());
+        log::info!("Value for config: {}", config_path.display());
     }
 
     match &cli.command {
@@ -78,7 +78,7 @@ async fn main() -> Result<()> {
                     None => working_dir,
                 };
 
-                println!("Cloning {} => {}", url, repo_dir.path().display());
+                log::info!("Cloning {} => {}", url, repo_dir.path().display());
                 let repo = match Repository::clone(url, &repo_dir) {
                     Ok(repo) => repo,
                     Err(e) => {
@@ -86,7 +86,7 @@ async fn main() -> Result<()> {
                         panic!("failed to clone: {}", e)
                     }
                 };
-                println!("Branch: {}", repo.head()?.shorthand().unwrap());
+                log::info!("Branch: {}", repo.head()?.shorthand().unwrap());
 
                 let config = Config {
                     working_dir: repo_dir.path().to_owned(),
@@ -105,14 +105,6 @@ async fn main() -> Result<()> {
                 });
 
                 // repo_dir.close()?;
-
-                // if let Err(e) = run(&config) {
-                //     eprintln!("Application error {e}");
-                //     repo_dir.close()?;
-                //     process::exit(1);
-                // } else {
-                //     repo_dir.close()?;
-                // }
             } else {
                 let config = Config {
                     working_dir: PathBuf::from(working_dir),
@@ -124,10 +116,6 @@ async fn main() -> Result<()> {
                     open: *open,
                 };
 
-                // if let Err(e) = run(&config) {
-                //     eprintln!("Application error {e}");
-                //     process::exit(1);
-                // }
                 run(&config).await.unwrap_or_else(|err| {
                     log::error!("Application error {err}");
                     process::exit(1);
@@ -137,7 +125,7 @@ async fn main() -> Result<()> {
         Some(Commands::Serve { working_dir, open }) => {
             run_server(PathBuf::from(working_dir), *open)
                 .await
-                .unwrap_or_else(|err| println!("{:?}", err));
+                .unwrap_or_else(|err| log::error!("{:?}", err));
         }
         None => {}
     }

@@ -41,9 +41,9 @@ pub async fn run_server(working_dir: PathBuf, open: bool) -> Result<()> {
     })
     .bind(("127.0.0.1", 8080))?
     .run()
-    .unwrap_or_else(|err| println!("{:?}", err));
+    .unwrap_or_else(|err| log::error!("{:?}", err));
 
-    let open = open_report(open).unwrap_or_else(|err| println!("{:?}", err));
+    let open = open_report(open).unwrap_or_else(|err| log::error!("{:?}", err));
 
     join!(server, open);
     Ok(())

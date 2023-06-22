@@ -266,7 +266,7 @@ pub fn get_snapshot_by_sha(conn: &Connection, sha: &str) -> Option<Snapshot> {
     match result {
         Ok(snapshot) => Some(snapshot),
         Err(err) => {
-            println!("Snapshot not found: {}", err);
+            log::error!("Snapshot not found: {}", err);
             None
         }
     }

@@ -53,7 +53,7 @@ fn get_commit_authors(repo: &Repository) -> Result<Vec<AuthorInfo>> {
         .filter_map(|c| match c {
             Ok(commit) => Some(commit),
             Err(e) => {
-                println!("Error walking the revisions {}, skipping", e);
+                log::error!("Error walking the revisions {}, skipping", e);
                 None
             }
         })
