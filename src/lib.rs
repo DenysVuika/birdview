@@ -9,6 +9,7 @@ use crate::config::Config;
 use crate::git::{get_repository_authors, get_repository_info, RepositoryInfo};
 use crate::inspectors::*;
 use crate::models::PackageJsonFile;
+use crate::server::run_server;
 use anyhow::Result;
 use ignore::WalkBuilder;
 use rusqlite::Connection;
@@ -16,7 +17,7 @@ use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::process;
 
-pub fn run(config: &Config) -> Result<()> {
+pub async fn run(config: &Config) -> Result<()> {
     let package_json_path = &config.working_dir.join("package.json");
     if !package_json_path.exists() {
         panic!("Cannot find package.json file");
@@ -41,6 +42,12 @@ pub fn run(config: &Config) -> Result<()> {
                 );
 
                 // todo: run server
+                if config.open {
+                    run_server(config.output_dir.to_owned(), true)
+                        .await
+                        .unwrap_or_else(|err| println!("{:?}", err));
+                }
+
                 process::exit(0);
             }
 
@@ -75,6 +82,13 @@ pub fn run(config: &Config) -> Result<()> {
     run_inspectors(config, &conn, sid, inspectors, config.verbose, &repo)?;
 
     println!("Inspection complete");
+
+    if config.open {
+        run_server(config.output_dir.to_owned(), true)
+            .await
+            .unwrap_or_else(|err| println!("{:?}", err));
+    }
+
     Ok(())
 }
 

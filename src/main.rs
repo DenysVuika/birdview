@@ -98,13 +98,21 @@ async fn main() -> Result<()> {
                     open: *open,
                 };
 
-                if let Err(e) = run(&config) {
-                    eprintln!("Application error {e}");
-                    repo_dir.close()?;
+                run(&config).await.unwrap_or_else(|err| {
+                    log::error!("Application error {err}");
+                    repo_dir.close().unwrap();
                     process::exit(1);
-                } else {
-                    repo_dir.close()?;
-                }
+                });
+
+                // repo_dir.close()?;
+
+                // if let Err(e) = run(&config) {
+                //     eprintln!("Application error {e}");
+                //     repo_dir.close()?;
+                //     process::exit(1);
+                // } else {
+                //     repo_dir.close()?;
+                // }
             } else {
                 let config = Config {
                     working_dir: PathBuf::from(working_dir),
@@ -116,10 +124,14 @@ async fn main() -> Result<()> {
                     open: *open,
                 };
 
-                if let Err(e) = run(&config) {
-                    eprintln!("Application error {e}");
+                // if let Err(e) = run(&config) {
+                //     eprintln!("Application error {e}");
+                //     process::exit(1);
+                // }
+                run(&config).await.unwrap_or_else(|err| {
+                    log::error!("Application error {err}");
                     process::exit(1);
-                }
+                });
             }
         }
         Some(Commands::Serve { working_dir, open }) => {
