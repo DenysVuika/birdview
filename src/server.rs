@@ -1,6 +1,6 @@
 use crate::db;
 use crate::db::{NgKind, TestKind};
-use actix_files::NamedFile;
+use actix_files::Files;
 use actix_web::{get, middleware, web, App, HttpResponse, HttpServer, Responder, Result};
 use futures::{join, TryFutureExt};
 use rusqlite::Connection;
@@ -9,16 +9,20 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 struct AppState {
+    app_dir: PathBuf,
     connection: Connection,
 }
 
 pub async fn run_server(working_dir: PathBuf, open: bool) -> Result<()> {
     log::info!("starting HTTP server at http://localhost:8080");
 
+    let app_dir = PathBuf::from("static");
+
     let server = HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(AppState {
                 connection: db::create_connection(&working_dir).unwrap(),
+                app_dir: PathBuf::from("static"),
             }))
             .wrap(middleware::Compress::default())
             .wrap(middleware::Logger::default())
@@ -35,9 +39,8 @@ pub async fn run_server(working_dir: PathBuf, open: bool) -> Result<()> {
                     .service(get_e2e_tests)
                     .service(get_file_types),
             )
-            .service(favicon)
-            .service(index)
-            .service(report_details)
+            .service(view_snapshot_details)
+            .service(Files::new("/", &app_dir).index_file("index.html"))
     })
     .bind(("127.0.0.1", 8080))?
     .run()
@@ -163,21 +166,11 @@ async fn get_e2e_tests(path: web::Path<i64>, data: web::Data<AppState>) -> Resul
     Ok(web::Json(result))
 }
 
-#[get("/")]
-async fn index() -> impl Responder {
-    HttpResponse::Ok().body("Hello world!")
-}
-
-#[get("/favicon")]
-async fn favicon() -> Result<impl Responder> {
-    Ok(NamedFile::open("static/favicon.svg")?)
-}
-
-#[get("/projects/{project}/{snapshot}")]
-async fn report_details(path: web::Path<(String, i64)>) -> Result<HttpResponse> {
-    let params = path.into_inner();
+#[get("/snapshots/{snapshot}")]
+async fn view_snapshot_details(path: web::Path<i64>) -> Result<HttpResponse> {
+    let sid = path.into_inner();
     let template = include_str!("../static/index.html");
-    let result_data = format!("window.snapshotId=\"{}\";", params.1);
+    let result_data = format!("window.snapshotId=\"{}\";", sid);
     let result_template = template.replace("// <birdview:DATA>", &result_data);
 
     Ok(HttpResponse::Ok().body(result_template))
@@ -186,7 +179,7 @@ async fn report_details(path: web::Path<(String, i64)>) -> Result<HttpResponse> 
 async fn open_report(open: bool) -> std::io::Result<()> {
     if open {
         log::info!("Opening report");
-        webbrowser::open("http://127.0.0.1:8080")
+        webbrowser::open("http://127.0.0.1:8080/snapshots/1")
     } else {
         Ok(())
     }
