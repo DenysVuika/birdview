@@ -1,6 +1,7 @@
 use anyhow::Result;
-use birdview::config::{Config, OutputFormat};
-use birdview::run;
+use birdview::config::Config;
+use birdview::server::run_server;
+use birdview::{logger, run};
 use clap::{Parser, Subcommand};
 use git2::Repository;
 use std::path::PathBuf;
@@ -40,18 +41,27 @@ enum Commands {
         /// Supported for the output formats: html
         #[arg(long)]
         open: bool,
-
-        /// The output format for the report
-        #[arg(value_enum, long, default_value_t=OutputFormat::Html)]
-        format: OutputFormat,
+    },
+    /// Run internal web server
+    Serve {
+        /// Workspace directory
+        working_dir: String,
+        /// Open report in browser where applicable.
+        /// Supported for the output formats: html
+        #[arg(long)]
+        open: bool,
     },
 }
 
-fn main() -> Result<()> {
+#[actix_web::main]
+async fn main() -> Result<()> {
+    // env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
+    logger::init_logger();
+
     let cli = Cli::parse();
 
     if let Some(config_path) = cli.config.as_deref() {
-        println!("Value for config: {}", config_path.display());
+        log::info!("Value for config: {}", config_path.display());
     }
 
     match &cli.command {
@@ -60,7 +70,6 @@ fn main() -> Result<()> {
             verbose,
             output_dir,
             open,
-            format,
         }) => {
             if working_dir.starts_with("https://") {
                 let repo_dir = tempdir().expect("Failed creating temporary dir");
@@ -70,7 +79,7 @@ fn main() -> Result<()> {
                     None => working_dir,
                 };
 
-                println!("Cloning {} => {}", url, repo_dir.path().display());
+                log::info!("Cloning {} => {}", url, repo_dir.path().display());
                 let repo = match Repository::clone(url, &repo_dir) {
                     Ok(repo) => repo,
                     Err(e) => {
@@ -78,7 +87,7 @@ fn main() -> Result<()> {
                         panic!("failed to clone: {}", e)
                     }
                 };
-                println!("Branch: {}", repo.head()?.shorthand().unwrap());
+                log::info!("Branch: {}", repo.head()?.shorthand().unwrap());
 
                 let config = Config {
                     working_dir: repo_dir.path().to_owned(),
@@ -88,16 +97,15 @@ fn main() -> Result<()> {
                     },
                     verbose: *verbose,
                     open: *open,
-                    format: *format,
                 };
 
-                if let Err(e) = run(&config) {
-                    eprintln!("Application error {e}");
-                    repo_dir.close()?;
+                run(&config).await.unwrap_or_else(|err| {
+                    log::error!("Application error {err}");
+                    repo_dir.close().unwrap();
                     process::exit(1);
-                } else {
-                    repo_dir.close()?;
-                }
+                });
+
+                // repo_dir.close()?;
             } else {
                 let config = Config {
                     working_dir: PathBuf::from(working_dir),
@@ -107,14 +115,18 @@ fn main() -> Result<()> {
                     },
                     verbose: *verbose,
                     open: *open,
-                    format: *format,
                 };
 
-                if let Err(e) = run(&config) {
-                    eprintln!("Application error {e}");
+                run(&config).await.unwrap_or_else(|err| {
+                    log::error!("Application error {err}");
                     process::exit(1);
-                }
+                });
             }
+        }
+        Some(Commands::Serve { working_dir, open }) => {
+            run_server(PathBuf::from(working_dir), *open)
+                .await
+                .unwrap_or_else(|err| log::error!("{:?}", err));
         }
         None => {}
     }

@@ -15,6 +15,25 @@ pub struct RepositoryInfo {
     pub remote_url: String,
     pub branch: String,
     pub sha: String,
+    pub tags: Vec<String>,
+}
+
+pub fn checkout_branch(path: &PathBuf, branch: &str) -> Result<()> {
+    let repo = Repository::open(path)?;
+    let refname = branch; // or a tag (v0.1.1) or a commit (8e8128)
+    let (object, reference) = repo.revparse_ext(refname).expect("Object not found");
+
+    repo.checkout_tree(&object, None)
+        .expect("Failed to checkout");
+
+    match reference {
+        // gref is an actual reference like branches or tags
+        Some(gref) => repo.set_head(gref.name().unwrap()),
+        // this is a commit, not a reference
+        None => repo.set_head_detached(object.id()),
+    }
+    .expect("Failed to set HEAD");
+    Ok(())
 }
 
 pub fn get_repository_info(path: &PathBuf) -> Result<RepositoryInfo> {
@@ -28,10 +47,17 @@ pub fn get_repository_info(path: &PathBuf) -> Result<RepositoryInfo> {
         None => url,
     };
 
+    let mut tags = vec![];
+    let tag_names = &repo.tag_names(None)?;
+    for name in tag_names.into_iter().flatten() {
+        tags.push(name.to_owned());
+    }
+
     Ok(RepositoryInfo {
         remote_url: remote_url.to_owned(),
         branch: head.shorthand().unwrap().to_owned(),
         sha: head.target().unwrap().to_string(),
+        tags,
     })
 }
 
@@ -53,7 +79,7 @@ fn get_commit_authors(repo: &Repository) -> Result<Vec<AuthorInfo>> {
         .filter_map(|c| match c {
             Ok(commit) => Some(commit),
             Err(e) => {
-                println!("Error walking the revisions {}, skipping", e);
+                log::error!("Error walking the revisions {}, skipping", e);
                 None
             }
         })

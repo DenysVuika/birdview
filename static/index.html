@@ -3,6 +3,7 @@
 <head>
     <title>BirdView</title>
     <meta charset="UTF-8"/>
+    <link rel="icon" href="/favicon.svg" sizes="any" type="image/svg+xml">
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css"/>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -16,17 +17,32 @@
 
         const html = htm.bind(h);
 
-        function Header({ data }) {
-            return html`
-                <section class="hero is-primary">
-                    <div class="hero-body">
-                        <p class="title">
-                            ${data.project.name} ${data.project.version}
-                        </p>
-                        <p class="subtitle">${data.project.created_on}</p>
-                    </div>
-                </section>
-            `;
+        class Header extends Component {
+            state = {
+                project: {}
+            };
+
+            componentDidMount() {
+                const sid = this.props.sid;
+                if (sid) {
+                    fetch(`/api/snapshots/${sid}/project`)
+                        .then(response => response.json())
+                        .then(project => this.setState({project}));
+                }
+            }
+
+            render(props, { project }) {
+                return html`
+                    <section class="hero is-primary">
+                        <div class="hero-body">
+                            <p class="title">
+                                ${project.name} ${project.version}
+                            </p>
+                            <p class="subtitle">${project.created_on}</p>
+                        </div>
+                    </section>
+                `;
+            }
         }
 
         function LinkRow({ caption, url, standalone }) {
@@ -78,16 +94,27 @@
             };
 
             componentDidMount() {
-                const data = this.props.data;
-                const warnings = data.warnings || [];
-                const packages = data.packages || [];
-                const dependencies = (data.dependencies || []).filter(dep => dep.dev === false)
-                const devDependencies = (data.dependencies || []).filter(dep => dep.dev === true)
+                const sid = this.props.sid;
+                if (sid) {
+                    fetch(`/api/snapshots/${sid}/packages`)
+                        .then(response => response.json())
+                        .then(packages => this.setState({packages}));
 
-                this.setState({ warnings, packages, dependencies, devDependencies });
+                    fetch(`/api/snapshots/${sid}/warnings`)
+                        .then(response => response.json())
+                        .then(warnings => this.setState({warnings}));
+
+                    fetch(`/api/snapshots/${sid}/dependencies`)
+                        .then(response => response.json())
+                        .then(deps => {
+                            const dependencies = deps.filter(dep => dep.dev === false)
+                            const devDependencies = deps.filter(dep => dep.dev === true)
+                            this.setState({dependencies, devDependencies});
+                        });
+                }
             }
 
-            render({ data }, { activeTab, warnings, packages, dependencies, devDependencies }) {
+            render(props, { activeTab, warnings, packages, dependencies, devDependencies }) {
                 const TabHeader = ({ index, title }) => html`
                     <a class="${ activeTab === index ? 'is-active' : null}" onClick="${() => this.setActiveTab(index)}">${title}</a>
                 `;
@@ -161,7 +188,8 @@
                 activeTab: 0,
                 unitTests: [],
                 e2eTests: [],
-                totalCases: 0
+                unit_test_cases: 0,
+                e2e_test_cases: 0
             };
 
             setActiveTab(index) {
@@ -175,27 +203,26 @@
             }
 
             componentDidMount() {
-                const data = this.props.data;
-                const unitTests = data.unit_tests || [];
-                const e2eTests = data.e2e_tests || [];
+                const sid = this.props.sid;
+                if (sid) {
+                    fetch(`/api/snapshots/${sid}/unit-tests`)
+                        .then(response => response.json())
+                        .then(unitTests => {
+                            const unit_test_cases = unitTests
+                                .map(entry => entry.cases)
+                                .reduceRight((acc, cur) => acc + cur, 0);
+                            this.setState({unit_test_cases, unitTests});
+                        });
 
-                const unit_test_cases = unitTests
-                    .map(entry => entry.cases)
-                    .reduceRight((acc, cur) => acc + cur, 0);
-
-                const e2e_test_cases = e2eTests
-                    .map(entry => entry.cases)
-                    .reduceRight((acc, cur) => acc + cur, 0);
-
-                const totalCases = unit_test_cases + e2e_test_cases;
-
-                this.setState({
-                    unitTests,
-                    unit_test_cases,
-                    e2eTests,
-                    e2e_test_cases,
-                    totalCases
-                });
+                    fetch(`/api/snapshots/${sid}/e2e-tests`)
+                        .then(response => response.json())
+                        .then(e2eTests => {
+                            const e2e_test_cases = e2eTests
+                                .map(entry => entry.cases)
+                                .reduceRight((acc, cur) => acc + cur, 0);
+                            this.setState({e2e_test_cases, e2eTests});
+                        });
+                }
             }
 
             setupChart() {
@@ -227,7 +254,7 @@
                 });
             }
 
-            render({ data }, { activeTab, totalCases, unitTests, e2eTests }) {
+            render(props, { activeTab,  unit_test_cases, e2e_test_cases, unitTests, e2eTests }) {
                 setTimeout(() => {
                     if (activeTab === 0) {
                         this.setupChart();
@@ -240,7 +267,7 @@
 
                 return html`
                     <nav class="panel is-link">
-                        <p class="panel-heading">Tests (${totalCases})</p>
+                        <p class="panel-heading">Tests (${ unit_test_cases + e2e_test_cases})</p>
 
                         <p class="panel-tabs">
                             <${TabHeader} index=${0} title="Stats" />
@@ -274,6 +301,7 @@
 
         class Angular extends ReportPanel {
             state = {
+                version: '',
                 activeTab: 0,
                 modules: [],
                 components: [],
@@ -291,15 +319,12 @@
             }
 
             componentDidMount() {
-                const data = this.props.data;
-                this.setState({
-                    modules: data.modules || [],
-                    components: data.components || [],
-                    directives: data.directives || [],
-                    services: data.services || [],
-                    pipes: data.pipes || [],
-                    dialogs: data.dialogs || []
-                });
+                const sid = this.props.sid;
+                if (sid) {
+                    fetch(`/api/snapshots/${sid}/angular`)
+                        .then(response => response.json())
+                        .then(angular => this.setState({...angular}));
+                }
             }
 
             setupChart() {
@@ -355,7 +380,7 @@
                 });
             }
 
-            render({ data, version }, { activeTab, modules, components, directives, services, pipes, dialogs }) {
+            render(props, { activeTab, modules, components, directives, services, pipes, dialogs, version }) {
                 setTimeout(() => {
                     if (activeTab === 0) {
                         this.setupChart();
@@ -429,6 +454,11 @@
         }
 
         class GitReport extends ReportPanel {
+            state = {
+                project: {},
+                activeTab: 0,
+                authors: []
+            };
             setActiveTab(index) {
                 super.setActiveTab(index);
 
@@ -441,7 +471,7 @@
 
             setupChart() {
                 const ctx = document.getElementById('git-top-contributors');
-                const authors = (this.props.authors || []).slice(0, 20);
+                const authors = (this.state.authors || []).slice(0, 20);
 
                 const existing = Chart.getChart('git-top-contributors');
                 if (existing) {
@@ -471,7 +501,20 @@
                 });
             }
 
-            render({ project, authors }, { activeTab }) {
+            componentDidMount() {
+                const sid = this.props.sid;
+                if (sid) {
+                    fetch(`/api/snapshots/${sid}/project`)
+                        .then(response => response.json())
+                        .then(project => this.setState({project}));
+
+                    fetch(`/api/snapshots/${sid}/authors`)
+                        .then(response => response.json())
+                        .then(authors => this.setState({authors}));
+                }
+            }
+
+            render(props, { activeTab, project, authors }) {
                 setTimeout(() => {
                     if (activeTab === 1) {
                         this.setupChart();
@@ -513,47 +556,85 @@
             }
         }
 
-        function FileTypes({ data }) {
-            const rows = Object.keys(data)
-                .map(key => ({ key, value: data[key] }))
-                .sort((a, b) => b.value - a.value);
+        class FileTypes extends Component {
+            state = {
+                rows: []
+            };
+            componentDidMount() {
+                const sid = this.props.sid;
+                if (sid) {
+                    fetch(`/api/snapshots/${sid}/file-types`)
+                        .then(response => response.json())
+                        .then(types => {
+                            const rows = Object.keys(types)
+                                .map(key => ({key, value: types[key]}))
+                                .sort((a, b) => b.value - a.value);
+                            this.setState({rows});
+                        });
+                }
+            }
 
-            return html`
-                <nav class="panel is-link">
-                    <p class="panel-heading">File Types</p>
+            render(props, { rows }) {
+                return html`
+                    <nav class="panel is-link">
+                        <p class="panel-heading">File Types</p>
 
-                    <div style="max-height: 500px; overflow-y: scroll">
-                        ${rows.map(row => html`
-                            <${LinkRow} caption="${row.key}: ${row.value}"/>
-                        `)}
-                    </div>
-                </nav>
-            `;
+                        <div style="max-height: 500px; overflow-y: scroll">
+                            ${rows.map(row => html`
+                                <${LinkRow} caption="${row.key}: ${row.value}"/>
+                            `)}
+                        </div>
+                    </nav>
+                `;
+            }
         }
 
-        function App({ data }) {
-            const hasAuthors = !!data.authors;
-            const hasPackages = !!(data.packages && data.packages.length > 0);
-            const hasAngular = !!data.angular;
-            const hasTests = !!data.unit_tests || !!data.e2e_tests;
-            const hasTypes = !!data.types;
+        class ProjectList extends Component {
+            state = {
+                rows: []
+            };
+            componentDidMount() {
+                fetch(`/api/projects`)
+                    .then(response => response.json())
+                    .then(rows => this.setState({rows}));
+            }
+
+            render(props, { rows }) {
+                return html`
+                    <nav class="panel is-link">
+                        <p class="panel-heading">Projects</p>
+
+                        <div style="max-height: 500px; overflow-y: scroll">
+                            ${rows.map(row => html`
+                                <${LinkRow} caption="${row.name}: ${row.version}"/>
+                            `)}
+                        </div>
+                    </nav>
+                `;
+            }
+        }
+
+        function App() {
+            const sid = window.snapshotId;
+            const hasSnapshot = !!sid;
 
             return html`
                 <main>
-                    <${Header} data=${data}></Header>
+                    <${Header} sid=${sid}></Header>
                     <section class="section">
-                        ${hasAuthors && html`<${GitReport} project=${data.project} authors=${data.authors}/>`}
-                        ${hasPackages && html`<${Packages} data=${data}/>`}
-                        ${hasAngular && html`<${Angular} data=${data.angular} version="${data.angular_version}"/>`}
-                        ${hasTests && html`<${Tests} data=${data}/>`}
-                        ${hasTypes && html`<${FileTypes} data=${data.types}></FileTypes>`}
+                        <${ProjectList}/>
+                        <${GitReport} sid=${sid}/>
+                        <${Packages} sid=${sid}/>
+                        <${Angular} sid=${sid}/>
+                        <${Tests} sid=${sid}/>
+                        <${FileTypes} sid=${sid}/>
                     </section>
                 </main>
             `;
         }
 
         render(html`
-            <${App} data=${window.data}/>`, document.body);
+            <${App}/>`, document.body);
     </script>
     <script>
         window.addEventListener("DOMContentLoaded", (event) => {

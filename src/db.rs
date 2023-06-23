@@ -103,6 +103,7 @@ pub struct Snapshot {
     pub sha: Option<String>,
 }
 
+#[derive(Serialize)]
 pub struct ProjectInfo {
     pub id: i64,
     pub name: String,
@@ -167,6 +168,33 @@ pub fn create_project(
         params![name, version, Utc::now(), origin],
     )?;
     Ok(conn.last_insert_rowid())
+}
+
+/// Create a list of tags for a given project
+pub fn create_tags(conn: &Connection, pid: i64, tags: &Vec<String>) -> Result<()> {
+    let mut stmt = conn.prepare("INSERT INTO tags (pid, name) VALUES (?1, ?2)")?;
+
+    for name in tags {
+        stmt.execute(params![pid, name])?;
+    }
+    Ok(())
+}
+
+pub fn get_projects(conn: &Connection) -> Result<Vec<ProjectInfo>> {
+    let mut stmt = conn.prepare("SELECT OID, name, version, created_on, origin FROM projects")?;
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(ProjectInfo {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                version: row.get(2)?,
+                created_on: row.get(3)?,
+                origin: row.get(4)?,
+            })
+        })?
+        .filter_map(|entry| entry.ok())
+        .collect();
+    Ok(rows)
 }
 
 pub fn get_project_by_name(conn: &Connection, name: &str) -> Result<ProjectInfo> {
@@ -248,7 +276,7 @@ pub fn get_snapshot_by_sha(conn: &Connection, sha: &str) -> Option<Snapshot> {
     match result {
         Ok(snapshot) => Some(snapshot),
         Err(err) => {
-            println!("Error {}", err);
+            log::error!("Snapshot not found: {}", err);
             None
         }
     }

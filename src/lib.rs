@@ -2,13 +2,15 @@ pub mod config;
 pub mod db;
 pub mod git;
 pub mod inspectors;
+pub mod logger;
 pub mod models;
-pub mod report;
+pub mod server;
 
 use crate::config::Config;
 use crate::git::{get_repository_authors, get_repository_info, RepositoryInfo};
 use crate::inspectors::*;
 use crate::models::PackageJsonFile;
+use crate::server::run_server;
 use anyhow::Result;
 use ignore::WalkBuilder;
 use rusqlite::Connection;
@@ -16,7 +18,7 @@ use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::process;
 
-pub fn run(config: &Config) -> Result<()> {
+pub async fn run(config: &Config) -> Result<()> {
     let package_json_path = &config.working_dir.join("package.json");
     if !package_json_path.exists() {
         panic!("Cannot find package.json file");
@@ -31,33 +33,46 @@ pub fn run(config: &Config) -> Result<()> {
 
     let pid = match db::get_project_by_name(&conn, &name) {
         Ok(project) => {
-            println!("Found the project `{}`", &name);
-            println!("Verifying snapshots...");
+            log::info!("Found the project `{}`", &name);
+            log::info!("Verifying snapshots...");
 
             if let Some(snapshot) = db::get_snapshot_by_sha(&conn, &repo.sha) {
-                println!(
-                    "Snapshot for branch `{}` ({}) is already created.",
-                    &repo.branch, &repo.sha
+                log::info!(
+                    "Snapshot {} for branch `{}` ({}) is already created.",
+                    snapshot.oid,
+                    &repo.branch,
+                    &repo.sha
                 );
 
-                println!("Generating report");
-                create_report(&conn, snapshot.oid, config)?;
+                if config.open {
+                    run_server(config.output_dir.to_owned(), true)
+                        .await
+                        .unwrap_or_else(|err| log::error!("{err}"));
+                }
 
-                println!("Report complete.");
                 process::exit(0);
             }
 
             project.id
         }
         Err(_) => {
-            println!("Creating project `{}`", &name);
-            db::create_project(&conn, &name, &version, &repo.remote_url)?
+            // log::info!("Checking out develop branch");
+            // git::checkout_branch(&config.working_dir, "develop")?;
+
+            log::info!("Creating project `{}`", &name);
+            let pid = db::create_project(&conn, &name, &version, &repo.remote_url)?;
+
+            log::info!("Creating tags");
+            db::create_tags(&conn, pid, &repo.tags)?;
+
+            pid
         }
     };
 
-    println!(
+    log::info!(
         "Creating new snapshot for branch `{}`({})",
-        &repo.branch, &repo.sha
+        &repo.branch,
+        &repo.sha
     );
     let sid = db::create_snapshot(&conn, pid, &repo)?;
     let authors = get_repository_authors(&config.working_dir)?;
@@ -77,9 +92,14 @@ pub fn run(config: &Config) -> Result<()> {
 
     run_inspectors(config, &conn, sid, inspectors, config.verbose, &repo)?;
 
-    create_report(&conn, sid, config)?;
+    log::info!("Inspection complete");
 
-    println!("Inspection complete");
+    if config.open {
+        run_server(config.output_dir.to_owned(), true)
+            .await
+            .unwrap_or_else(|err| log::error!("{:?}", err));
+    }
+
     Ok(())
 }
 
@@ -129,7 +149,7 @@ fn run_inspectors(
         }
 
         if verbose {
-            println!(
+            log::info!(
                 "├── {} {}",
                 if processed { '✅' } else { '🔎' },
                 entry_path.strip_prefix(working_dir).unwrap().display()
@@ -141,11 +161,5 @@ fn run_inspectors(
         db::create_file_types(connection, sid, &types)?;
     }
 
-    Ok(())
-}
-
-fn create_report(conn: &Connection, sid: i64, config: &Config) -> Result<()> {
-    let data = report::generate_report(conn, sid)?;
-    report::save_report(config, data)?;
     Ok(())
 }
