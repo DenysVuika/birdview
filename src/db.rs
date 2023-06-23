@@ -1,4 +1,4 @@
-use crate::git::{AuthorInfo, RepositoryInfo};
+use crate::git::{AuthorInfo, GitProject};
 use crate::models::PackageJsonFile;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
@@ -161,7 +161,7 @@ pub fn create_project(
     conn: &Connection,
     name: &String,
     version: &String,
-    origin: &String,
+    origin: &str,
 ) -> Result<i64> {
     conn.execute(
         "INSERT INTO projects (name, version, origin) VALUES (?1, ?2, ?3)",
@@ -231,10 +231,10 @@ pub fn get_project_by_snapshot(conn: &Connection, sid: i64) -> Result<ProjectInf
     Ok(project_info)
 }
 
-pub fn create_snapshot(conn: &Connection, pid: i64, repo: &RepositoryInfo) -> Result<i64> {
-    let branch = &repo.branch;
-    let sha = &repo.sha;
-    let timestamp = &repo.timestamp;
+pub fn create_snapshot(conn: &Connection, pid: i64, project: &GitProject) -> Result<i64> {
+    let branch = project.branch()?;
+    let sha = project.sha()?;
+    let timestamp = project.timestamp()?;
 
     conn.execute(
         "INSERT INTO snapshots (pid, branch, sha, timestamp) VALUES (?1, ?2, ?3, ?4)",

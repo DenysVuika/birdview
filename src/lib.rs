@@ -7,7 +7,7 @@ pub mod models;
 pub mod server;
 
 use crate::config::Config;
-use crate::git::{get_repository_authors, get_repository_info, RepositoryInfo};
+use crate::git::GitProject;
 use crate::inspectors::*;
 use crate::models::PackageJsonFile;
 use crate::server::run_server;
@@ -24,7 +24,16 @@ pub async fn run(config: &Config) -> Result<()> {
         panic!("Cannot find package.json file");
     }
 
-    let repo = get_repository_info(&config.working_dir)?;
+    let git_project = GitProject::open(&config.working_dir)?;
+
+    log::info!("Current branch: {}", git_project.branch()?);
+    log::info!("Checking out develop branch");
+    git_project.checkout("develop")?;
+
+    let branch = git_project.branch()?;
+    let sha = git_project.sha()?;
+    let remote_url = git_project.remote_url()?;
+
     let conn = db::create_connection(&config.output_dir)?;
     let package = PackageJsonFile::from_file(package_json_path)?;
 
@@ -36,12 +45,12 @@ pub async fn run(config: &Config) -> Result<()> {
             log::info!("Found the project `{}`", &name);
             log::info!("Verifying snapshots...");
 
-            if let Some(snapshot) = db::get_snapshot_by_sha(&conn, &repo.sha) {
+            if let Some(snapshot) = db::get_snapshot_by_sha(&conn, &sha) {
                 log::info!(
                     "Snapshot {} for branch `{}` ({}) is already created.",
                     snapshot.oid,
-                    &repo.branch,
-                    &repo.sha
+                    &branch,
+                    &sha
                 );
 
                 if config.open {
@@ -56,27 +65,21 @@ pub async fn run(config: &Config) -> Result<()> {
             project.id
         }
         Err(_) => {
-            // log::info!("Checking out develop branch");
-            // git::checkout_branch(&config.working_dir, "develop")?;
-
             log::info!("Creating project `{}`", &name);
-            let pid = db::create_project(&conn, &name, &version, &repo.remote_url)?;
+            let pid = db::create_project(&conn, &name, &version, &remote_url)?;
 
             log::info!("Creating tags");
-            db::create_tags(&conn, pid, &repo.tags)?;
+            let tags = git_project.tags();
+            db::create_tags(&conn, pid, &tags)?;
 
             pid
         }
     };
 
-    log::info!(
-        "Creating new snapshot for branch `{}`({})",
-        &repo.branch,
-        &repo.sha
-    );
-    let sid = db::create_snapshot(&conn, pid, &repo)?;
-    let authors = get_repository_authors(&config.working_dir)?;
-    db::create_authors(&conn, sid, &authors)?;
+    log::info!("Creating new snapshot for branch `{}`({})", &branch, &sha);
+    let sid = db::create_snapshot(&conn, pid, &git_project)?;
+    let authors = &git_project.authors()?;
+    db::create_authors(&conn, sid, authors)?;
 
     if let Some(dependencies) = package.dependencies {
         if let Some(version) = dependencies.get("@angular/core") {
@@ -90,7 +93,7 @@ pub async fn run(config: &Config) -> Result<()> {
         Box::new(AngularInspector {}),
     ];
 
-    run_inspectors(config, &conn, sid, inspectors, config.verbose, &repo)?;
+    run_inspectors(config, &conn, sid, inspectors, config.verbose, &git_project)?;
 
     log::info!("Inspection complete");
 
@@ -109,7 +112,7 @@ fn run_inspectors(
     sid: i64,
     inspectors: Vec<Box<dyn FileInspector>>,
     verbose: bool,
-    repo: &RepositoryInfo,
+    project: &GitProject,
 ) -> Result<()> {
     let working_dir = &config.working_dir;
     let mut types: HashMap<String, i64> = HashMap::new();
@@ -131,8 +134,8 @@ fn run_inspectors(
                 }
 
                 if inspector.supports_file(entry_path) {
-                    let remote = &repo.remote_url;
-                    let target = &repo.sha;
+                    let remote = &project.remote_url()?;
+                    let target = &project.sha()?;
                     let url = format!("{remote}/blob/{target}/{rel_path}");
 
                     let options = FileInspectorOptions {
