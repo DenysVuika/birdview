@@ -170,6 +170,16 @@ pub fn create_project(
     Ok(conn.last_insert_rowid())
 }
 
+/// Create a list of tags for a given project
+pub fn create_tags(conn: &Connection, pid: i64, tags: &Vec<String>) -> Result<()> {
+    let mut stmt = conn.prepare("INSERT INTO tags (pid, name) VALUES (?1, ?2)")?;
+
+    for name in tags {
+        stmt.execute(params![pid, name])?;
+    }
+    Ok(())
+}
+
 pub fn get_projects(conn: &Connection) -> Result<Vec<ProjectInfo>> {
     let mut stmt = conn.prepare("SELECT OID, name, version, created_on, origin FROM projects")?;
     let rows = stmt

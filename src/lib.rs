@@ -57,7 +57,12 @@ pub async fn run(config: &Config) -> Result<()> {
         }
         Err(_) => {
             log::info!("Creating project `{}`", &name);
-            db::create_project(&conn, &name, &version, &repo.remote_url)?
+            let pid = db::create_project(&conn, &name, &version, &repo.remote_url)?;
+
+            log::info!("Creating tags");
+            db::create_tags(&conn, pid, &repo.tags)?;
+
+            pid
         }
     };
 

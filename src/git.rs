@@ -15,6 +15,7 @@ pub struct RepositoryInfo {
     pub remote_url: String,
     pub branch: String,
     pub sha: String,
+    pub tags: Vec<String>,
 }
 
 pub fn get_repository_info(path: &PathBuf) -> Result<RepositoryInfo> {
@@ -28,10 +29,17 @@ pub fn get_repository_info(path: &PathBuf) -> Result<RepositoryInfo> {
         None => url,
     };
 
+    let mut tags = vec![];
+    let tag_names = &repo.tag_names(None)?;
+    for name in tag_names.into_iter().flatten() {
+        tags.push(name.to_owned());
+    }
+
     Ok(RepositoryInfo {
         remote_url: remote_url.to_owned(),
         branch: head.shorthand().unwrap().to_owned(),
         sha: head.target().unwrap().to_string(),
+        tags,
     })
 }
 
