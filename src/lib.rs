@@ -29,9 +29,7 @@ pub async fn run(config: &Config) -> Result<()> {
 
     let conn = db::create_connection(&config.output_dir)?;
     let package = PackageJsonFile::from_file(package_json_path)?;
-
     let name = package.name.unwrap();
-    let version = package.version.unwrap();
 
     let pid = match db::get_project_by_name(&conn, &name) {
         Ok(project_info) => {
@@ -61,8 +59,7 @@ pub async fn run(config: &Config) -> Result<()> {
         Err(_) => {
             log::info!("Creating project `{}`", &name);
             let remote_url = project.remote_url()?;
-            // TODO: version should be part of the snapshot as package.json values differ in branches/tags
-            db::create_project(&conn, &name, &version, &remote_url)?
+            db::create_project(&conn, &name, &remote_url)?
         }
     };
 

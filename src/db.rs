@@ -107,7 +107,6 @@ pub struct Snapshot {
 pub struct ProjectInfo {
     pub id: i64,
     pub name: String,
-    pub version: String,
     pub created_on: DateTime<Utc>,
     pub origin: Option<String>,
 }
@@ -157,15 +156,10 @@ pub fn create_connection(working_dir: &Path) -> Result<Connection> {
     Ok(conn)
 }
 
-pub fn create_project(
-    conn: &Connection,
-    name: &String,
-    version: &String,
-    origin: &str,
-) -> Result<i64> {
+pub fn create_project(conn: &Connection, name: &String, origin: &str) -> Result<i64> {
     conn.execute(
-        "INSERT INTO projects (name, version, origin) VALUES (?1, ?2, ?3)",
-        params![name, version, origin],
+        "INSERT INTO projects (name, origin) VALUES (?1, ?2)",
+        params![name, origin],
     )?;
     Ok(conn.last_insert_rowid())
 }
@@ -187,15 +181,14 @@ pub fn create_tag(conn: &Connection, pid: i64, name: &str) -> Result<i64> {
 }
 
 pub fn get_projects(conn: &Connection) -> Result<Vec<ProjectInfo>> {
-    let mut stmt = conn.prepare("SELECT OID, name, version, created_on, origin FROM projects")?;
+    let mut stmt = conn.prepare("SELECT OID, name, created_on, origin FROM projects")?;
     let rows = stmt
         .query_map([], |row| {
             Ok(ProjectInfo {
                 id: row.get(0)?,
                 name: row.get(1)?,
-                version: row.get(2)?,
-                created_on: row.get(3)?,
-                origin: row.get(4)?,
+                created_on: row.get(2)?,
+                origin: row.get(3)?,
             })
         })?
         .filter_map(|entry| entry.ok())
@@ -205,15 +198,14 @@ pub fn get_projects(conn: &Connection) -> Result<Vec<ProjectInfo>> {
 
 pub fn get_project_by_name(conn: &Connection, name: &str) -> Result<ProjectInfo> {
     let project_info = conn.query_row(
-        "SELECT OID, name, version, created_on, origin FROM projects WHERE name=:name",
+        "SELECT OID, name, created_on, origin FROM projects WHERE name=:name",
         params![name],
         |row| {
             Ok(ProjectInfo {
                 id: row.get(0)?,
                 name: row.get(1)?,
-                version: row.get(2)?,
-                created_on: row.get(3)?,
-                origin: row.get(4)?,
+                created_on: row.get(2)?,
+                origin: row.get(3)?,
             })
         },
     )?;
@@ -222,15 +214,14 @@ pub fn get_project_by_name(conn: &Connection, name: &str) -> Result<ProjectInfo>
 
 pub fn get_project_by_snapshot(conn: &Connection, sid: i64) -> Result<ProjectInfo> {
     let project_info = conn.query_row(
-        "SELECT p.OID, p.name, p.version, p.created_on, p.origin FROM snapshots s JOIN projects p ON p.OID = s.pid WHERE s.OID=:sid",
+        "SELECT p.OID, p.name, p.created_on, p.origin FROM snapshots s JOIN projects p ON p.OID = s.pid WHERE s.OID=:sid",
         params![sid],
         |row| {
             Ok(ProjectInfo {
                 id: row.get(0)?,
                 name: row.get(1)?,
-                version: row.get(2)?,
-                created_on: row.get(3)?,
-                origin: row.get(4)?,
+                created_on: row.get(2)?,
+                origin: row.get(3)?,
             })
         },
     )?;

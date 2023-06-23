@@ -95,7 +95,6 @@ async fn get_snapshot_project(
     let project = db::get_project_by_snapshot(conn, sid).unwrap();
     let result = json!({
         "name": project.name,
-        "version": project.version,
         "created_on": snapshot.created_on,
         "origin": project.origin,
         "branch": snapshot.branch,

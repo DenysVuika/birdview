@@ -2,7 +2,6 @@ BEGIN;
 
 CREATE TABLE IF NOT EXISTS projects (
     name TEXT,
-    version TEXT,
     created_on DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
     origin TEXT
 );
