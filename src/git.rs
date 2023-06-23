@@ -92,14 +92,15 @@ impl GitProject {
     }
 
     /// Checkout a branch (main), or a tag (v0.1.1) or a commit (8e8128)
-    pub fn checkout(&self, ref_name: &str) -> Result<()> {
-        if ref_name == self.branch()? {
+    pub fn checkout(&self, ref_name: &String) -> Result<()> {
+        log::info!("Checking out: {}", ref_name);
+        if ref_name.to_owned() == self.branch()? {
             log::info!("Branch {} already checked out", ref_name);
             return Ok(());
         }
 
         let repo = &self.repository;
-        let (object, reference) = repo.revparse_ext(ref_name).expect("Object not found");
+        let (object, reference) = repo.revparse_ext(&ref_name).expect("Object not found");
 
         repo.checkout_tree(&object, None)
             .expect("Failed to checkout");
@@ -134,7 +135,7 @@ impl GitProject {
     pub fn timestamp(&self) -> Result<DateTime<Utc>> {
         let head = &self.repository.head()?;
         let commit = head.peel_to_commit()?;
-        self.display_commit(&commit);
+        // self.display_commit(&commit);
 
         let timestamp = Utc.timestamp_opt(commit.time().seconds(), 0).unwrap();
         Ok(timestamp)

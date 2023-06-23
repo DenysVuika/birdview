@@ -24,15 +24,8 @@ pub async fn run(config: &Config) -> Result<()> {
         panic!("Cannot find package.json file");
     }
 
-    let git_project = GitProject::open(&config.working_dir)?;
-
-    log::info!("Current branch: {}", git_project.branch()?);
-    log::info!("Checking out develop branch");
-    git_project.checkout("develop")?;
-
-    let branch = git_project.branch()?;
-    let sha = git_project.sha()?;
-    let remote_url = git_project.remote_url()?;
+    let project = GitProject::open(&config.working_dir)?;
+    log::info!("Current branch: {}", project.branch()?);
 
     let conn = db::create_connection(&config.output_dir)?;
     let package = PackageJsonFile::from_file(package_json_path)?;
@@ -41,15 +34,16 @@ pub async fn run(config: &Config) -> Result<()> {
     let version = package.version.unwrap();
 
     let pid = match db::get_project_by_name(&conn, &name) {
-        Ok(project) => {
+        Ok(project_info) => {
             log::info!("Found the project `{}`", &name);
             log::info!("Verifying snapshots...");
+            let sha = project.sha()?;
 
             if let Some(snapshot) = db::get_snapshot_by_sha(&conn, &sha) {
                 log::info!(
-                    "Snapshot {} for branch `{}` ({}) is already created.",
+                    "Snapshot {} for `{}` ({}) is already created.",
                     snapshot.oid,
-                    &branch,
+                    &name,
                     &sha
                 );
 
@@ -62,30 +56,18 @@ pub async fn run(config: &Config) -> Result<()> {
                 process::exit(0);
             }
 
-            project.id
+            project_info.id
         }
         Err(_) => {
             log::info!("Creating project `{}`", &name);
-            let pid = db::create_project(&conn, &name, &version, &remote_url)?;
-
-            log::info!("Creating tags");
-            let tags = git_project.tags();
-            db::create_tags(&conn, pid, &tags)?;
-
-            pid
+            let remote_url = project.remote_url()?;
+            // TODO: version should be part of the snapshot as package.json values differ in branches/tags
+            db::create_project(&conn, &name, &version, &remote_url)?
         }
     };
 
-    log::info!("Creating new snapshot for branch `{}`({})", &branch, &sha);
-    let sid = db::create_snapshot(&conn, pid, &git_project)?;
-    let authors = &git_project.authors()?;
-    db::create_authors(&conn, sid, authors)?;
-
-    if let Some(dependencies) = package.dependencies {
-        if let Some(version) = dependencies.get("@angular/core") {
-            db::create_ng_version(&conn, sid, version)?;
-        }
-    }
+    // todo: load tags
+    let tags = vec![project.branch()?];
 
     let inspectors: Vec<Box<dyn FileInspector>> = vec![
         Box::new(PackageJsonInspector {}),
@@ -93,7 +75,31 @@ pub async fn run(config: &Config) -> Result<()> {
         Box::new(AngularInspector {}),
     ];
 
-    run_inspectors(config, &conn, sid, inspectors, config.verbose, &git_project)?;
+    log::info!("Processing tags: {:?}", tags);
+
+    // TODO: move to a separate func
+    for tag in tags {
+        project.checkout(&tag)?;
+        let sha = project.sha()?;
+
+        log::info!("Creating tag {}", tag);
+        let tag_id = db::create_tag(&conn, pid, &tag)?;
+
+        log::info!("Creating new snapshot for tag `{}`({})", tag, sha);
+        let sid = db::create_snapshot(&conn, pid, tag_id, &project)?;
+
+        log::info!("Recording authors");
+        let authors = &project.authors()?;
+        db::create_authors(&conn, sid, authors)?;
+
+        if let Some(dependencies) = &package.dependencies {
+            if let Some(version) = dependencies.get("@angular/core") {
+                db::create_ng_version(&conn, sid, version)?;
+            }
+        }
+
+        run_inspectors(config, &conn, sid, &inspectors, config.verbose, &project)?;
+    }
 
     log::info!("Inspection complete");
 
@@ -110,7 +116,7 @@ fn run_inspectors(
     config: &Config,
     connection: &Connection,
     sid: i64,
-    inspectors: Vec<Box<dyn FileInspector>>,
+    inspectors: &[Box<dyn FileInspector>],
     verbose: bool,
     project: &GitProject,
 ) -> Result<()> {

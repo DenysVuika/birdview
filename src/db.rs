@@ -180,6 +180,12 @@ pub fn create_tags(conn: &Connection, pid: i64, tags: &Vec<String>) -> Result<()
     Ok(())
 }
 
+pub fn create_tag(conn: &Connection, pid: i64, name: &str) -> Result<i64> {
+    let mut stmt = conn.prepare("INSERT INTO tags (pid, name) VALUES (?1, ?2)")?;
+    stmt.execute(params![pid, name])?;
+    Ok(conn.last_insert_rowid())
+}
+
 pub fn get_projects(conn: &Connection) -> Result<Vec<ProjectInfo>> {
     let mut stmt = conn.prepare("SELECT OID, name, version, created_on, origin FROM projects")?;
     let rows = stmt
@@ -231,21 +237,27 @@ pub fn get_project_by_snapshot(conn: &Connection, sid: i64) -> Result<ProjectInf
     Ok(project_info)
 }
 
-pub fn create_snapshot(conn: &Connection, pid: i64, project: &GitProject) -> Result<i64> {
-    let branch = project.branch()?;
+pub fn create_snapshot(
+    conn: &Connection,
+    pid: i64,
+    tag_id: i64,
+    project: &GitProject,
+) -> Result<i64> {
     let sha = project.sha()?;
     let timestamp = project.timestamp()?;
 
     conn.execute(
-        "INSERT INTO snapshots (pid, branch, sha, timestamp) VALUES (?1, ?2, ?3, ?4)",
-        params![pid, branch, sha, timestamp],
+        "INSERT INTO snapshots (pid, tag_id, sha, timestamp) VALUES (?1, ?2, ?3, ?4)",
+        params![pid, tag_id, sha, timestamp],
     )?;
     Ok(conn.last_insert_rowid())
 }
 
 pub fn get_snapshot_by_id(conn: &Connection, oid: i64) -> rusqlite::Result<Snapshot> {
     conn.query_row(
-        "SELECT pid, created_on, branch, sha from snapshots WHERE OID=:oid",
+        "SELECT s.pid, s.created_on, t.name AS branch, s.sha FROM snapshots s
+                JOIN tags t on s.tag_id = t.OID
+                WHERE s.OID=:oid",
         named_params! {":oid": oid },
         |row| {
             Ok(Snapshot {
@@ -261,7 +273,9 @@ pub fn get_snapshot_by_id(conn: &Connection, oid: i64) -> rusqlite::Result<Snaps
 
 pub fn get_snapshot_by_sha(conn: &Connection, sha: &str) -> Option<Snapshot> {
     let result = conn.query_row(
-        "SELECT OID, pid, created_on, branch, sha from snapshots WHERE sha=:sha",
+        "SELECT s.OID, s.pid, s.created_on, t.name AS branch, s.sha FROM snapshots s
+                JOIN tags t on s.tag_id = t.OID
+                WHERE s.sha=:sha",
         named_params! {":sha": sha },
         |row| {
             Ok(Snapshot {

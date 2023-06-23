@@ -9,8 +9,9 @@ CREATE TABLE IF NOT EXISTS projects (
 
 CREATE TABLE IF NOT EXISTS snapshots (
     pid INTEGER NOT NULL,
+    tag_id INTEGER NOT NULL,
     created_on DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    branch TEXT,
+--     branch TEXT,
     sha TEXT,
     timestamp DATETIME
 );
