@@ -18,6 +18,24 @@ pub struct RepositoryInfo {
     pub tags: Vec<String>,
 }
 
+pub fn checkout_branch(path: &PathBuf, branch: &str) -> Result<()> {
+    let repo = Repository::open(path)?;
+    let refname = branch; // or a tag (v0.1.1) or a commit (8e8128)
+    let (object, reference) = repo.revparse_ext(refname).expect("Object not found");
+
+    repo.checkout_tree(&object, None)
+        .expect("Failed to checkout");
+
+    match reference {
+        // gref is an actual reference like branches or tags
+        Some(gref) => repo.set_head(gref.name().unwrap()),
+        // this is a commit, not a reference
+        None => repo.set_head_detached(object.id()),
+    }
+    .expect("Failed to set HEAD");
+    Ok(())
+}
+
 pub fn get_repository_info(path: &PathBuf) -> Result<RepositoryInfo> {
     let repo = Repository::open(path)?;
     let head = repo.head()?;

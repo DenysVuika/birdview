@@ -56,6 +56,9 @@ pub async fn run(config: &Config) -> Result<()> {
             project.id
         }
         Err(_) => {
+            // log::info!("Checking out develop branch");
+            // git::checkout_branch(&config.working_dir, "develop")?;
+
             log::info!("Creating project `{}`", &name);
             let pid = db::create_project(&conn, &name, &version, &repo.remote_url)?;
 
