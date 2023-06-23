@@ -164,8 +164,8 @@ pub fn create_project(
     origin: &String,
 ) -> Result<i64> {
     conn.execute(
-        "INSERT INTO projects (name, version, created_on, origin) VALUES (?1, ?2, ?3, ?4)",
-        params![name, version, Utc::now(), origin],
+        "INSERT INTO projects (name, version, origin) VALUES (?1, ?2, ?3)",
+        params![name, version, origin],
     )?;
     Ok(conn.last_insert_rowid())
 }
@@ -234,10 +234,11 @@ pub fn get_project_by_snapshot(conn: &Connection, sid: i64) -> Result<ProjectInf
 pub fn create_snapshot(conn: &Connection, pid: i64, repo: &RepositoryInfo) -> Result<i64> {
     let branch = &repo.branch;
     let sha = &repo.sha;
+    let timestamp = &repo.timestamp;
 
     conn.execute(
-        "INSERT INTO snapshots (pid, created_on, branch, sha) VALUES (?1, ?2, ?3, ?4)",
-        params![pid, Utc::now(), branch, sha],
+        "INSERT INTO snapshots (pid, branch, sha, timestamp) VALUES (?1, ?2, ?3, ?4)",
+        params![pid, branch, sha, timestamp],
     )?;
     Ok(conn.last_insert_rowid())
 }

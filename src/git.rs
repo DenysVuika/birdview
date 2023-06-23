@@ -1,5 +1,6 @@
 use anyhow::Result;
-use git2::Repository;
+use chrono::{DateTime, TimeZone, Utc};
+use git2::{Commit, Repository};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -16,6 +17,8 @@ pub struct RepositoryInfo {
     pub branch: String,
     pub sha: String,
     pub tags: Vec<String>,
+    /// last commit timestamp
+    pub timestamp: DateTime<Utc>,
 }
 
 pub fn checkout_branch(path: &PathBuf, branch: &str) -> Result<()> {
@@ -53,12 +56,31 @@ pub fn get_repository_info(path: &PathBuf) -> Result<RepositoryInfo> {
         tags.push(name.to_owned());
     }
 
+    let commit = head.peel_to_commit()?;
+    display_commit(&commit);
+
+    let timestamp = Utc.timestamp_opt(commit.time().seconds(), 0).unwrap();
+
     Ok(RepositoryInfo {
         remote_url: remote_url.to_owned(),
         branch: head.shorthand().unwrap().to_owned(),
         sha: head.target().unwrap().to_string(),
         tags,
+        timestamp,
     })
+}
+
+fn display_commit(commit: &Commit) {
+    let timestamp = commit.time().seconds();
+    let tm = Utc.timestamp_opt(timestamp, 0).unwrap();
+
+    log::info!(
+        "commit {}\nAuthor: {}\nDate:   {}\n\n    {}",
+        commit.id(),
+        commit.author(),
+        tm,
+        commit.message().unwrap_or("no commit message")
+    );
 }
 
 pub fn get_repository_authors(path: &PathBuf) -> Result<Vec<AuthorInfo>> {
