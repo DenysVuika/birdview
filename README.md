@@ -43,42 +43,24 @@ birdview inspect --help
 - angular elements (`--angular`)
 - markdown files (`--markdown`)
 
-## Generating Reports
+## Running web report
 
 ```shell
-birdview inspect <dir> --format=<html|json>
+birdview inspect <dir> --open
 ```
-
-You can generate reports using multiple templates:
-
-- `html`: single-page HTML report (default)
-- `json`: raw JSON report
 
 ### Custom output folder
 
-By default, the reports are placed in the working directory.
-You can change the report output folder using the `-o` or `--output-dir` parameter.
+By default, the data is placed in the working directory.
+You can change the output folder using the `-o` or `--output-dir` parameter.
 
 ```shell
-birdview inspect <dir> --output-dir=reports --open
+birdview inspect <dir> --output-dir=cache --open
 ```
 
 > The output directory should exist prior to running the command
 
-### HTML Report
-
-The HTML format is the default one. 
-
-```shell
-# generate HTML report and place to the working dir
-birdview inspect <dir>
-
-# generate HTML report and place it to the "reports" folder
-birdview inspect <dir> --output-dir=reports
-
-# generate HTML report and open with the default browser
-birdview inspect <dir> --open
-```
+### Report
 
 #### Angular
 
@@ -127,130 +109,3 @@ Provides insights on the packages and project dependencies.
 Provides insights on the file types used in the project
 
 ![file types report](docs/types-report.png)
-
-### JSON Report
-
-```shell
-# run all inspections and generate JSON report
-birdview inspect <dir> --format=json
-
-# generate JSON report and place it to the "reports" folder
-birdview inspect <dir> --format=json --output-dir=reports
-```
-
-The format of the output is similar to the following example:
-
-```json
-{
-  "report_date": "<date/time UTC>",
-  
-  "project": {
-    "name": "<package.json>/name",
-    "version": "<package.json>/version",
-    "created_on": "<UTC date>",
-    "origin": "<URL>",
-    "branch": "<branch>",
-    "sha": "<SHA>"
-  },
-
-  "authors": [
-    {
-      "name": "<name>",
-      "commits": 1
-    }
-  ],
-
-  "warnings": [
-    {
-      "path": "<relative/path>",
-      "message": "<message>",
-      "url": "<URL>"
-    }
-  ],
-  
-  "angular": {
-    "framework": "<angular version>",
-    "modules": [
-      {
-        "path": "<workspace>/<path>.module.ts",
-        "url": "<URL>"
-      }
-    ],
-    "components": [
-      {
-        "path": "<workspace>/<path>.component.ts",
-        "standalone": false,
-        "url": "<URL>"
-      }
-    ],
-    "directives": [
-      {
-        "path": "<workspace>/<path>.directive.ts",
-        "url": "<URL>"
-      }
-    ],
-    "services": [
-      {
-        "path": "<workspace>/<path>.service.ts",
-        "url": "<URL>"
-      }
-    ],
-    "pipes": [
-      {
-        "path": "<workspace>/<path>.pipe.ts",
-        "url": "<URL>"
-      }
-    ],
-    "dialogs": [
-      {
-        "path": "<workspace>/<path>.dialog.ts",
-        "url": "<URL>"
-      }
-    ]
-  },
-  
-  "unit_tests": [
-    {
-      "path": "<workspace>/<path>.spec.ts",
-      "cases": 1,
-      "url": "<URL>"
-    }
-  ],
-  
-  "e2e_tests": [
-    {
-      "path": "<workspace>/<path>.e2e.ts",
-      "cases": 1,
-      "url": "<URL>"
-    }
-  ],
-  
-  "packages": [
-    {
-      "path": "<workspace>/<path>/package.json",
-      "url": "<URL>"
-    }
-  ],
-
-  "dependencies": [
-    {
-      "name": "typescript",
-      "version": "4.7.4",
-      "dev": true,
-      "npm_url": "<URL>",
-      "package": "<relative/path>",
-      "url": "<URL>"
-    }
-  ],
-
-  "types": {
-    "html": 379,
-    "scss": 536,
-    "css": 33,
-    "ts": 5125,
-    "js": 301,
-    "md": 497,
-    "json": 548
-  }
-}
-```
