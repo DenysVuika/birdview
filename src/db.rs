@@ -98,9 +98,10 @@ impl FromSql for NgKind {
 pub struct Snapshot {
     pub oid: i64,
     pub pid: i64,
+    pub tag: Option<String>,
     pub created_on: DateTime<Utc>,
-    pub branch: Option<String>,
     pub sha: Option<String>,
+    pub timestamp: DateTime<Utc>,
 }
 
 #[derive(Serialize)]
@@ -246,7 +247,8 @@ pub fn create_snapshot(
 
 pub fn get_snapshot_by_id(conn: &Connection, oid: i64) -> rusqlite::Result<Snapshot> {
     conn.query_row(
-        "SELECT s.pid, s.created_on, t.name AS branch, s.sha FROM snapshots s
+        "SELECT s.pid, s.created_on, t.name AS tag, s.sha, s.timestamp 
+                FROM snapshots s
                 JOIN tags t on s.tag_id = t.OID
                 WHERE s.OID=:oid",
         named_params! {":oid": oid },
@@ -255,8 +257,9 @@ pub fn get_snapshot_by_id(conn: &Connection, oid: i64) -> rusqlite::Result<Snaps
                 oid,
                 pid: row.get(0)?,
                 created_on: row.get(1)?,
-                branch: row.get(2)?,
+                tag: row.get(2)?,
                 sha: row.get(3)?,
+                timestamp: row.get(4)?,
             })
         },
     )
@@ -264,7 +267,8 @@ pub fn get_snapshot_by_id(conn: &Connection, oid: i64) -> rusqlite::Result<Snaps
 
 pub fn get_snapshot_by_sha(conn: &Connection, sha: &str) -> Option<Snapshot> {
     let result = conn.query_row(
-        "SELECT s.OID, s.pid, s.created_on, t.name AS branch, s.sha FROM snapshots s
+        "SELECT s.OID, s.pid, s.created_on, t.name AS tag, s.sha, s.timestamp 
+                FROM snapshots s
                 JOIN tags t on s.tag_id = t.OID
                 WHERE s.sha=:sha",
         named_params! {":sha": sha },
@@ -273,8 +277,9 @@ pub fn get_snapshot_by_sha(conn: &Connection, sha: &str) -> Option<Snapshot> {
                 oid: row.get(0)?,
                 pid: row.get(1)?,
                 created_on: row.get(2)?,
-                branch: row.get(3)?,
+                tag: row.get(3)?,
                 sha: row.get(4)?,
+                timestamp: row.get(5)?,
             })
         },
     );

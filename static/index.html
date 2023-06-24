@@ -536,7 +536,8 @@
                         <div style="max-height: 500px; overflow-y: scroll">
                             ${activeTab === 0 && html`
                                 <${LinkRow} caption="Remote: ${project.origin}" url="${project.origin}"/>
-                                <${LinkRow} caption="Branch: ${project.branch}"/>
+                                <${LinkRow} caption="Tag: ${project.tag}"/>
+                                <${LinkRow} caption="Timestamp: ${project.timestamp}"/>
                             `}
                             ${activeTab === 1 && html`
                                 <div style="max-height: 400px; padding: 12px">

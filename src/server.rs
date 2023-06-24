@@ -97,8 +97,9 @@ async fn get_snapshot_project(
         "name": project.name,
         "created_on": snapshot.created_on,
         "origin": project.origin,
-        "branch": snapshot.branch,
-        "sha": snapshot.sha
+        "tag": snapshot.tag,
+        "sha": snapshot.sha,
+        "timestamp": snapshot.timestamp
     });
     Ok(web::Json(result))
 }
