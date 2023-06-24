@@ -74,6 +74,15 @@ pub async fn run(config: &Config) -> Result<()> {
     };
     tags.push(project.branch()?);
 
+    // let tags: Vec<String> = vec![
+    //     "3.1.0".to_owned(),
+    //     "4.0.0".to_owned(),
+    //     "4.0.0-A.1".to_owned(),
+    //     "4.0.0-A.2".to_owned(),
+    //     "4.0.0-A.3".to_owned(),
+    //     "develop".to_owned(),
+    // ];
+
     log::info!("Processing tags: {:?}", tags);
     for tag in tags {
         inspect_tag(&project, pid, &conn, &tag, config.verbose)?;
@@ -112,8 +121,8 @@ fn inspect_tag(
     db::create_authors(conn, sid, authors)?;
 
     let package_json_path = &project.working_dir.join("package.json");
-    let version = angular_version(package_json_path).unwrap_or(String::from("unknown"));
-    log::info!("Detected Angular version: {}", version);
+    let version = angular_version(package_json_path)?;
+    log::info!("Detected Angular version: {}", version,);
     db::create_ng_version(conn, sid, &version)?;
 
     run_inspectors(&project.working_dir, conn, sid, verbose, project)?;
@@ -197,14 +206,14 @@ pub fn project_name(working_dir: &Path) -> Result<String> {
     Ok(name)
 }
 
-pub fn angular_version(path: &Path) -> Option<String> {
-    match PackageJsonFile::from_file(path) {
-        Ok(package) => match &package.dependencies {
-            Some(dependencies) => dependencies
-                .get("angular/core")
-                .map(|version| version.to_owned()),
-            None => None,
-        },
-        Err(_) => None,
+pub fn angular_version(path: &Path) -> Result<String> {
+    let package = PackageJsonFile::from_file(path)?;
+
+    if let Some(dependencies) = &package.dependencies {
+        if let Some(version) = dependencies.get("@angular/core") {
+            return Ok(version.to_owned());
+        }
     }
+
+    Ok("unknown".to_owned())
 }

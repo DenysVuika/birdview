@@ -19,7 +19,6 @@ pub struct GitProject {
 impl GitProject {
     pub fn open(working_dir: &PathBuf) -> Result<Self> {
         let repository = Repository::open(working_dir)?;
-        println!("state {:?}", repository.state());
 
         Ok(GitProject {
             working_dir: working_dir.clone(),
