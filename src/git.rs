@@ -1,6 +1,6 @@
 use anyhow::Result;
 use chrono::{DateTime, TimeZone, Utc};
-use git2::{Commit, Repository};
+use git2::{Commit, Repository, RepositoryState};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -19,11 +19,16 @@ pub struct GitProject {
 impl GitProject {
     pub fn open(working_dir: &PathBuf) -> Result<Self> {
         let repository = Repository::open(working_dir)?;
+        println!("state {:?}", repository.state());
 
         Ok(GitProject {
             repository,
             working_dir: working_dir.clone(),
         })
+    }
+
+    pub fn is_clean(&self) -> bool {
+        self.repository.state() == RepositoryState::Clean
     }
 
     /// Get the remote url
@@ -94,13 +99,13 @@ impl GitProject {
     /// Checkout a branch (main), or a tag (v0.1.1) or a commit (8e8128)
     pub fn checkout(&self, ref_name: &String) -> Result<()> {
         log::info!("Checking out: {}", ref_name);
-        if ref_name.to_owned() == self.branch()? {
+        if *ref_name == self.branch()? {
             log::info!("Branch {} already checked out", ref_name);
             return Ok(());
         }
 
         let repo = &self.repository;
-        let (object, reference) = repo.revparse_ext(&ref_name).expect("Object not found");
+        let (object, reference) = repo.revparse_ext(ref_name).expect("Object not found");
 
         repo.checkout_tree(&object, None)
             .expect("Failed to checkout");

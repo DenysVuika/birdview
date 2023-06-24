@@ -25,6 +25,10 @@ pub async fn run(config: &Config) -> Result<()> {
     }
 
     let project = GitProject::open(&config.working_dir)?;
+    if !project.is_clean() {
+        panic!("Repository is not clean");
+    }
+
     log::info!("Current branch: {}", project.branch()?);
 
     let conn = db::create_connection(&config.output_dir)?;
