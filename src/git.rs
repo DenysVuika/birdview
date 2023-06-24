@@ -12,8 +12,8 @@ pub struct AuthorInfo {
 }
 
 pub struct GitProject {
+    pub working_dir: PathBuf,
     repository: Repository,
-    working_dir: PathBuf,
 }
 
 impl GitProject {
@@ -22,8 +22,8 @@ impl GitProject {
         println!("state {:?}", repository.state());
 
         Ok(GitProject {
-            repository,
             working_dir: working_dir.clone(),
+            repository,
         })
     }
 

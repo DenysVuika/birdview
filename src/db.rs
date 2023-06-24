@@ -299,7 +299,7 @@ pub fn has_snapshot(conn: &Connection, sha: &str) -> bool {
     count > 0
 }
 
-pub fn create_ng_version(conn: &Connection, sid: i64, version: &str) -> Result<i64> {
+pub fn create_ng_version(conn: &Connection, sid: i64, version: &String) -> Result<i64> {
     conn.execute(
         "INSERT INTO ng_version (sid, version) VALUES (?1, ?2)",
         params![sid, version],

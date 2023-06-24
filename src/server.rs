@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 struct AppState {
-    app_dir: PathBuf,
+    // app_dir: PathBuf,
     connection: Connection,
 }
 
@@ -22,7 +22,7 @@ pub async fn run_server(working_dir: PathBuf, open: bool) -> Result<()> {
         App::new()
             .app_data(web::Data::new(AppState {
                 connection: db::create_connection(&working_dir).unwrap(),
-                app_dir: PathBuf::from("static"),
+                // app_dir: PathBuf::from("static"),
             }))
             .wrap(middleware::Compress::default())
             .wrap(middleware::Logger::default())

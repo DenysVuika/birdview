@@ -37,6 +37,10 @@ enum Commands {
         #[arg(short, long)]
         output_dir: Option<PathBuf>,
 
+        /// Inspect all repository tags
+        #[arg(long)]
+        tags: bool,
+
         /// Open report in browser where applicable.
         /// Supported for the output formats: html
         #[arg(long)]
@@ -70,6 +74,7 @@ async fn main() -> Result<()> {
             verbose,
             output_dir,
             open,
+            tags,
         }) => {
             if working_dir.starts_with("https://") {
                 let repo_dir = tempdir().expect("Failed creating temporary dir");
@@ -97,6 +102,7 @@ async fn main() -> Result<()> {
                     },
                     verbose: *verbose,
                     open: *open,
+                    tags: *tags,
                 };
 
                 run(&config).await.unwrap_or_else(|err| {
@@ -115,6 +121,7 @@ async fn main() -> Result<()> {
                     },
                     verbose: *verbose,
                     open: *open,
+                    tags: *tags,
                 };
 
                 run(&config).await.unwrap_or_else(|err| {

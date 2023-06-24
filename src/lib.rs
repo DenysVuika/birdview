@@ -16,6 +16,7 @@ use ignore::WalkBuilder;
 use rusqlite::Connection;
 use std::collections::HashMap;
 use std::ffi::OsStr;
+use std::path::{Path, PathBuf};
 use std::process;
 
 pub async fn run(config: &Config) -> Result<()> {
@@ -32,8 +33,7 @@ pub async fn run(config: &Config) -> Result<()> {
     log::info!("Current branch: {}", project.branch()?);
 
     let conn = db::create_connection(&config.output_dir)?;
-    let package = PackageJsonFile::from_file(package_json_path)?;
-    let name = package.name.unwrap();
+    let name = project_name(&config.working_dir)?;
 
     let pid = match db::get_project_by_name(&conn, &name) {
         Ok(project_info) => {
@@ -67,44 +67,22 @@ pub async fn run(config: &Config) -> Result<()> {
         }
     };
 
-    // todo: load tags
-    let tags = vec![project.branch()?];
-
-    let inspectors: Vec<Box<dyn FileInspector>> = vec![
-        Box::new(PackageJsonInspector {}),
-        Box::new(TestInspector {}),
-        Box::new(AngularInspector {}),
-    ];
+    // Load all tags or just the current branch
+    let mut tags = match config.tags {
+        true => project.tags(),
+        false => vec![],
+    };
+    tags.push(project.branch()?);
 
     log::info!("Processing tags: {:?}", tags);
-
-    // TODO: move to a separate func
     for tag in tags {
-        project.checkout(&tag)?;
-        let sha = project.sha()?;
-
-        log::info!("Creating tag {}", tag);
-        let tag_id = db::create_tag(&conn, pid, &tag)?;
-
-        log::info!("Creating new snapshot for tag `{}`({})", tag, sha);
-        let sid = db::create_snapshot(&conn, pid, tag_id, &project)?;
-
-        log::info!("Recording authors");
-        let authors = &project.authors()?;
-        db::create_authors(&conn, sid, authors)?;
-
-        if let Some(dependencies) = &package.dependencies {
-            if let Some(version) = dependencies.get("@angular/core") {
-                db::create_ng_version(&conn, sid, version)?;
-            }
-        }
-
-        run_inspectors(config, &conn, sid, &inspectors, config.verbose, &project)?;
+        inspect_tag(&project, pid, &conn, &tag, config.verbose)?;
     }
 
     log::info!("Inspection complete");
 
     if config.open {
+        log::info!("Running web server");
         run_server(config.output_dir.to_owned(), true)
             .await
             .unwrap_or_else(|err| log::error!("{:?}", err));
@@ -113,15 +91,48 @@ pub async fn run(config: &Config) -> Result<()> {
     Ok(())
 }
 
+fn inspect_tag(
+    project: &GitProject,
+    pid: i64,
+    conn: &Connection,
+    tag: &String,
+    verbose: bool,
+) -> Result<()> {
+    project.checkout(tag)?;
+    let sha = project.sha()?;
+
+    log::info!("Creating tag {}", tag);
+    let tag_id = db::create_tag(conn, pid, tag)?;
+
+    log::info!("Creating new snapshot for tag `{}`({})", tag, sha);
+    let sid = db::create_snapshot(conn, pid, tag_id, project)?;
+
+    log::info!("Recording authors");
+    let authors = &project.authors()?;
+    db::create_authors(conn, sid, authors)?;
+
+    let package_json_path = &project.working_dir.join("package.json");
+    let version = angular_version(package_json_path).unwrap_or(String::from("unknown"));
+    log::info!("Detected Angular version: {}", version);
+    db::create_ng_version(conn, sid, &version)?;
+
+    run_inspectors(&project.working_dir, conn, sid, verbose, project)?;
+    Ok(())
+}
+
 fn run_inspectors(
-    config: &Config,
-    connection: &Connection,
+    working_dir: &PathBuf,
+    conn: &Connection,
     sid: i64,
-    inspectors: &[Box<dyn FileInspector>],
     verbose: bool,
     project: &GitProject,
 ) -> Result<()> {
-    let working_dir = &config.working_dir;
+    let inspectors: Vec<Box<dyn FileInspector>> = vec![
+        Box::new(PackageJsonInspector {}),
+        Box::new(TestInspector {}),
+        Box::new(AngularInspector {}),
+    ];
+
     let mut types: HashMap<String, i64> = HashMap::new();
 
     for entry in WalkBuilder::new(working_dir)
@@ -152,7 +163,7 @@ fn run_inspectors(
                         url,
                     };
 
-                    inspector.inspect_file(connection, &options)?;
+                    inspector.inspect_file(conn, &options)?;
                     processed = true;
                 }
             }
@@ -168,8 +179,32 @@ fn run_inspectors(
     }
 
     if !types.is_empty() {
-        db::create_file_types(connection, sid, &types)?;
+        db::create_file_types(conn, sid, &types)?;
     }
 
     Ok(())
+}
+
+pub fn project_name(working_dir: &Path) -> Result<String> {
+    let path = &working_dir.join("package.json");
+    if !path.exists() {
+        panic!("Cannot find package.json file");
+    }
+
+    let package = PackageJsonFile::from_file(path)?;
+    let name = package.name.unwrap();
+
+    Ok(name)
+}
+
+pub fn angular_version(path: &Path) -> Option<String> {
+    match PackageJsonFile::from_file(path) {
+        Ok(package) => match &package.dependencies {
+            Some(dependencies) => dependencies
+                .get("angular/core")
+                .map(|version| version.to_owned()),
+            None => None,
+        },
+        Err(_) => None,
+    }
 }
