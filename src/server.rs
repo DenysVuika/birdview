@@ -1,5 +1,6 @@
 use crate::db;
 use crate::db::{NgKind, TestKind};
+use actix_cors::Cors;
 use actix_files::Files;
 use actix_web::{get, middleware, web, App, HttpResponse, HttpServer, Responder, Result};
 use futures::{join, TryFutureExt};
@@ -24,6 +25,7 @@ pub async fn run_server(working_dir: PathBuf, open: bool) -> Result<()> {
                 connection: db::create_connection(&working_dir).unwrap(),
                 // app_dir: PathBuf::from("static"),
             }))
+            .wrap(Cors::permissive())
             .wrap(middleware::Compress::default())
             .wrap(middleware::Logger::default())
             .service(
