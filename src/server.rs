@@ -31,6 +31,7 @@ pub async fn run_server(working_dir: PathBuf, open: bool) -> Result<()> {
             .service(
                 web::scope("/api")
                     .service(get_projects)
+                    .service(get_snapshots)
                     .service(get_angular)
                     .service(get_snapshot_project)
                     .service(get_authors)
@@ -59,6 +60,14 @@ async fn get_projects(data: web::Data<AppState>) -> Result<impl Responder> {
     let conn = &data.connection;
     let projects = db::get_projects(conn).unwrap();
     Ok(web::Json(projects))
+}
+
+#[get("/projects/{pid}/snapshots")]
+async fn get_snapshots(path: web::Path<i64>, data: web::Data<AppState>) -> Result<impl Responder> {
+    let pid = path.into_inner();
+    let conn = &data.connection;
+    let result = db::get_project_snapshots(conn, pid).unwrap_or(vec![]);
+    Ok(web::Json(result))
 }
 
 #[get("/snapshots/{id}/angular")]

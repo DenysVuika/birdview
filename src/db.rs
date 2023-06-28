@@ -95,6 +95,7 @@ impl FromSql for NgKind {
     }
 }
 
+#[derive(Serialize)]
 pub struct Snapshot {
     pub oid: i64,
     pub pid: i64,
@@ -190,6 +191,30 @@ pub fn get_projects(conn: &Connection) -> Result<Vec<ProjectInfo>> {
                 name: row.get(1)?,
                 created_on: row.get(2)?,
                 origin: row.get(3)?,
+            })
+        })?
+        .filter_map(|entry| entry.ok())
+        .collect();
+    Ok(rows)
+}
+
+pub fn get_project_snapshots(conn: &Connection, pid: i64) -> Result<Vec<Snapshot>> {
+    let mut stmt = conn.prepare(
+        "SELECT s.OID, s.pid, s.created_on, t.name AS tag, s.sha, s.timestamp 
+                FROM snapshots s
+                JOIN tags t on s.tag_id = t.OID
+                WHERE s.pid=:pid",
+    )?;
+
+    let rows = stmt
+        .query_map(named_params! {":pid": pid}, |row| {
+            Ok(Snapshot {
+                oid: row.get(0)?,
+                pid: row.get(1)?,
+                created_on: row.get(2)?,
+                tag: row.get(3)?,
+                sha: row.get(4)?,
+                timestamp: row.get(5)?,
             })
         })?
         .filter_map(|entry| entry.ok())
