@@ -611,6 +611,7 @@ pub fn get_angular_metadata(conn: &Connection, pid: i64) -> Result<Vec<AngularMe
         LEFT JOIN snapshots AS s ON s.OID=m.sid
         LEFT JOIN tags t on t.OID=s.tag_id
         WHERE s.pid=:pid AND m.key IN ('modules', 'components', 'directives', 'services', 'pipes', 'dialogs')
+        ORDER BY s.timestamp
     ")?;
 
     let rows = stmt

@@ -68,20 +68,20 @@ pub async fn run(config: &Config) -> Result<()> {
     };
 
     // Load all tags or just the current branch
-    // let mut tags = match config.tags {
-    //     true => project.tags(),
-    //     false => vec![],
-    // };
-    // tags.push(project.branch()?);
+    let mut tags = match config.tags {
+        true => project.tags(),
+        false => vec![],
+    };
+    tags.push(project.branch()?);
 
-    let tags: Vec<String> = vec![
-        "3.1.0".to_owned(),
-        "4.0.0".to_owned(),
-        "4.0.0-A.1".to_owned(),
-        "4.0.0-A.2".to_owned(),
-        "4.0.0-A.3".to_owned(),
-        "develop".to_owned(),
-    ];
+    // let tags: Vec<String> = vec![
+    //     "3.1.0".to_owned(),
+    //     "4.0.0".to_owned(),
+    //     "4.0.0-A.1".to_owned(),
+    //     "4.0.0-A.2".to_owned(),
+    //     "4.0.0-A.3".to_owned(),
+    //     "develop".to_owned(),
+    // ];
 
     log::info!("Processing tags: {:?}", tags);
     for tag in tags {
