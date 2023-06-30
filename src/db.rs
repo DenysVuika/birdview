@@ -166,6 +166,15 @@ pub fn create_project(conn: &Connection, name: &String, origin: &str) -> Result<
     Ok(conn.last_insert_rowid())
 }
 
+pub fn get_tags(conn: &Connection, pid: i64) -> Result<Vec<String>> {
+    let mut stmt = conn.prepare("SELECT name FROM tags WHERE pid=:pid")?;
+    let rows = stmt
+        .query_map(named_params! {":pid": pid }, |row| row.get(0))?
+        .filter_map(|entry| entry.ok())
+        .collect();
+    Ok(rows)
+}
+
 /// Create a list of tags for a given project
 pub fn create_tags(conn: &Connection, pid: i64, tags: &Vec<String>) -> Result<()> {
     let mut stmt = conn.prepare("INSERT INTO tags (pid, name) VALUES (?1, ?2)")?;
