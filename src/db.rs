@@ -571,3 +571,59 @@ pub fn get_ng_entities(conn: &Connection, sid: i64, kind: NgKind) -> Result<Vec<
         .collect();
     Ok(rows)
 }
+
+pub fn generate_metadata(conn: &Connection, pid: i64, sid: i64) -> rusqlite::Result<()> {
+    conn.execute_batch(
+        format!(
+            "
+            BEGIN;
+            INSERT INTO metadata (pid, sid, key, value)
+                SELECT {pid}, {sid}, 'modules', COUNT(*) FROM ng_entities WHERE sid={sid} AND kind='module';
+            INSERT INTO metadata (pid, sid, key, value)
+                SELECT {pid}, {sid}, 'components', COUNT(*) FROM ng_entities WHERE sid={sid} AND kind='component';
+            INSERT INTO metadata (pid, sid, key, value)
+                SELECT {pid}, {sid}, 'directives', COUNT(*) FROM ng_entities WHERE sid={sid} AND kind='directive';
+            INSERT INTO metadata (pid, sid, key, value)
+                SELECT {pid}, {sid}, 'services', COUNT(*) FROM ng_entities WHERE sid={sid} AND kind='service';
+            INSERT INTO metadata (pid, sid, key, value)
+                SELECT {pid}, {sid}, 'pipes', COUNT(*) FROM ng_entities WHERE sid={sid} AND kind='pipe';
+            INSERT INTO metadata (pid, sid, key, value)
+                SELECT {pid}, {sid}, 'dialogs', COUNT(*) FROM ng_entities WHERE sid={sid} AND kind='dialog';
+            COMMIT;"
+        )
+        .as_str(),
+    )
+}
+
+#[derive(Serialize)]
+pub struct AngularMetadata {
+    tag: String,
+    key: String,
+    value: i64,
+    date: String,
+}
+
+pub fn get_angular_metadata(conn: &Connection, pid: i64) -> Result<Vec<AngularMetadata>> {
+    let mut stmt = conn.prepare(
+        "
+        SELECT t.name AS tag, m.key, CAST(m.value AS INTEGER) AS value, DATE(s.timestamp) AS date
+        FROM metadata m
+        LEFT JOIN snapshots AS s ON s.OID=m.sid
+        LEFT JOIN tags t on t.OID=s.tag_id
+        WHERE s.pid=:pid AND m.key IN ('modules', 'components', 'directives', 'services', 'pipes', 'dialogs')
+    ")?;
+
+    let rows = stmt
+        .query_map(named_params! { ":pid": pid }, |row| {
+            Ok(AngularMetadata {
+                tag: row.get(0)?,
+                key: row.get(1)?,
+                value: row.get(2)?,
+                date: row.get(3)?,
+            })
+        })?
+        .filter_map(|entry| entry.ok())
+        .collect();
+
+    Ok(rows)
+}

@@ -14,6 +14,13 @@ CREATE TABLE IF NOT EXISTS snapshots (
     timestamp DATETIME
 );
 
+CREATE TABLE IF NOT EXISTS metadata (
+    pid INTEGER NOT NULL,
+    sid INTEGER NOT NULL,
+    key TEXT NOT NULL,
+    value TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS tags (
     pid INTEGER NOT NULL,
     name TEXT NOT NULL
