@@ -14,19 +14,32 @@ impl FileInspector for PackageJsonInspector {
     }
 
     fn inspect_file(&self, conn: &Connection, opts: &FileInspectorOptions) -> Result<()> {
-        let package = PackageJsonFile::from_file(&opts.path)
-            // todo: convert to db warning instead
-            .unwrap_or_else(|_| panic!("Error reading {}", &opts.path.display()));
-
         let path = &opts.relative_path;
         let sid = opts.sid;
         let url = &opts.url;
 
+        let package_json = PackageJsonFile::from_file(&opts.path);
+        if let Err(err) = package_json {
+            log::warn!("Error reading file: {}", path);
+            db::create_warning(
+                conn,
+                sid,
+                path,
+                format!("Error reading file. {}", err).as_str(),
+                url,
+            )?;
+            return Ok(());
+        }
+
+        let package = package_json.unwrap();
+
         if package.name.is_none() {
+            log::warn!("Missing [name] attribute: {}", path);
             db::create_warning(conn, sid, path, "Missing [name] attribute", url)?;
         }
 
         if package.version.is_none() {
+            log::warn!("Missing [version] attribute: {}", path);
             db::create_warning(conn, sid, path, "Missing [version] attribute", url)?;
         }
 

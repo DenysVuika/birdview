@@ -4,6 +4,8 @@ use birdview::server::run_server;
 use birdview::{logger, run};
 use clap::{Parser, Subcommand};
 use git2::Repository;
+use git_url_parse::GitUrl;
+use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::process;
 use tempfile::tempdir;
@@ -77,6 +79,7 @@ async fn main() -> Result<()> {
             tags,
         }) => {
             if working_dir.starts_with("https://") {
+                let repo_url = GitUrl::parse(working_dir).unwrap();
                 let repo_dir = tempdir().expect("Failed creating temporary dir");
 
                 let url = match working_dir.strip_suffix(".git") {
@@ -95,6 +98,7 @@ async fn main() -> Result<()> {
                 log::info!("Branch: {}", repo.head()?.shorthand().unwrap());
 
                 let config = Config {
+                    project_name: repo_url.name,
                     working_dir: repo_dir.path().to_owned(),
                     output_dir: match output_dir {
                         Some(value) => value.to_owned(),
@@ -113,7 +117,13 @@ async fn main() -> Result<()> {
 
                 // repo_dir.close()?;
             } else {
+                let project_name: String = PathBuf::from(working_dir)
+                    .file_name()
+                    .and_then(OsStr::to_str)
+                    .unwrap()
+                    .into();
                 let config = Config {
+                    project_name,
                     working_dir: PathBuf::from(working_dir),
                     output_dir: match output_dir {
                         Some(dir) => dir.to_owned(),
@@ -123,6 +133,8 @@ async fn main() -> Result<()> {
                     open: *open,
                     tags: *tags,
                 };
+
+                println!("{:?}", PathBuf::from(working_dir).file_name());
 
                 run(&config).await.unwrap_or_else(|err| {
                     log::error!("Application error {err}");

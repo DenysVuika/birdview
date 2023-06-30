@@ -20,24 +20,17 @@ use std::path::{Path, PathBuf};
 use std::process;
 
 pub async fn run(config: &Config) -> Result<()> {
-    let package_json_path = &config.working_dir.join("package.json");
-    if !package_json_path.exists() {
-        panic!("Cannot find package.json file");
-    }
-
     let project = GitProject::open(&config.working_dir)?;
     if !project.is_clean() {
         panic!("Repository is not clean");
     }
 
-    log::info!("Current branch: {}", project.branch()?);
-
     let conn = db::create_connection(&config.output_dir)?;
-    let name = project_name(&config.working_dir)?;
+    let name = &config.project_name;
 
-    let pid = match db::get_project_by_name(&conn, &name) {
+    let pid = match db::get_project_by_name(&conn, name) {
         Ok(project_info) => {
-            log::info!("Found the project `{}`", &name);
+            log::info!("Found the project `{}`", name);
             log::info!("Verifying snapshots...");
             let sha = project.sha()?;
 
@@ -45,7 +38,7 @@ pub async fn run(config: &Config) -> Result<()> {
                 log::info!(
                     "Snapshot {} for `{}` ({}) is already created.",
                     snapshot.oid,
-                    &name,
+                    name,
                     &sha
                 );
 
@@ -61,9 +54,9 @@ pub async fn run(config: &Config) -> Result<()> {
             project_info.id
         }
         Err(_) => {
-            log::info!("Creating project `{}`", &name);
+            log::info!("Creating project `{}`", name);
             let remote_url = project.remote_url()?;
-            db::create_project(&conn, &name, &remote_url)?
+            db::create_project(&conn, name, &remote_url)?
         }
     };
 
@@ -74,14 +67,17 @@ pub async fn run(config: &Config) -> Result<()> {
     };
     tags.push(project.branch()?);
 
-    // let tags: Vec<String> = vec![
-    //     "3.1.0".to_owned(),
-    //     "4.0.0".to_owned(),
-    //     "4.0.0-A.1".to_owned(),
-    //     "4.0.0-A.2".to_owned(),
-    //     "4.0.0-A.3".to_owned(),
-    //     "develop".to_owned(),
-    // ];
+    /*
+    let tags: Vec<String> = vec![
+        //     "3.1.0".to_owned(),
+        //     "4.0.0".to_owned(),
+        //     "4.0.0-A.1".to_owned(),
+        //     "4.0.0-A.2".to_owned(),
+        //     "4.0.0-A.3".to_owned(),
+        //     "develop".to_owned(),
+        "1.6.0-beta6".to_owned(),
+    ];
+    */
 
     log::info!("Processing tags: {:?}", tags);
     for tag in tags {
@@ -198,24 +194,13 @@ fn run_inspectors(
     Ok(())
 }
 
-pub fn project_name(working_dir: &Path) -> Result<String> {
-    let path = &working_dir.join("package.json");
-    if !path.exists() {
-        panic!("Cannot find package.json file");
-    }
-
-    let package = PackageJsonFile::from_file(path)?;
-    let name = package.name.unwrap();
-
-    Ok(name)
-}
-
+// todo: move to metadata store
 pub fn angular_version(path: &Path) -> Result<String> {
-    let package = PackageJsonFile::from_file(path)?;
-
-    if let Some(dependencies) = &package.dependencies {
-        if let Some(version) = dependencies.get("@angular/core") {
-            return Ok(version.to_owned());
+    if let Ok(package) = PackageJsonFile::from_file(path) {
+        if let Some(dependencies) = &package.dependencies {
+            if let Some(version) = dependencies.get("@angular/core") {
+                return Ok(version.to_owned());
+            }
         }
     }
 

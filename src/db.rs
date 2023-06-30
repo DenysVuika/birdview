@@ -572,6 +572,7 @@ pub fn get_ng_entities(conn: &Connection, sid: i64, kind: NgKind) -> Result<Vec<
     Ok(rows)
 }
 
+// TODO: should take into account existing data, when running multiple times
 pub fn generate_metadata(conn: &Connection, pid: i64, sid: i64) -> rusqlite::Result<()> {
     conn.execute_batch(
         format!(
