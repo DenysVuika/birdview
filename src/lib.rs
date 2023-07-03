@@ -67,17 +67,15 @@ pub async fn run(config: &Config) -> Result<()> {
     };
     tags.push(project.branch()?);
 
-    /*
-    let tags: Vec<String> = vec![
-        //     "3.1.0".to_owned(),
-        //     "4.0.0".to_owned(),
-        //     "4.0.0-A.1".to_owned(),
-        //     "4.0.0-A.2".to_owned(),
-        //     "4.0.0-A.3".to_owned(),
-        //     "develop".to_owned(),
-        "1.6.0-beta6".to_owned(),
-    ];
-    */
+    // let tags: Vec<String> = vec![
+    //     // "3.1.0".to_owned(),
+    //     // "4.0.0".to_owned(),
+    //     // "4.0.0-A.1".to_owned(),
+    //     // "4.0.0-A.2".to_owned(),
+    //     //     "4.0.0-A.3".to_owned(),
+    //     // "develop".to_owned(),
+    //     // "1.6.0-beta6".to_owned(),
+    // ];
 
     log::info!("Processing tags: {:?}", tags);
     for tag in tags {
@@ -106,25 +104,21 @@ fn inspect_tag(
     project.checkout(tag)?;
     let sha = project.sha()?;
 
-    log::info!("Creating tag {}", tag);
-    let tag_id = db::create_tag(conn, pid, tag)?;
-
     log::info!("Creating new snapshot for tag `{}`({})", tag, sha);
-    let sid = db::create_snapshot(conn, pid, tag_id, project)?;
+    let sid = db::create_snapshot(conn, pid, tag, project)?;
 
     log::info!("Recording authors");
     let authors = &project.authors()?;
     db::create_authors(conn, sid, authors)?;
 
-    let package_json_path = &project.working_dir.join("package.json");
-    let version = angular_version(package_json_path)?;
-    log::info!("Detected Angular version: {}", version,);
-    db::create_ng_version(conn, sid, &version)?;
-
+    log::info!("Running inspectors");
     run_inspectors(&project.working_dir, conn, sid, verbose, project)?;
 
-    log::info!("Generating metadata");
-    db::generate_metadata(conn, pid, sid)?;
+    log::info!("Generating angular metadata");
+    let package_json_path = &project.working_dir.join("package.json");
+    let version = angular_version(package_json_path)?;
+    log::info!("Detected Angular version: {}", version);
+    db::generate_angular_metadata(conn, sid, &version)?;
 
     Ok(())
 }
@@ -194,8 +188,7 @@ fn run_inspectors(
     Ok(())
 }
 
-// todo: move to metadata store
-pub fn angular_version(path: &Path) -> Result<String> {
+fn angular_version(path: &Path) -> Result<String> {
     if let Ok(package) = PackageJsonFile::from_file(path) {
         if let Some(dependencies) = &package.dependencies {
             if let Some(version) = dependencies.get("@angular/core") {

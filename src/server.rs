@@ -87,16 +87,17 @@ async fn get_angular_metadata(
 ) -> Result<impl Responder> {
     let pid = path.into_inner();
     let conn = &data.connection;
-    let result = db::get_angular_metadata(conn, pid).unwrap_or(vec![]);
+    let result = db::get_angular_metadata(conn, pid).unwrap();
     Ok(web::Json(result))
 }
 
+#[deprecated]
 #[get("/snapshots/{id}/angular")]
 async fn get_angular(path: web::Path<i64>, data: web::Data<AppState>) -> Result<impl Responder> {
     let sid = path.into_inner();
     let conn = &data.connection;
 
-    let ng_version = db::get_ng_version(conn, sid).unwrap_or(String::new());
+    let ng_version = "unknown";
     let modules = db::get_ng_entities(conn, sid, NgKind::Module).unwrap_or(vec![]);
     let components = db::get_ng_entities(conn, sid, NgKind::Component).unwrap_or(vec![]);
     let directives = db::get_ng_entities(conn, sid, NgKind::Directive).unwrap_or(vec![]);
@@ -116,6 +117,7 @@ async fn get_angular(path: web::Path<i64>, data: web::Data<AppState>) -> Result<
     Ok(web::Json(angular))
 }
 
+#[deprecated]
 #[get("/snapshots/{id}/project")]
 async fn get_snapshot_project(
     path: web::Path<i64>,

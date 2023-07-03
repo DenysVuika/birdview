@@ -167,28 +167,12 @@ pub fn create_project(conn: &Connection, name: &String, origin: &str) -> Result<
 }
 
 pub fn get_tags(conn: &Connection, pid: i64) -> Result<Vec<String>> {
-    let mut stmt = conn.prepare("SELECT name FROM tags WHERE pid=:pid")?;
+    let mut stmt = conn.prepare("SELECT DISTINCT(tag) FROM snapshots s WHERE s.pid=:pid")?;
     let rows = stmt
         .query_map(named_params! {":pid": pid }, |row| row.get(0))?
         .filter_map(|entry| entry.ok())
         .collect();
     Ok(rows)
-}
-
-/// Create a list of tags for a given project
-pub fn create_tags(conn: &Connection, pid: i64, tags: &Vec<String>) -> Result<()> {
-    let mut stmt = conn.prepare("INSERT INTO tags (pid, name) VALUES (?1, ?2)")?;
-
-    for name in tags {
-        stmt.execute(params![pid, name])?;
-    }
-    Ok(())
-}
-
-pub fn create_tag(conn: &Connection, pid: i64, name: &str) -> Result<i64> {
-    let mut stmt = conn.prepare("INSERT INTO tags (pid, name) VALUES (?1, ?2)")?;
-    stmt.execute(params![pid, name])?;
-    Ok(conn.last_insert_rowid())
 }
 
 pub fn get_projects(conn: &Connection) -> Result<Vec<ProjectInfo>> {
@@ -209,10 +193,9 @@ pub fn get_projects(conn: &Connection) -> Result<Vec<ProjectInfo>> {
 
 pub fn get_project_snapshots(conn: &Connection, pid: i64) -> Result<Vec<Snapshot>> {
     let mut stmt = conn.prepare(
-        "SELECT s.OID, s.pid, s.created_on, t.name AS tag, s.sha, s.timestamp 
-                FROM snapshots s
-                JOIN tags t on s.tag_id = t.OID
-                WHERE s.pid=:pid",
+        "SELECT s.OID, s.pid, s.created_on, s.tag, s.sha, s.timestamp 
+              FROM snapshots s
+              WHERE s.pid=:pid",
     )?;
 
     let rows = stmt
@@ -266,25 +249,23 @@ pub fn get_project_by_snapshot(conn: &Connection, sid: i64) -> Result<ProjectInf
 pub fn create_snapshot(
     conn: &Connection,
     pid: i64,
-    tag_id: i64,
+    tag: &String,
     project: &GitProject,
 ) -> Result<i64> {
     let sha = project.sha()?;
     let timestamp = project.timestamp()?;
 
     conn.execute(
-        "INSERT INTO snapshots (pid, tag_id, sha, timestamp) VALUES (?1, ?2, ?3, ?4)",
-        params![pid, tag_id, sha, timestamp],
+        "INSERT INTO snapshots (pid, tag, sha, timestamp) VALUES (?1, ?2, ?3, ?4)",
+        params![pid, tag, sha, timestamp],
     )?;
     Ok(conn.last_insert_rowid())
 }
 
 pub fn get_snapshot_by_id(conn: &Connection, oid: i64) -> rusqlite::Result<Snapshot> {
     conn.query_row(
-        "SELECT s.pid, s.created_on, t.name AS tag, s.sha, s.timestamp 
-                FROM snapshots s
-                JOIN tags t on s.tag_id = t.OID
-                WHERE s.OID=:oid",
+        "SELECT s.pid, s.created_on, s.tag, s.sha, s.timestamp 
+              FROM snapshots s WHERE s.OID=:oid",
         named_params! {":oid": oid },
         |row| {
             Ok(Snapshot {
@@ -301,10 +282,8 @@ pub fn get_snapshot_by_id(conn: &Connection, oid: i64) -> rusqlite::Result<Snaps
 
 pub fn get_snapshot_by_sha(conn: &Connection, sha: &str) -> Option<Snapshot> {
     let result = conn.query_row(
-        "SELECT s.OID, s.pid, s.created_on, t.name AS tag, s.sha, s.timestamp 
-                FROM snapshots s
-                JOIN tags t on s.tag_id = t.OID
-                WHERE s.sha=:sha",
+        "SELECT s.OID, s.pid, s.created_on, s.tag, s.sha, s.timestamp 
+              FROM snapshots s WHERE s.sha=:sha",
         named_params! {":sha": sha },
         |row| {
             Ok(Snapshot {
@@ -336,22 +315,6 @@ pub fn has_snapshot(conn: &Connection, sha: &str) -> bool {
         )
         .unwrap_or(0);
     count > 0
-}
-
-pub fn create_ng_version(conn: &Connection, sid: i64, version: &String) -> Result<i64> {
-    conn.execute(
-        "INSERT INTO ng_version (sid, version) VALUES (?1, ?2)",
-        params![sid, version],
-    )?;
-    Ok(conn.last_insert_rowid())
-}
-
-pub fn get_ng_version(conn: &Connection, sid: i64) -> rusqlite::Result<String> {
-    conn.query_row(
-        "SELECT version from ng_version WHERE sid=:sid",
-        params![sid],
-        |row| row.get(0),
-    )
 }
 
 pub fn create_warning(
@@ -581,24 +544,27 @@ pub fn get_ng_entities(conn: &Connection, sid: i64, kind: NgKind) -> Result<Vec<
     Ok(rows)
 }
 
-// TODO: should take into account existing data, when running multiple times
-pub fn generate_metadata(conn: &Connection, pid: i64, sid: i64) -> rusqlite::Result<()> {
+pub fn generate_angular_metadata(
+    conn: &Connection,
+    sid: i64,
+    version: &String,
+) -> rusqlite::Result<()> {
     conn.execute_batch(
         format!(
             "
             BEGIN;
-            INSERT INTO metadata (pid, sid, key, value)
-                SELECT {pid}, {sid}, 'modules', COUNT(*) FROM ng_entities WHERE sid={sid} AND kind='module';
-            INSERT INTO metadata (pid, sid, key, value)
-                SELECT {pid}, {sid}, 'components', COUNT(*) FROM ng_entities WHERE sid={sid} AND kind='component';
-            INSERT INTO metadata (pid, sid, key, value)
-                SELECT {pid}, {sid}, 'directives', COUNT(*) FROM ng_entities WHERE sid={sid} AND kind='directive';
-            INSERT INTO metadata (pid, sid, key, value)
-                SELECT {pid}, {sid}, 'services', COUNT(*) FROM ng_entities WHERE sid={sid} AND kind='service';
-            INSERT INTO metadata (pid, sid, key, value)
-                SELECT {pid}, {sid}, 'pipes', COUNT(*) FROM ng_entities WHERE sid={sid} AND kind='pipe';
-            INSERT INTO metadata (pid, sid, key, value)
-                SELECT {pid}, {sid}, 'dialogs', COUNT(*) FROM ng_entities WHERE sid={sid} AND kind='dialog';
+            INSERT INTO angular (sid, version, modules, components, directives, services, pipes, dialogs)
+            SELECT
+                sid,
+                '{version}',
+                SUM(case when kind='module' then 1 else 0 end) modules,
+                SUM(case when kind='component' then 1 else 0 end) components,
+                SUM(case when kind='directive' then 1 else 0 end) directives,
+                SUM(case when kind='service' then 1 else 0 end) services,
+                SUM(case when kind='pipe' then 1 else 0 end) pipes,
+                SUM(case when kind='dialog' then 1 else 0 end) dialogs
+            FROM ng_entities
+            WHERE sid={sid};
             COMMIT;"
         )
         .as_str(),
@@ -607,30 +573,43 @@ pub fn generate_metadata(conn: &Connection, pid: i64, sid: i64) -> rusqlite::Res
 
 #[derive(Serialize)]
 pub struct AngularMetadata {
+    sid: i64,
+    version: String,
+    modules: i64,
+    components: i64,
+    directives: i64,
+    services: i64,
+    pipes: i64,
+    dialogs: i64,
     tag: String,
-    key: String,
-    value: i64,
     date: String,
 }
 
 pub fn get_angular_metadata(conn: &Connection, pid: i64) -> Result<Vec<AngularMetadata>> {
     let mut stmt = conn.prepare(
         "
-        SELECT t.name AS tag, m.key, CAST(m.value AS INTEGER) AS value, DATE(s.timestamp) AS date
-        FROM metadata m
-        LEFT JOIN snapshots AS s ON s.OID=m.sid
-        LEFT JOIN tags t on t.OID=s.tag_id
-        WHERE s.pid=:pid AND m.key IN ('modules', 'components', 'directives', 'services', 'pipes', 'dialogs')
-        ORDER BY s.timestamp
-    ")?;
+        SELECT
+            a.sid, a.version, a.modules, a.components, a.directives, a.services, a.pipes, a.dialogs,
+            snapshots.tag, DATE(snapshots.timestamp) AS date
+        FROM angular AS a
+        LEFT JOIN snapshots ON snapshots.OID = a.sid
+        WHERE snapshots.pid=:pid
+        ORDER BY snapshots.timestamp",
+    )?;
 
     let rows = stmt
         .query_map(named_params! { ":pid": pid }, |row| {
             Ok(AngularMetadata {
-                tag: row.get(0)?,
-                key: row.get(1)?,
-                value: row.get(2)?,
-                date: row.get(3)?,
+                sid: row.get(0)?,
+                version: row.get(1)?,
+                modules: row.get(2)?,
+                components: row.get(3)?,
+                directives: row.get(4)?,
+                services: row.get(5)?,
+                pipes: row.get(6)?,
+                dialogs: row.get(7)?,
+                tag: row.get(8)?,
+                date: row.get(9)?,
             })
         })?
         .filter_map(|entry| entry.ok())
