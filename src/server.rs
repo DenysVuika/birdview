@@ -32,6 +32,7 @@ pub async fn run_server(working_dir: PathBuf, open: bool) -> Result<()> {
                 web::scope("/api")
                     .service(get_projects)
                     .service(get_tags)
+                    .service(get_project_warnings)
                     .service(get_angular_metadata)
                     .service(get_snapshots)
                     .service(get_angular)
@@ -77,6 +78,17 @@ async fn get_tags(path: web::Path<i64>, data: web::Data<AppState>) -> Result<imp
     let pid = path.into_inner();
     let conn = &data.connection;
     let result = db::get_tags(conn, pid).unwrap_or(vec![]);
+    Ok(web::Json(result))
+}
+
+#[get("/projects/{pid}/warnings")]
+async fn get_project_warnings(
+    path: web::Path<i64>,
+    data: web::Data<AppState>,
+) -> Result<impl Responder> {
+    let pid = path.into_inner();
+    let conn = &data.connection;
+    let result = db::get_project_warnings(conn, pid).unwrap_or(vec![]);
     Ok(web::Json(result))
 }
 
@@ -138,14 +150,16 @@ async fn get_snapshot_project(
     Ok(web::Json(result))
 }
 
+#[deprecated]
 #[get("/snapshots/{id}/warnings")]
 async fn get_warnings(path: web::Path<i64>, data: web::Data<AppState>) -> Result<impl Responder> {
     let sid = path.into_inner();
     let conn = &data.connection;
-    let result = db::get_warnings(conn, sid).unwrap_or(vec![]);
+    let result = db::get_snapshot_warnings(conn, sid).unwrap_or(vec![]);
     Ok(web::Json(result))
 }
 
+#[deprecated]
 #[get("/snapshots/{id}/authors")]
 async fn get_authors(path: web::Path<i64>, data: web::Data<AppState>) -> Result<impl Responder> {
     let sid = path.into_inner();
@@ -154,6 +168,7 @@ async fn get_authors(path: web::Path<i64>, data: web::Data<AppState>) -> Result<
     Ok(web::Json(result))
 }
 
+#[deprecated]
 #[get("/snapshots/{id}/file-types")]
 async fn get_file_types(path: web::Path<i64>, data: web::Data<AppState>) -> Result<impl Responder> {
     let sid = path.into_inner();
@@ -162,6 +177,7 @@ async fn get_file_types(path: web::Path<i64>, data: web::Data<AppState>) -> Resu
     Ok(web::Json(result))
 }
 
+#[deprecated]
 #[get("/snapshots/{id}/packages")]
 async fn get_packages(path: web::Path<i64>, data: web::Data<AppState>) -> Result<impl Responder> {
     let sid = path.into_inner();
@@ -170,6 +186,7 @@ async fn get_packages(path: web::Path<i64>, data: web::Data<AppState>) -> Result
     Ok(web::Json(result))
 }
 
+#[deprecated]
 #[get("/snapshots/{id}/dependencies")]
 async fn get_dependencies(
     path: web::Path<i64>,
@@ -181,6 +198,7 @@ async fn get_dependencies(
     Ok(web::Json(result))
 }
 
+#[deprecated]
 #[get("/snapshots/{id}/unit-tests")]
 async fn get_unit_tests(path: web::Path<i64>, data: web::Data<AppState>) -> Result<impl Responder> {
     let sid = path.into_inner();
@@ -189,6 +207,7 @@ async fn get_unit_tests(path: web::Path<i64>, data: web::Data<AppState>) -> Resu
     Ok(web::Json(result))
 }
 
+#[deprecated]
 #[get("/snapshots/{id}/e2e-tests")]
 async fn get_e2e_tests(path: web::Path<i64>, data: web::Data<AppState>) -> Result<impl Responder> {
     let sid = path.into_inner();
@@ -200,6 +219,7 @@ async fn get_e2e_tests(path: web::Path<i64>, data: web::Data<AppState>) -> Resul
     Ok(web::Json(result))
 }
 
+#[deprecated]
 #[get("/snapshots/{snapshot}")]
 async fn view_snapshot_details(path: web::Path<i64>) -> Result<HttpResponse> {
     let sid = path.into_inner();

@@ -115,9 +115,13 @@ pub struct ProjectInfo {
 
 #[derive(Debug, Serialize)]
 pub struct CodeWarning {
+    pub oid: u64,
+    pub sid: i64,
     pub path: String,
     pub message: String,
     pub url: String,
+    pub tag: String,
+    pub date: String,
 }
 
 #[derive(Serialize)]
@@ -447,14 +451,54 @@ pub fn get_file_types(conn: &Connection, sid: i64) -> Result<HashMap<String, i64
     Ok(file_types)
 }
 
-pub fn get_warnings(conn: &Connection, sid: i64) -> Result<Vec<CodeWarning>> {
-    let mut stmt = conn.prepare("SELECT path, message, url FROM warnings WHERE sid=:sid;")?;
+pub fn get_project_warnings(conn: &Connection, pid: i64) -> Result<Vec<CodeWarning>> {
+    let mut stmt = conn.prepare(
+        "
+        SELECT warnings.OID, warnings.sid, warnings.path, warnings.message, warnings.url,
+                snapshots.tag, DATE(snapshots.timestamp) as time 
+        FROM warnings
+        LEFT JOIN snapshots ON snapshots.OID = warnings.sid
+        WHERE snapshots.pid=:pid
+        ORDER BY snapshots.timestamp",
+    )?;
+
+    let rows = stmt
+        .query_map(named_params! { ":pid": pid }, |row| {
+            Ok(CodeWarning {
+                oid: row.get(0)?,
+                sid: row.get(1)?,
+                path: row.get(2)?,
+                message: row.get(3)?,
+                url: row.get(4)?,
+                tag: row.get(5)?,
+                date: row.get(6)?,
+            })
+        })?
+        .filter_map(|entry| entry.ok())
+        .collect();
+    Ok(rows)
+}
+
+pub fn get_snapshot_warnings(conn: &Connection, sid: i64) -> Result<Vec<CodeWarning>> {
+    let mut stmt = conn.prepare(
+        "
+        SELECT warnings.sid, warnings.path, warnings.message, warnings.url,
+                snapshots.tag, DATE(snapshots.timestamp) as time 
+        FROM warnings
+        LEFT JOIN snapshots ON snapshots.OID = warnings.sid
+        WHERE snapshots.OID=:sid
+        ORDER BY snapshots.timestamp",
+    )?;
     let rows = stmt
         .query_map(named_params! { ":sid": sid }, |row| {
             Ok(CodeWarning {
-                path: row.get(0)?,
-                message: row.get(1)?,
-                url: row.get(2)?,
+                oid: row.get(0)?,
+                sid: row.get(1)?,
+                path: row.get(2)?,
+                message: row.get(3)?,
+                url: row.get(4)?,
+                tag: row.get(5)?,
+                date: row.get(6)?,
             })
         })?
         .filter_map(|entry| entry.ok())
