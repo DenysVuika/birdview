@@ -68,12 +68,12 @@ pub async fn run(config: &Config) -> Result<()> {
     tags.push(project.branch()?);
 
     // let tags: Vec<String> = vec![
-    //     // "3.1.0".to_owned(),
-    //     // "4.0.0".to_owned(),
+    //     "3.1.0".to_owned(),
+    //     "4.0.0".to_owned(),
     //     // "4.0.0-A.1".to_owned(),
     //     // "4.0.0-A.2".to_owned(),
-    //     //     "4.0.0-A.3".to_owned(),
-    //     // "develop".to_owned(),
+    //     // "4.0.0-A.3".to_owned(),
+    //     "develop".to_owned(),
     //     // "1.6.0-beta6".to_owned(),
     // ];
 

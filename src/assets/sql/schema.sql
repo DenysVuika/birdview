@@ -77,7 +77,8 @@ CREATE TABLE IF NOT EXISTS tests (
     sid INTEGER NOT NULL,
     path TEXT NOT NULL,
     url TEXT,
-    kind TEXT
+    kind TEXT,
+    cases INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS test_cases (

@@ -416,8 +416,8 @@ pub fn create_test(
     kind: TestKind,
 ) -> Result<i64> {
     conn.execute(
-        "INSERT INTO tests (sid, path, url, kind) VALUES (?1, ?2, ?3, ?4)",
-        params![sid, path, url, kind],
+        "INSERT INTO tests (sid, path, url, kind, cases) VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![sid, path, url, kind, test_cases.len()],
     )?;
     let test_id = conn.last_insert_rowid();
     let mut stmt = conn.prepare("INSERT INTO test_cases (test_id, name) VALUES (?1, ?2)")?;
@@ -550,14 +550,8 @@ pub fn get_dependencies(conn: &Connection, sid: i64) -> Result<Vec<PackageDepend
 }
 
 pub fn get_tests(conn: &Connection, sid: i64, kind: TestKind) -> Result<Vec<TestEntry>> {
-    let mut stmt = conn.prepare(
-        r#"
-        SELECT t.path, COUNT(DISTINCT tc.name) as cases, t.url FROM tests t
-          LEFT JOIN test_cases tc on t.OID = tc.test_id
-        WHERE t.sid=:sid AND t.kind=:kind
-        GROUP BY t.path
-    "#,
-    )?;
+    let mut stmt =
+        conn.prepare("SELECT path, cases, url FROM tests WHERE sid=:sid AND kind=:kind")?;
 
     let rows = stmt
         .query_map(named_params! {":sid": sid, ":kind": kind}, |row| {
@@ -565,6 +559,48 @@ pub fn get_tests(conn: &Connection, sid: i64, kind: TestKind) -> Result<Vec<Test
                 path: row.get(0)?,
                 cases: row.get(1)?,
                 url: row.get(2)?,
+            })
+        })?
+        .filter_map(|entry| entry.ok())
+        .collect();
+    Ok(rows)
+}
+
+#[derive(Serialize)]
+pub struct TestInfo {
+    pub oid: i64,
+    pub tag: String,
+    pub unit_tests: i64,
+    pub unit_cases: i64,
+    pub e2e_tests: i64,
+    pub e2e_cases: i64,
+}
+
+pub fn get_tests_stats(conn: &Connection, pid: i64) -> Result<Vec<TestInfo>> {
+    let mut stmt = conn.prepare(
+        "
+        SELECT
+            snapshots.OID AS sid, snapshots.tag,
+            SUM(case when tests.kind='unit' then 1 else 0 end) unit_tests,
+            SUM(case when tests.kind='unit' then tests.cases else 0 end) unit_cases,
+            SUM(case when tests.kind='e2e' then 1 else 0 end) e2e_tests,
+            SUM(case when tests.kind='e2e' then tests.cases else 0 end) e2e_cases
+        FROM snapshots
+        LEFT JOIN tests ON tests.sid = snapshots.OID
+        WHERE snapshots.pid = :pid
+        GROUP BY snapshots.OID, snapshots.timestamp
+        ORDER BY snapshots.timestamp",
+    )?;
+
+    let rows = stmt
+        .query_map(named_params! {":pid": pid }, |row| {
+            Ok(TestInfo {
+                oid: row.get(0)?,
+                tag: row.get(1)?,
+                unit_tests: row.get(2)?,
+                unit_cases: row.get(3)?,
+                e2e_tests: row.get(4)?,
+                e2e_cases: row.get(5)?,
             })
         })?
         .filter_map(|entry| entry.ok())
