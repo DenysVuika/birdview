@@ -33,6 +33,7 @@ pub async fn run_server(working_dir: PathBuf, open: bool) -> Result<()> {
                     .service(get_projects)
                     .service(get_tags)
                     .service(get_project_warnings)
+                    .service(get_project_dependencies)
                     .service(get_project_tests)
                     .service(get_angular_metadata)
                     .service(get_snapshots)
@@ -90,6 +91,17 @@ async fn get_project_warnings(
     let pid = path.into_inner();
     let conn = &data.connection;
     let result = db::get_project_warnings(conn, pid).unwrap_or(vec![]);
+    Ok(web::Json(result))
+}
+
+#[get("/projects/{pid}/dependencies")]
+async fn get_project_dependencies(
+    path: web::Path<i64>,
+    data: web::Data<AppState>,
+) -> Result<impl Responder> {
+    let pid = path.into_inner();
+    let conn = &data.connection;
+    let result = db::get_project_dependencies(conn, pid).unwrap();
     Ok(web::Json(result))
 }
 

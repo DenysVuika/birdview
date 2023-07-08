@@ -44,6 +44,44 @@ impl FromSql for TestKind {
     }
 }
 
+#[derive(PartialEq, Clone, Serialize)]
+pub enum DependencyKind {
+    Prod,
+    Dev,
+    Peer,
+}
+
+impl fmt::Display for DependencyKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match *self {
+                DependencyKind::Dev => "dev",
+                DependencyKind::Peer => "peer",
+                DependencyKind::Prod => "prod",
+            }
+        )
+    }
+}
+
+impl ToSql for DependencyKind {
+    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
+        Ok(self.to_string().into())
+    }
+}
+
+impl FromSql for DependencyKind {
+    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+        value.as_str().map(|role| match role {
+            "dev" => Ok(DependencyKind::Dev),
+            "peer" => Ok(DependencyKind::Peer),
+            "prod" => Ok(DependencyKind::Prod),
+            _ => Err(FromSqlError::Other("Invalid role found in db".into())),
+        })?
+    }
+}
+
 /// Angular entity kind
 #[derive(PartialEq, Clone)]
 pub enum NgKind {
@@ -134,10 +172,10 @@ pub struct PackageFile {
 pub struct PackageDependency {
     pub name: String,
     pub version: String,
-    pub dev: bool,
     pub npm_url: String,
     pub package: String,
     pub url: String,
+    pub kind: DependencyKind,
 }
 
 #[derive(Serialize)]
@@ -358,26 +396,71 @@ pub fn create_package(
     url: &str,
     package: &PackageJsonFile,
 ) -> Result<i64> {
+    let prod_deps = match &package.dependencies {
+        Some(deps) => deps.len(),
+        None => 0,
+    };
+
+    let dev_deps = match &package.dev_dependencies {
+        Some(deps) => deps.len(),
+        None => 0,
+    };
+
+    let peer_deps = match &package.peer_dependencies {
+        Some(deps) => deps.len(),
+        None => 0,
+    };
+
+    let name = match &package.name {
+        Some(value) => value,
+        None => "Unknown",
+    };
+
+    let version = match &package.version {
+        Some(value) => value,
+        None => "0.0.0",
+    };
+
     conn.execute(
-        "INSERT INTO packages (sid, path, url) VALUES (?1, ?2, ?3)",
-        params![sid, path, url],
+        "INSERT INTO packages (sid, path, name, version, url, prod_deps, dev_deps, peer_deps) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        params![sid, path, name, version, url, prod_deps, dev_deps, peer_deps],
     )?;
 
     let package_id = conn.last_insert_rowid();
 
-    let mut stmt = conn.prepare(
-        "INSERT INTO dependencies (sid, package_id, name, version, dev) VALUES (?1, ?2, ?3, ?4, ?5)"
-    )?;
+    if prod_deps > 0 || dev_deps > 0 || peer_deps > 0 {
+        let mut stmt = conn.prepare(
+            "INSERT INTO dependencies (sid, package_id, name, version, kind) VALUES (?1, ?2, ?3, ?4, ?5)"
+        )?;
 
-    if let Some(data) = &package.dependencies {
-        for (name, version) in data {
-            stmt.execute(params![sid, package_id, name, version, false])?;
+        if let Some(data) = &package.dependencies {
+            for (name, version) in data {
+                stmt.execute(params![
+                    sid,
+                    package_id,
+                    name,
+                    version,
+                    DependencyKind::Prod
+                ])?;
+            }
         }
-    }
 
-    if let Some(data) = &package.dev_dependencies {
-        for (name, version) in data {
-            stmt.execute(params![sid, package_id, name, version, true])?;
+        if let Some(data) = &package.dev_dependencies {
+            for (name, version) in data {
+                stmt.execute(params![sid, package_id, name, version, DependencyKind::Dev])?;
+            }
+        }
+
+        if let Some(data) = &package.peer_dependencies {
+            for (name, version) in data {
+                stmt.execute(params![
+                    sid,
+                    package_id,
+                    name,
+                    version,
+                    DependencyKind::Peer
+                ])?;
+            }
         }
     }
 
@@ -520,10 +603,51 @@ pub fn get_packages(conn: &Connection, sid: i64) -> Result<Vec<PackageFile>> {
     Ok(rows)
 }
 
+#[derive(Serialize)]
+pub struct ProjectDependencies {
+    pub oid: i64,
+    pub tag: String,
+    pub date: String,
+    pub dev_deps: i64,
+    pub prod_deps: i64,
+    pub peer_deps: i64,
+}
+
+pub fn get_project_dependencies(conn: &Connection, pid: i64) -> Result<Vec<ProjectDependencies>> {
+    let mut stmt = conn.prepare(
+        "
+        SELECT snapshots.OID as sid, snapshots.tag, DATE(snapshots.timestamp) AS date,
+            SUM(packages.dev_deps) AS dev_deps,
+            SUM(packages.prod_deps) AS prod_deps,
+            SUM(packages.peer_deps) AS peer_deps
+        FROM snapshots
+        LEFT JOIN packages ON packages.sid=snapshots.OID
+        WHERE snapshots.pid = :pid
+        GROUP BY snapshots.OID, date
+        ORDER BY date",
+    )?;
+
+    let rows = stmt
+        .query_map(named_params! {":pid": pid}, |row| {
+            Ok(ProjectDependencies {
+                oid: row.get(0)?,
+                tag: row.get(1)?,
+                date: row.get(2)?,
+                dev_deps: row.get(3)?,
+                prod_deps: row.get(4)?,
+                peer_deps: row.get(5)?,
+            })
+        })?
+        .filter_map(|entry| entry.ok())
+        .collect();
+    Ok(rows)
+}
+
+#[deprecated]
 pub fn get_dependencies(conn: &Connection, sid: i64) -> Result<Vec<PackageDependency>> {
     let mut stmt = conn.prepare(
         r#"
-        SELECT d.name, d.version, d.dev, p.path as package, p.url as url from dependencies d
+        SELECT d.name, d.version, d.kind, p.path as package, p.url as url from dependencies d
         LEFT JOIN packages p on d.package_id = p.OID
         WHERE d.sid=:sid
         ORDER BY d.name
@@ -538,7 +662,7 @@ pub fn get_dependencies(conn: &Connection, sid: i64) -> Result<Vec<PackageDepend
             Ok(PackageDependency {
                 name,
                 version: row.get(1)?,
-                dev: row.get(2)?,
+                kind: row.get(2)?,
                 npm_url,
                 package: row.get(3)?,
                 url: row.get(4)?,

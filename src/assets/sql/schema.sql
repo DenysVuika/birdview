@@ -56,7 +56,12 @@ CREATE TABLE IF NOT EXISTS warnings (
 CREATE TABLE IF NOT EXISTS packages (
     sid INTEGER NOT NULL,
     path TEXT NOT NULL,
-    url TEXT
+    name TEXT NOT NULL,
+    version TEXT NOT NULL,
+    url TEXT,
+    prod_deps INTEGER DEFAULT 0,
+    dev_deps INTEGER DEFAULT 0,
+    peer_deps INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS dependencies (
@@ -64,7 +69,7 @@ CREATE TABLE IF NOT EXISTS dependencies (
     package_id INTEGER NOT NULL,
     name TEXT NOT NULL,
     version TEXT NOT NULL,
-    dev INTEGER
+    kind TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS file_types (

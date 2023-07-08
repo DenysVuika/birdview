@@ -13,6 +13,8 @@ pub struct PackageJsonFile {
     pub dependencies: Option<HashMap<String, String>>,
     #[serde(rename = "devDependencies")]
     pub dev_dependencies: Option<HashMap<String, String>>,
+    #[serde(rename = "peerDependencies")]
+    pub peer_dependencies: Option<HashMap<String, String>>,
 }
 
 impl PackageJsonFile {
