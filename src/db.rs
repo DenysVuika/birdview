@@ -208,10 +208,60 @@ pub fn create_project(conn: &Connection, name: &String, origin: &str) -> Result<
     Ok(conn.last_insert_rowid())
 }
 
-pub fn get_tags(conn: &Connection, pid: i64) -> Result<Vec<String>> {
-    let mut stmt = conn.prepare("SELECT DISTINCT(tag) FROM snapshots s WHERE s.pid=:pid")?;
+#[derive(Serialize, Debug)]
+pub struct ProjectTag {
+    pub pid: i64,
+    pub sid: i64,
+    pub name: String,
+    pub date: String,
+}
+
+pub fn get_tags(conn: &Connection, pid: i64) -> Result<Vec<ProjectTag>> {
+    let mut stmt = conn.prepare(
+        "SELECT pid, OID AS sid, tag AS name, DATE(timestamp) AS date 
+                FROM snapshots WHERE pid=:pid
+                ORDER BY timestamp DESC",
+    )?;
     let rows = stmt
-        .query_map(named_params! {":pid": pid }, |row| row.get(0))?
+        .query_map(named_params! {":pid": pid }, |row| {
+            Ok(ProjectTag {
+                pid: row.get(0)?,
+                sid: row.get(1)?,
+                name: row.get(2)?,
+                date: row.get(3)?,
+            })
+        })?
+        .filter_map(|entry| entry.ok())
+        .collect();
+    Ok(rows)
+}
+
+#[derive(Debug, Serialize)]
+pub struct ProjectContributor {
+    pub sid: i64,
+    pub tag: String,
+    pub name: String,
+    pub commits: i64,
+}
+
+pub fn get_contributors(conn: &Connection, pid: i64, sid: i64) -> Result<Vec<ProjectContributor>> {
+    let mut stmt = conn.prepare(
+        "SELECT snapshots.OID AS sid, snapshots.tag, authors.name, authors.commits
+                FROM authors
+                LEFT JOIN snapshots ON snapshots.OID = authors.sid
+                WHERE snapshots.pid=:pid AND snapshots.OID=:sid
+                ORDER BY snapshots.OID, authors.commits DESC",
+    )?;
+
+    let rows = stmt
+        .query_map(named_params! {":pid": pid, ":sid": sid }, |row| {
+            Ok(ProjectContributor {
+                sid: row.get(0)?,
+                tag: row.get(1)?,
+                name: row.get(2)?,
+                commits: row.get(3)?,
+            })
+        })?
         .filter_map(|entry| entry.ok())
         .collect();
     Ok(rows)
@@ -476,18 +526,20 @@ pub fn create_authors(conn: &Connection, sid: i64, authors: &Vec<AuthorInfo>) ->
     Ok(())
 }
 
+#[deprecated]
 pub fn get_authors(conn: &Connection, sid: i64) -> Result<Vec<AuthorInfo>> {
-    let mut stmt = conn.prepare("SELECT name, commits FROM authors WHERE sid=:sid;")?;
-    let rows = stmt
-        .query_map(named_params! { ":sid": sid }, |row| {
-            Ok(AuthorInfo {
-                name: row.get(0)?,
-                commits: row.get(1)?,
-            })
-        })?
-        .filter_map(|entry| entry.ok())
-        .collect();
-    Ok(rows)
+    // let mut stmt = conn.prepare("SELECT name, commits FROM authors WHERE sid=:sid;")?;
+    // let rows = stmt
+    //     .query_map(named_params! { ":sid": sid }, |row| {
+    //         Ok(AuthorInfo {
+    //             name: row.get(0)?,
+    //             commits: row.get(1)?,
+    //         })
+    //     })?
+    //     .filter_map(|entry| entry.ok())
+    //     .collect();
+    // Ok(rows)
+    Ok(vec![])
 }
 
 pub fn create_test(

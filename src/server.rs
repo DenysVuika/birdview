@@ -32,6 +32,7 @@ pub async fn run_server(working_dir: PathBuf, open: bool) -> Result<()> {
                 web::scope("/api")
                     .service(get_projects)
                     .service(get_tags)
+                    .service(get_contributors)
                     .service(get_project_warnings)
                     .service(get_project_dependencies)
                     .service(get_project_tests)
@@ -80,6 +81,17 @@ async fn get_tags(path: web::Path<i64>, data: web::Data<AppState>) -> Result<imp
     let pid = path.into_inner();
     let conn = &data.connection;
     let result = db::get_tags(conn, pid).unwrap_or(vec![]);
+    Ok(web::Json(result))
+}
+
+#[get("/projects/{pid}/snapshots/{sid}/contributors")]
+async fn get_contributors(
+    path: web::Path<(i64, i64)>,
+    data: web::Data<AppState>,
+) -> Result<impl Responder> {
+    let (pid, sid) = path.into_inner();
+    let conn = &data.connection;
+    let result = db::get_contributors(conn, pid, sid).unwrap_or(vec![]);
     Ok(web::Json(result))
 }
 
