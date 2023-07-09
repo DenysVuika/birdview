@@ -526,22 +526,6 @@ pub fn create_authors(conn: &Connection, sid: i64, authors: &Vec<AuthorInfo>) ->
     Ok(())
 }
 
-#[deprecated]
-pub fn get_authors(conn: &Connection, sid: i64) -> Result<Vec<AuthorInfo>> {
-    // let mut stmt = conn.prepare("SELECT name, commits FROM authors WHERE sid=:sid;")?;
-    // let rows = stmt
-    //     .query_map(named_params! { ":sid": sid }, |row| {
-    //         Ok(AuthorInfo {
-    //             name: row.get(0)?,
-    //             commits: row.get(1)?,
-    //         })
-    //     })?
-    //     .filter_map(|entry| entry.ok())
-    //     .collect();
-    // Ok(rows)
-    Ok(vec![])
-}
-
 pub fn create_test(
     conn: &Connection,
     sid: i64,
