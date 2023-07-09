@@ -225,10 +225,10 @@ pub fn get_tags(conn: &Connection, pid: i64) -> Result<Vec<ProjectTag>> {
     let rows = stmt
         .query_map(named_params! {":pid": pid }, |row| {
             Ok(ProjectTag {
-                pid: row.get(0)?,
-                sid: row.get(1)?,
-                name: row.get(2)?,
-                date: row.get(3)?,
+                pid: row.get("pid")?,
+                sid: row.get("sid")?,
+                name: row.get("name")?,
+                date: row.get("date")?,
             })
         })?
         .filter_map(|entry| entry.ok())
@@ -256,10 +256,10 @@ pub fn get_contributors(conn: &Connection, pid: i64, sid: i64) -> Result<Vec<Pro
     let rows = stmt
         .query_map(named_params! {":pid": pid, ":sid": sid }, |row| {
             Ok(ProjectContributor {
-                sid: row.get(0)?,
-                tag: row.get(1)?,
-                name: row.get(2)?,
-                commits: row.get(3)?,
+                sid: row.get("sid")?,
+                tag: row.get("tag")?,
+                name: row.get("name")?,
+                commits: row.get("commits")?,
             })
         })?
         .filter_map(|entry| entry.ok())
@@ -268,14 +268,14 @@ pub fn get_contributors(conn: &Connection, pid: i64, sid: i64) -> Result<Vec<Pro
 }
 
 pub fn get_projects(conn: &Connection) -> Result<Vec<ProjectInfo>> {
-    let mut stmt = conn.prepare("SELECT OID, name, created_on, origin FROM projects")?;
+    let mut stmt = conn.prepare("SELECT OID AS id, name, created_on, origin FROM projects")?;
     let rows = stmt
         .query_map([], |row| {
             Ok(ProjectInfo {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                created_on: row.get(2)?,
-                origin: row.get(3)?,
+                id: row.get("id")?,
+                name: row.get("name")?,
+                created_on: row.get("created_on")?,
+                origin: row.get("origin")?,
             })
         })?
         .filter_map(|entry| entry.ok())
@@ -285,7 +285,7 @@ pub fn get_projects(conn: &Connection) -> Result<Vec<ProjectInfo>> {
 
 pub fn get_project_snapshots(conn: &Connection, pid: i64) -> Result<Vec<Snapshot>> {
     let mut stmt = conn.prepare(
-        "SELECT s.OID, s.pid, s.created_on, s.tag, s.sha, s.timestamp 
+        "SELECT s.OID AS oid, s.pid, s.created_on, s.tag, s.sha, s.timestamp 
               FROM snapshots s
               WHERE s.pid=:pid",
     )?;
@@ -293,12 +293,12 @@ pub fn get_project_snapshots(conn: &Connection, pid: i64) -> Result<Vec<Snapshot
     let rows = stmt
         .query_map(named_params! {":pid": pid}, |row| {
             Ok(Snapshot {
-                oid: row.get(0)?,
-                pid: row.get(1)?,
-                created_on: row.get(2)?,
-                tag: row.get(3)?,
-                sha: row.get(4)?,
-                timestamp: row.get(5)?,
+                oid: row.get("oid")?,
+                pid: row.get("pid")?,
+                created_on: row.get("created_on")?,
+                tag: row.get("tag")?,
+                sha: row.get("sha")?,
+                timestamp: row.get("timestamp")?,
             })
         })?
         .filter_map(|entry| entry.ok())
@@ -308,14 +308,14 @@ pub fn get_project_snapshots(conn: &Connection, pid: i64) -> Result<Vec<Snapshot
 
 pub fn get_project_by_name(conn: &Connection, name: &str) -> Result<ProjectInfo> {
     let project_info = conn.query_row(
-        "SELECT OID, name, created_on, origin FROM projects WHERE name=:name",
+        "SELECT OID AS id, name, created_on, origin FROM projects WHERE name=:name",
         params![name],
         |row| {
             Ok(ProjectInfo {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                created_on: row.get(2)?,
-                origin: row.get(3)?,
+                id: row.get("id")?,
+                name: row.get("name")?,
+                created_on: row.get("created_on")?,
+                origin: row.get("origin")?,
             })
         },
     )?;
@@ -324,14 +324,14 @@ pub fn get_project_by_name(conn: &Connection, name: &str) -> Result<ProjectInfo>
 
 pub fn get_project_by_snapshot(conn: &Connection, sid: i64) -> Result<ProjectInfo> {
     let project_info = conn.query_row(
-        "SELECT p.OID, p.name, p.created_on, p.origin FROM snapshots s JOIN projects p ON p.OID = s.pid WHERE s.OID=:sid",
+        "SELECT p.OID AS id, p.name, p.created_on, p.origin FROM snapshots s JOIN projects p ON p.OID = s.pid WHERE s.OID=:sid",
         params![sid],
         |row| {
             Ok(ProjectInfo {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                created_on: row.get(2)?,
-                origin: row.get(3)?,
+                id: row.get("id")?,
+                name: row.get("name")?,
+                created_on: row.get("created_on")?,
+                origin: row.get("origin")?,
             })
         },
     )?;
@@ -774,9 +774,9 @@ pub fn get_ng_entities(conn: &Connection, sid: i64, kind: NgKind) -> Result<Vec<
     let rows = stmt
         .query_map(named_params! { ":sid": sid, ":kind": kind }, |row| {
             Ok(NgEntity {
-                path: row.get(0)?,
-                url: row.get(1)?,
-                standalone: row.get(2)?,
+                path: row.get("path")?,
+                url: row.get("url")?,
+                standalone: row.get("standalone")?,
             })
         })?
         .filter_map(|entry| entry.ok())
